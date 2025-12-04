@@ -1,0 +1,19 @@
+# Render.com Deployment Configuration for Python Backend
+
+services:
+  # Python Flask ML Service
+  - type: web
+    name: jarvis-python-ml-service
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    healthCheckPath: /health
