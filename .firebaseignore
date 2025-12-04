@@ -1,0 +1,56 @@
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+firebase.json
+
+# Executable files (forbidden on Firebase Spark plan)
+*.bat
+*.exe
+*.sh
+*.cmd
+*.com
+*.app
+
+# Deployment and documentation files
+DEPLOY_TO_FIREBASE.bat
+START_SERVER.bat
+DEPLOYMENT_GUIDE.md
+FIREBASE_DEPLOYMENT.md
+DEPLOY_NOW.md
+ERROR_FIXES_SUMMARY.md
+SERVER_INSTRUCTIONS.md
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Build files
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# Backend files
+backend/
+
+# README files (optional - uncomment if you don't want them deployed)
+# README.md
+# *.md

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Professional AI Assistant</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <!-- Professional Styles -->
+    <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <!-- Tracer Disabled -->
+    <!-- <script src="tracer.js"></script> -->
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-robot"></i>
+                <span>JARVIS</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+                <li><a href="progress.html"><i class="fas fa-chart-line"></i> Progress</a></li>
+            </ul>
+            <button class="back-btn" onclick="history.back()">
+                <i class="fas fa-arrow-left"></i> Back to Lesson
+            </button>
+        </div>
+    </nav>
+
+    <!-- Quiz Container -->
+    <div class="quiz-container">
+        <div class="quiz-header">
+            <h1><i class="fas fa-question-circle"></i> Quiz Time!</h1>
+            <p id="quizSubtitle">Test your knowledge</p>
+        </div>
+
+        <!-- Quiz Progress -->
+        <div class="quiz-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p class="progress-text" id="progressText">Question 1 of 3</p>
+        </div>
+
+        <!-- Quiz Content -->
+        <div class="quiz-content" id="quizContent">
+            <!-- Questions will be loaded here -->
+        </div>
+
+        <!-- Quiz Actions -->
+        <div class="quiz-actions" id="quizActions">
+            <button class="quiz-btn submit-btn hidden" id="submitBtn">
+                <i class="fas fa-check"></i> Submit Quiz
+            </button>
+            <button class="quiz-btn next-btn hidden" id="nextBtn">
+                Next Question <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div class="quiz-results hidden" id="quizResults">
+            <div class="results-header">
+                <i class="fas fa-trophy"></i>
+                <h2>Quiz Completed!</h2>
+            </div>
+            <div class="score-display" id="scoreDisplay">
+                <!-- Score will be displayed here -->
+            </div>
+            <div class="results-actions">
+                <button class="quiz-btn" id="showAnswersBtn">
+                    <i class="fas fa-eye"></i> Show Answers
+                </button>
+                <button class="quiz-btn" id="retakeBtn">
+                    <i class="fas fa-redo"></i> Retake Quiz
+                </button>
+                <button class="quiz-btn return-btn" onclick="returnToLesson()">
+                    <i class="fas fa-arrow-left"></i> Return to Lesson
+                </button>
+            </div>
+        </div>
+
+        <!-- Answers Review -->
+        <div class="answers-review hidden" id="answersReview">
+            <h2><i class="fas fa-list-check"></i> Answer Review</h2>
+            <div id="reviewContent">
+                <!-- Review content will be loaded here -->
+            </div>
+            <button class="quiz-btn return-btn" onclick="returnToLesson()">
+                <i class="fas fa-arrow-left"></i> Return to Lesson
+            </button>
+        </div>
+    </div>
+
+    <script src="quiz.js"></script>
+</body>
+
+</html>

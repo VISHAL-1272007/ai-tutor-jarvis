@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Professional AI Assistant</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <!-- Professional Styles -->
+    <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <!-- Tracer Disabled -->
+    <!-- <script src="tracer.js"></script> -->
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔍 Backend Connection Test</h1>
+        <p class="subtitle">Testing JARVIS AI Backend on Render</p>
+
+        <!-- Backend URL -->
+        <div class="test-section">
+            <h2>
+                📡 Backend Configuration
+                <span class="status" id="config-status">Checking...</span>
+            </h2>
+            <div class="metric">
+                <span class="metric-label">Backend URL:</span>
+                <span class="metric-value" id="backend-url">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Health Check -->
+        <div class="test-section">
+            <h2>
+                ❤️ Health Check
+                <span class="status checking" id="health-status">
+                    <span class="spinner"></span> Checking...
+                </span>
+            </h2>
+            <button id="health-btn" onclick="testHealth()">Test Health Endpoint</button>
+            <div class="result hidden" id="health-result"></div>
+            <div class="info">
+                <strong>Note:</strong> First request may take 30-60 seconds if backend is sleeping on Render.
+            </div>
+        </div>
+
+        <!-- Chat API Test -->
+        <div class="test-section">
+            <h2>
+                💬 Chat API Test
+                <span class="status" id="chat-status">Waiting...</span>
+            </h2>
+            <button id="chat-btn" onclick="testChat()" disabled>Test Chat API</button>
+            <div class="result hidden" id="chat-result"></div>
+        </div>
+
+        <!-- Detailed Diagnostics -->
+        <div class="test-section">
+            <h2>🔧 Diagnostics</h2>
+            <div id="diagnostics">
+                <div class="metric">
+                    <span class="metric-label">Frontend URL:</span>
+                    <span class="metric-value" id="frontend-url">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Network Status:</span>
+                    <span class="metric-value" id="network-status">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">CORS Enabled:</span>
+                    <span class="metric-value" id="cors-status">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Response Time:</span>
+                    <span class="metric-value" id="response-time">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://ai-tutor-jarvis.onrender.com';
+
+        // Initialize
+        document.getElementById('backend-url').textContent = BACKEND_URL;
+        document.getElementById('frontend-url').textContent = window.location.origin;
+        document.getElementById('network-status').textContent = navigator.onLine ? 'Online ✅' : 'Offline ❌';
+
+        // Auto-run health check on load
+        window.addEventListener('load', () => {
+            setTimeout(testHealth, 500);
+        });
+
+        async function testHealth() {
+            const statusEl = document.getElementById('health-status');
+            const resultEl = document.getElementById('health-result');
+            const btnEl = document.getElementById('health-btn');
+            const chatBtnEl = document.getElementById('chat-btn');
+
+            statusEl.innerHTML = '<span class="spinner"></span> Testing...';
+            statusEl.className = 'status checking';
+            resultEl.style.display = 'none';
+            btnEl.disabled = true;
+
+            const startTime = Date.now();
+
+            try {
+                console.log('🔍 Testing health endpoint:', BACKEND_URL + '/health');
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+                const response = await fetch(BACKEND_URL + '/health', {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                const responseTime = Date.now() - startTime;
+                document.getElementById('response-time').textContent = responseTime + ' ms';
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    statusEl.textContent = '✅ Online';
+                    statusEl.className = 'status online';
+
+                    resultEl.className = 'result success';
+                    resultEl.textContent = JSON.stringify(data, null, 2);
+                    resultEl.style.display = 'block';
+
+                    document.getElementById('cors-status').textContent = 'Enabled ✅';
+                    chatBtnEl.disabled = false;
+
+                    console.log('✅ Health check passed:', data);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+            } catch (error) {
+                const responseTime = Date.now() - startTime;
+                document.getElementById('response-time').textContent = responseTime + ' ms (failed)';
+
+                console.error('❌ Health check failed:', error);
+
+                if (error.name === 'AbortError') {
+                    statusEl.textContent = '⏱️ Timeout (60s)';
+                    statusEl.className = 'status warning';
+                    resultEl.className = 'result error';
+                    resultEl.textContent = `❌ Request timed out after 60 seconds.\n\nPossible causes:\n1. Backend is starting up (first request takes 30-60s)\n2. Backend is down or crashed\n3. Network connectivity issues\n\n💡 Try refreshing in 30 seconds.`;
+                } else if (error.message.includes('Failed to fetch')) {
+                    statusEl.textContent = '❌ Cannot Connect';
+                    statusEl.className = 'status offline';
+                    resultEl.className = 'result error';
+                    resultEl.textContent = `❌ Failed to connect to backend.\n\nPossible causes:\n1. CORS not enabled on backend\n2. Backend URL is incorrect\n3. Backend is not deployed\n4. Network/firewall blocking request\n\nError: ${error.message}`;
+                    document.getElementById('cors-status').textContent = 'Unknown ❓';
+                } else {
+                    statusEl.textContent = '❌ Error';
+                    statusEl.className = 'status offline';
+                    resultEl.className = 'result error';
+                    resultEl.textContent = `❌ Error: ${error.message}\n\n${error.stack}`;
+                }
+
+                resultEl.style.display = 'block';
+            } finally {
+                btnEl.disabled = false;
+            }
+        }
+
+        async function testChat() {
+            const statusEl = document.getElementById('chat-status');
+            const resultEl = document.getElementById('chat-result');
+            const btnEl = document.getElementById('chat-btn');
+
+            statusEl.innerHTML = '<span class="spinner"></span> Testing...';
+            statusEl.className = 'status checking';
+            resultEl.style.display = 'none';
+            btnEl.disabled = true;
+
+            try {
+                console.log('🔍 Testing chat endpoint:', BACKEND_URL + '/api/chat');
+
+                const response = await fetch(BACKEND_URL + '/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Hello JARVIS, are you working?',
+                        conversationHistory: []
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    statusEl.textContent = '✅ Working';
+                    statusEl.className = 'status online';
+
+                    resultEl.className = 'result success';
+                    resultEl.textContent = JSON.stringify(data, null, 2);
+                    resultEl.style.display = 'block';
+
+                    console.log('✅ Chat API test passed:', data);
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+            } catch (error) {
+                console.error('❌ Chat API test failed:', error);
+
+                statusEl.textContent = '❌ Failed';
+                statusEl.className = 'status offline';
+
+                resultEl.className = 'result error';
+                resultEl.textContent = `❌ Error: ${error.message}\n\n${error.stack}`;
+                resultEl.style.display = 'block';
+            } finally {
+                btnEl.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

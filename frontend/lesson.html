@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Professional AI Assistant</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <!-- Professional Styles -->
+    <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="lesson-improved.css?v=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-robot"></i>
+                <span>JARVIS</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+                <li><a href="progress.html"><i class="fas fa-chart-line"></i> Progress</a></li>
+                <li><a href="index.html"><i class="fas fa-robot"></i> AI Tools</a></li>
+            </ul>
+            <button class="back-btn" onclick="history.back()">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+        </div>
+    </nav>
+
+    <!-- Lesson Container -->
+    <div class="lesson-container">
+        <!-- Sidebar Navigation -->
+        <aside class="lesson-sidebar" id="lessonSidebar">
+            <div class="sidebar-header">
+                <h3 id="moduleTitle">Module</h3>
+                <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <ul class="lesson-list" id="lessonList">
+                <!-- Lessons will be loaded here -->
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="lesson-content">
+            <!-- Lesson Header -->
+            <header class="lesson-header">
+                <div class="breadcrumb" id="breadcrumb">
+                    <a href="courses.html">Courses</a> /
+                    <span id="breadcrumbModule">Module</span> /
+                    <span id="breadcrumbLesson">Lesson</span>
+                </div>
+                <h1 id="lessonTitle">Loading...</h1>
+                <div class="lesson-meta">
+                    <span><i class="fas fa-clock"></i> <span id="lessonDuration">10 min</span></span>
+                    <span><i class="fas fa-signal"></i> <span id="lessonLevel">Beginner</span></span>
+                </div>
+            </header>
+
+            <!-- Lesson Body -->
+            <div class="lesson-body" id="lessonBody">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading lesson...</p>
+                </div>
+            </div>
+
+            <!-- Image Placeholder -->
+            <div class="lesson-image hidden" id="lessonImage">
+                <img src="" alt="Lesson illustration">
+            </div>
+
+            <!-- AI Actions -->
+            <div class="ai-actions">
+                <button class="ai-btn" id="explainBtn">
+                    <i class="fas fa-lightbulb"></i> Ask AI Explainer
+                </button>
+                <button class="ai-btn" id="imageBtn">
+                    <i class="fas fa-image"></i> Generate Image
+                </button>
+                <button class="ai-btn quiz-btn" id="quizBtn">
+                    <i class="fas fa-question-circle"></i> Take Quiz
+                </button>
+                <button class="ai-btn complete-btn" id="completeBtn">
+                    <i class="fas fa-check"></i> Mark Completed
+                </button>
+            </div>
+
+            <!-- AI Response Box -->
+            <div class="ai-response-box hidden" id="aiResponseBox">
+                <div class="ai-response-header">
+                    <h3><i class="fas fa-robot"></i> JARVIS AI Response</h3>
+                    <button class="close-response" id="closeResponse" title="Close response">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="response-content" id="aiResponseContent">
+                    <!-- AI response will appear here -->
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="lesson-navigation">
+                <button class="nav-btn prev-btn" id="prevBtn" disabled>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <button class="nav-btn next-btn" id="nextBtn">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-sidebar-btn" id="mobileSidebarBtn" title="Open lesson menu">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <script src="lesson.js"></script>
+    <script src="voice-control.js"></script>
+</body>
+
+</html>

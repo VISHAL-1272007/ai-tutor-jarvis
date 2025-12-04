@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Professional AI Assistant</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <!-- Professional Styles -->
+    <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="ai-tools.css">
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>
+                <i class="fas fa-robot"></i>
+                JARVIS AI
+            </h2>
+            <span class="plan-badge" id="planBadge">FREE</span>
+            <button class="sidebar-close-btn" id="sidebarCloseBtn" title="Close sidebar" aria-label="Close sidebar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <button class="new-chat-btn" id="newChatBtn">
+            <i class="fas fa-plus"></i>
+            <span>New Chat</span>
+        </button>
+
+        <div class="chat-history" id="chatHistory">
+            <h3>Recent Chats</h3>
+            <div class="history-list" id="historyList">
+                <div class="history-empty">
+                    <i class="fas fa-comments"></i>
+                    <p>No conversations yet<br>Start chatting with JARVIS!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="theme-selector-container">
+                <label><i class="fas fa-palette"></i> Theme</label>
+                <select id="themeSelect" class="theme-select" title="Select theme" aria-label="Select theme">
+                    <option value="default">🌙 Dark (Default)</option>
+                    <option value="light">☀️ Light Mode</option>
+                    <option value="chatgpt-pro">💎 ChatGPT Style</option>
+                </select>
+            </div>
+            <button class="sidebar-account-btn" id="sidebarAccountBtn">
+                <i class="fas fa-user-circle"></i>
+                <span id="accountBtnText">Sign In</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" title="Open menu" aria-label="Open menu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="header-center">
+                <i class="fas fa-brain header-brain-icon"></i>
+                <h1>JARVIS AI</h1>
+            </div>
+
+            <nav class="header-actions">
+                <a href="index.html" class="header-link">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <a href="courses.html" class="header-link">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>Learn</span>
+                </a>
+                <a href="playground.html" class="header-link">
+                    <i class="fas fa-code"></i>
+                    <span>Playground</span>
+                </a>
+                <a href="project-generator.html" class="header-link">
+                    <i class="fas fa-rocket"></i>
+                    <span>Projects</span>
+                </a>
+                <a href="ai-tools.html" class="header-link active">
+                    <i class="fas fa-tools"></i>
+                    <span>Tools</span>
+                </a>
+                <button class="settings-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </nav>
+        </header>
+
+        <!-- Mode Selector -->
+        <div class="mode-selector" id="modeSelector">
+            <button class="mode-tab" data-mode="chat">
+                <i class="fas fa-comments"></i>
+                <span>Chat</span>
+            </button>
+            <button class="mode-tab" data-mode="tutor">
+                <i class="fas fa-chalkboard-teacher"></i>
+                <span>Tutor</span>
+            </button>
+            <button class="mode-tab active" data-mode="code">
+                <i class="fas fa-laptop-code"></i>
+                <span>Code</span>
+            </button>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatContainer">
+            <!-- AI Tools Unique Content -->
+            <div class="ai-tools-unique-content">
+                <header class="header">
+                    <div class="container">
+                        <h1>🤖 JARVIS AI Tools</h1>
+                        <p>Your Intelligent Learning Assistant</p>
+                    </div>
+                </header>
+
+                <main class="container">
+                    <!-- AI Explainer Section -->
+                    <section class="tool-card">
+                        <div class="tool-header">
+                            <h2>💡 AI Explainer</h2>
+                            <p>Ask any question and get detailed explanations</p>
+                        </div>
+                        <div class="tool-body">
+                            <div class="input-group">
+                                <textarea id="explainerInput"
+                                    placeholder="Ask anything... (e.g., Explain quantum physics in simple terms)"
+                                    rows="3"></textarea>
+                                <button id="explainBtn" class="btn btn-primary">
+                                    <span class="btn-text">Explain</span>
+                                    <span class="btn-loader hidden">
+                                        <span class="spinner"></span> Processing...
+                                    </span>
+                                </button>
+                            </div>
+                            <div id="explainerOutput" class="output-area"></div>
+                        </div>
+                    </section>
+
+                    <!-- AI Image Generator Section -->
+                    <section class="tool-card">
+                        <div class="tool-header">
+                            <h2>🎨 AI Image Generator</h2>
+                            <p>Describe an image and let AI create it for you</p>
+                        </div>
+                        <div class="tool-body">
+                            <div class="input-group">
+                                <textarea id="imageInput"
+                                    placeholder="Describe the image... (e.g., A futuristic city at sunset with flying cars)"
+                                    rows="3"></textarea>
+                                <button id="generateBtn" class="btn btn-primary">
+                                    <span class="btn-text">Generate Image</span>
+                                    <span class="btn-loader hidden">
+                                        <span class="spinner"></span> Creating...
+                                    </span>
+                                </button>
+                            </div>
+                            <div id="imageOutput" class="output-area"></div>
+                        </div>
+                    </section>
+
+                    <!-- AI Quiz Generator Section -->
+                    <section class="tool-card">
+                        <div class="tool-header">
+                            <h2>📝 AI Quiz Generator</h2>
+                            <p>Generate practice quizzes on any topic</p>
+                        </div>
+                        <div class="tool-body">
+                            <div class="input-group">
+                                <input type="text" id="quizInput"
+                                    placeholder="Enter topic... (e.g., World War 2, Python Programming)">
+                                <button id="quizBtn" class="btn btn-primary">
+                                    <span class="btn-text">Generate Quiz</span>
+                                    <span class="btn-loader hidden">
+                                        <span class="spinner"></span> Generating...
+                                    </span>
+                                </button>
+                            </div>
+                            <div id="quizOutput" class="output-area"></div>
+                        </div>
+                    </section>
+
+                    <!-- AI Video Generator Section -->
+                    <section class="tool-card">
+                        <div class="tool-header">
+                            <h2>🎥 AI Video Generator</h2>
+                            <p>Generate educational videos on any topic</p>
+                        </div>
+                        <div class="tool-body">
+                            <div class="input-group">
+                                <input type="text" id="videoInput"
+                                    placeholder="Enter topic... (e.g., Solar System, Machine Learning)">
+                                <button id="videoBtn" class="btn btn-primary">
+                                    <span class="btn-text">Generate Video</span>
+                                    <span class="btn-loader hidden">
+                                        <span class="spinner"></span> Processing...
+                                    </span>
+                                </button>
+                            </div>
+                            <div id="videoOutput" class="output-area"></div>
+                        </div>
+                    </section>
+
+                    <!-- AI Project Generator Section -->
+                    <section class="tool-card">
+                        <div class="tool-header">
+                            <h2>🚀 AI Project Generator</h2>
+                            <p>Generate complete project code with file structure</p>
+                        </div>
+                        <div class="tool-body">
+                            <div class="input-group">
+                                <textarea id="projectInput" rows="3" 
+                                    placeholder="Describe your project... (e.g., Todo app with React, Python Flask REST API, etc.)"></textarea>
+                                <div class="project-options">
+                                    <select id="projectLanguage" class="project-select">
+                                        <option value="">Auto-detect Language</option>
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="python">Python</option>
+                                        <option value="java">Java</option>
+                                        <option value="cpp">C++</option>
+                                        <option value="csharp">C#</option>
+                                        <option value="php">PHP</option>
+                                        <option value="ruby">Ruby</option>
+                                        <option value="go">Go</option>
+                                        <option value="rust">Rust</option>
+                                        <option value="typescript">TypeScript</option>
+                                    </select>
+                                    <select id="projectType" class="project-select">
+                                        <option value="">Auto-detect Type</option>
+                                        <option value="web">Web App</option>
+                                        <option value="mobile">Mobile App</option>
+                                        <option value="desktop">Desktop App</option>
+                                        <option value="api">REST API</option>
+                                        <option value="cli">CLI Tool</option>
+                                        <option value="game">Game</option>
+                                        <option value="ml">Machine Learning</option>
+                                        <option value="blockchain">Blockchain</option>
+                                    </select>
+                                </div>
+                                <button id="projectBtn" class="btn btn-primary">
+                                    <span class="btn-text">🚀 Generate Project</span>
+                                    <span class="btn-loader hidden">
+                                        <span class="spinner"></span> Generating...
+                                    </span>
+                                </button>
+                            </div>
+                            <div id="projectOutput" class="output-area"></div>
+                        </div>
+                    </section>
+
+                    <!-- Back to Home Button -->
+                    <div class="back-home">
+                        <a href="index.html" class="btn btn-secondary">
+                            ← Back to Home
+                        </a>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Input Area (hidden for AI tools) -->
+        <div class="input-area hidden"></div>
+
+        <!-- Developer Credit -->
+        <footer class="developer-credit">
+            <p>Developed by <strong>VISHAL</strong> • Built for 30,000+ Students</p>
+        </footer>
+    </main>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-modal-content">
+            <div class="settings-header">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <button class="close-settings" id="closeSettings" title="Close settings" aria-label="Close settings">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item">
+                    <label><i class="fas fa-language"></i> Language</label>
+                    <select class="language-selector" id="languageSelector" title="Select language"
+                        aria-label="Select language">
+                        <option value="en-US">🇬🇧 English</option>
+                        <option value="ta-IN">🇮🇳 Tamil</option>
+                        <option value="hi-IN">🇮🇳 Hindi</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label><i class="fas fa-volume-up"></i> Voice Response</label>
+                    <button class="voice-toggle-btn" id="voiceToggleBtn">
+                        <i class="fas fa-volume-up"></i>
+                        <span>Voice ON</span>
+                    </button>
+                </div>
+                <div class="setting-item">
+                    <label><i class="fas fa-user"></i> Account</label>
+                    <div class="auth-buttons">
+                        <button class="signin-btn-modal" id="signinBtnModal"
+                            onclick="window.location.href='login.html'">
+                            <i class="fab fa-google"></i> Sign In
+                        </button>
+                        <button class="signout-btn-modal" id="signoutBtnModal">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label><i class="fas fa-circle"></i> Status</label>
+                    <span class="status-indicator">
+                        <i class="fas fa-circle"></i> Online
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="script.js?v=3"></script>
+    <script src="voice-control.js"></script>
+    <script type="module" src="ai-tools.js"></script>
+</body>
+
+</html>

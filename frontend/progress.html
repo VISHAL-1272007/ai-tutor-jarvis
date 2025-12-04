@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Professional AI Assistant</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <!-- Professional Styles -->
+    <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <!-- Tracer Disabled -->
+    <!-- <script src="tracer.js"></script> -->
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-robot"></i>
+                <span>JARVIS</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+                <li><a href="progress.html" class="active"><i class="fas fa-chart-line"></i> Progress</a></li>
+                <li><a href="index.html"><i class="fas fa-robot"></i> AI Tools</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1><i class="fas fa-chart-line"></i> Your Learning Progress</h1>
+            <p>Track your achievements and growth</p>
+        </div>
+    </section>
+
+    <!-- Progress Overview -->
+    <section class="progress-section">
+        <div class="container">
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-lessons">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="lessonsCompleted">0</h3>
+                        <p>Lessons Completed</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-quizzes">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="quizzesTaken">0</h3>
+                        <p>Quizzes Taken</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-xp">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="totalXP">0</h3>
+                        <p>Total XP</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-badges">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="badgesEarned">0</h3>
+                        <p>Badges Earned</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- XP Progress Bar -->
+            <div class="xp-section">
+                <div class="xp-header">
+                    <div>
+                        <h3>Level <span id="currentLevel">1</span></h3>
+                        <p><span id="currentXP">0</span> / <span id="nextLevelXP">100</span> XP</p>
+                    </div>
+                    <div class="xp-badge">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                </div>
+                <div class="xp-bar">
+                    <div class="xp-fill" id="xpFill"></div>
+                </div>
+            </div>
+
+            <!-- Badges Section -->
+            <div class="badges-section">
+                <h2><i class="fas fa-trophy"></i> Badges & Achievements</h2>
+                <div class="badges-grid" id="badgesGrid">
+                    <!-- Badges will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Course Progress -->
+            <div class="course-progress-section">
+                <h2><i class="fas fa-tasks"></i> Course Progress</h2>
+                <div class="course-progress-list" id="courseProgressList">
+                    <!-- Course progress will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="activity-section">
+                <h2><i class="fas fa-history"></i> Recent Activity</h2>
+                <div class="activity-list" id="activityList">
+                    <!-- Activity will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Reset Progress Button -->
+            <div class="actions-section">
+                <button class="reset-btn" id="resetBtn">
+                    <i class="fas fa-redo"></i> Reset Progress
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>Developed with ♥ by <strong>VISHAL</strong></p>
+            <p>&copy; 2025 JARVIS Learning Platform. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="progress.js"></script>
+</body>
+
+</html>

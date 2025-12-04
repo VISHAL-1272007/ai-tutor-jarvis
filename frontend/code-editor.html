@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS Code Editor - Monaco Editor</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="modern-ui-enhanced.css?v=1">
+    <link rel="stylesheet" href="code-editor.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-code"></i>
+                <span>JARVIS CODE EDITOR</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="ai-chat-panel.html"><i class="fas fa-comments"></i> AI Chat</a></li>
+                <li><a href="file-generator.html"><i class="fas fa-file-alt"></i> Files</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Editor Container -->
+    <div class="editor-container">
+        <!-- File Explorer Sidebar -->
+        <div class="file-explorer glass-card" id="fileExplorer">
+            <div class="explorer-header">
+                <h3><i class="fas fa-folder-open"></i> Explorer</h3>
+                <button class="btn-icon" id="newFileBtn" title="New File">
+                    <i class="fas fa-file-plus"></i>
+                </button>
+            </div>
+
+            <div class="explorer-search">
+                <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
+            </div>
+
+            <div class="file-tree" id="fileTree">
+                <!-- Files will be populated here -->
+            </div>
+
+            <div class="explorer-footer">
+                <button class="btn-action" id="uploadBtn">
+                    <i class="fas fa-upload"></i> Upload File
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Editor Area -->
+        <div class="editor-main">
+            <!-- Editor Toolbar -->
+            <div class="editor-toolbar glass-card">
+                <div class="toolbar-left">
+                    <select id="languageSelect" class="language-select">
+                        <option value="javascript">JavaScript</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="python">Python</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="json">JSON</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                        <option value="csharp">C#</option>
+                        <option value="php">PHP</option>
+                        <option value="sql">SQL</option>
+                    </select>
+
+                    <div class="file-tabs" id="fileTabs">
+                        <div class="tab active" data-file="main.js">
+                            <span class="tab-icon"><i class="fab fa-js"></i></span>
+                            <span class="tab-name">main.js</span>
+                            <button class="tab-close"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar-right">
+                    <button class="btn-icon" id="formatCodeBtn" title="Format Code (Alt+Shift+F)">
+                        <i class="fas fa-magic"></i>
+                    </button>
+                    <button class="btn-icon" id="aiSuggestBtn" title="AI Suggestions (Ctrl+Space)">
+                        <i class="fas fa-lightbulb"></i>
+                    </button>
+                    <button class="btn-icon" id="saveBtn" title="Save (Ctrl+S)">
+                        <i class="fas fa-save"></i>
+                    </button>
+                    <button class="btn-icon" id="runCodeBtn" title="Run Code (Ctrl+Enter)">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="btn-icon" id="settingsBtn" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Monaco Editor -->
+            <div class="monaco-container" id="monacoEditor"></div>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-left">
+                    <span id="statusLanguage">JavaScript</span>
+                    <span class="separator">|</span>
+                    <span id="statusEncoding">UTF-8</span>
+                    <span class="separator">|</span>
+                    <span id="statusEOL">LF</span>
+                </div>
+                <div class="status-right">
+                    <span id="statusLine">Ln 1, Col 1</span>
+                    <span class="separator">|</span>
+                    <span id="statusSpaces">Spaces: 2</span>
+                    <span class="separator">|</span>
+                    <span id="statusAI" class="ai-status">
+                        <i class="fas fa-robot"></i> AI Ready
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output/Console Panel -->
+        <div class="output-panel glass-card" id="outputPanel">
+            <div class="output-header">
+                <div class="output-tabs">
+                    <button class="output-tab active" data-tab="output">
+                        <i class="fas fa-terminal"></i> Output
+                    </button>
+                    <button class="output-tab" data-tab="console">
+                        <i class="fas fa-bug"></i> Console
+                    </button>
+                    <button class="output-tab" data-tab="problems">
+                        <i class="fas fa-exclamation-triangle"></i> Problems
+                    </button>
+                </div>
+                <div class="output-actions">
+                    <button class="btn-icon" id="clearOutputBtn" title="Clear Output">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn-icon" id="toggleOutputBtn" title="Toggle Output">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="output-content" id="outputContent">
+                <div class="output-welcome">
+                    <i class="fas fa-terminal"></i>
+                    <p>Ready to execute code. Press <kbd>Ctrl+Enter</kbd> or click Run.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal hidden" id="settingsModal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3><i class="fas fa-cog"></i> Editor Settings</h3>
+                <button class="btn-close" id="closeSettingsBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <label>Theme</label>
+                    <select id="themeSelect">
+                        <option value="vs-dark">Dark (Default)</option>
+                        <option value="vs-light">Light</option>
+                        <option value="hc-black">High Contrast</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label>Font Size</label>
+                    <input type="number" id="fontSizeInput" value="14" min="10" max="30">
+                </div>
+                <div class="setting-group">
+                    <label>Tab Size</label>
+                    <input type="number" id="tabSizeInput" value="2" min="2" max="8">
+                </div>
+                <div class="setting-group">
+                    <label>
+                        <input type="checkbox" id="miniMapCheck" checked>
+                        Show Minimap
+                    </label>
+                </div>
+                <div class="setting-group">
+                    <label>
+                        <input type="checkbox" id="lineNumbersCheck" checked>
+                        Show Line Numbers
+                    </label>
+                </div>
+                <div class="setting-group">
+                    <label>
+                        <input type="checkbox" id="wordWrapCheck">
+                        Word Wrap
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monaco Editor CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script type="module" src="code-editor.js"></script>
+    <script src="3d-animations.js"></script>
+</body>
+
+</html>

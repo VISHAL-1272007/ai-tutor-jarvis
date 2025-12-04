@@ -1,0 +1,566 @@
+/* ===== MODERN UI/UX ENHANCEMENTS ===== */
+/* Glassmorphism, 3D Effects, Smooth Animations */
+
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --shadow-elevation-low: 0 4px 6px rgba(0, 0, 0, 0.07);
+    --shadow-elevation-medium: 0 10px 25px rgba(0, 0, 0, 0.15);
+    --shadow-elevation-high: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Smooth Scroll */
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    background-attachment: fixed;
+    position: relative;
+}
+
+/* Animated Background Particles */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        radial-gradient(2px 2px at 20% 30%, rgba(102, 126, 234, 0.3), transparent),
+        radial-gradient(2px 2px at 60% 70%, rgba(240, 147, 251, 0.3), transparent),
+        radial-gradient(1px 1px at 50% 50%, rgba(56, 239, 125, 0.3), transparent),
+        radial-gradient(1px 1px at 80% 10%, rgba(245, 87, 108, 0.3), transparent);
+    background-size: 200% 200%;
+    animation: floatingParticles 20s ease-in-out infinite;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes floatingParticles {
+    0%, 100% { background-position: 0% 0%, 100% 100%, 50% 50%, 80% 10%; }
+    25% { background-position: 100% 0%, 0% 100%, 30% 70%, 60% 30%; }
+    50% { background-position: 100% 100%, 0% 0%, 70% 30%, 40% 50%; }
+    75% { background-position: 0% 100%, 100% 0%, 50% 50%, 80% 70%; }
+}
+
+/* Glass Morphism Cards */
+.input-card,
+.output-section,
+.file-block,
+.template-card,
+.metric-card,
+.modal-content {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.input-card:hover,
+.file-block:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 50px rgba(102, 126, 234, 0.4) !important;
+    border-color: rgba(102, 126, 234, 0.5) !important;
+}
+
+/* 3D Button Effects */
+.generate-btn,
+.action-btn,
+.icon-btn,
+.voice-btn {
+    position: relative;
+    overflow: hidden;
+    transform: perspective(1000px) rotateX(0deg);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+.generate-btn::before,
+.action-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.generate-btn:hover::before,
+.action-btn:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.generate-btn:hover,
+.action-btn:hover,
+.icon-btn:hover {
+    transform: perspective(1000px) rotateX(10deg) translateY(-5px) scale(1.05);
+    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.6);
+}
+
+.generate-btn:active {
+    transform: perspective(1000px) rotateX(5deg) translateY(-2px) scale(0.98);
+}
+
+/* Floating Animation */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+.header .title {
+    animation: float 3s ease-in-out infinite;
+    text-shadow: 0 0 30px rgba(102, 126, 234, 0.8),
+                 0 0 60px rgba(102, 126, 234, 0.5);
+}
+
+/* Glowing Text Effects */
+h1, h2, h3 {
+    background: linear-gradient(135deg, #667eea 0%, #f093fb 50%, #38ef7d 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientFlow 4s ease infinite;
+}
+
+@keyframes gradientFlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* 3D Card Flip Effect */
+.template-card {
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.template-card:hover {
+    transform: rotateY(5deg) rotateX(5deg) scale(1.05);
+    box-shadow: 0 25px 50px rgba(102, 126, 234, 0.5);
+}
+
+/* Metric Cards with Pulse */
+.metric-card {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    transform-style: preserve-3d;
+}
+
+.metric-card:nth-child(1) { animation-delay: 0s; }
+.metric-card:nth-child(2) { animation-delay: 0.2s; }
+.metric-card:nth-child(3) { animation-delay: 0.4s; }
+.metric-card:nth-child(4) { animation-delay: 0.6s; }
+
+@keyframes pulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+    }
+}
+
+/* Advanced Loading Spinner */
+.loading-overlay {
+    background: linear-gradient(135deg, rgba(15, 12, 41, 0.98) 0%, rgba(48, 43, 99, 0.98) 100%) !important;
+    backdrop-filter: blur(20px);
+}
+
+.spinner {
+    width: 80px !important;
+    height: 80px !important;
+    border-width: 6px !important;
+    border-style: solid;
+    border-color: rgba(102, 126, 234, 0.2);
+    border-top-color: #667eea;
+    border-right-color: #f093fb;
+    animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+    font-size: 20px !important;
+    font-weight: 700;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: textPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes textPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Input Fields with Glow */
+textarea,
+select,
+input[type="text"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 2px solid rgba(102, 126, 234, 0.3) !important;
+    color: #fff !important;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+textarea:focus,
+select:focus,
+input[type="text"]:focus {
+    border-color: #667eea !important;
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.6),
+                inset 0 0 20px rgba(102, 126, 234, 0.1) !important;
+    transform: scale(1.02);
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Checkbox Animations */
+.feature-checkbox {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.feature-checkbox:hover {
+    transform: translateX(5px);
+    color: #667eea;
+}
+
+.feature-checkbox input:checked + span {
+    color: #38ef7d;
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(56, 239, 125, 0.5);
+}
+
+/* File Blocks with 3D Effect */
+.file-block {
+    transform: perspective(1000px) rotateY(0deg);
+    transition: all 0.4s ease;
+}
+
+.file-block:hover {
+    transform: perspective(1000px) rotateY(2deg) translateZ(20px);
+}
+
+.file-header {
+    background: rgba(102, 126, 234, 0.1);
+    transition: all 0.3s ease;
+}
+
+.file-header:hover {
+    background: rgba(102, 126, 234, 0.2);
+}
+
+/* Code Blocks with Syntax Highlighting Enhancement */
+pre code {
+    text-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+}
+
+/* Modal with Scale-In Animation */
+.modal.active {
+    animation: modalFadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-content {
+    animation: modalSlideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalSlideUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Header Navigation with Hover Effects */
+.header-link {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.header-link::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    width: 0;
+    height: 3px;
+    background: var(--primary-gradient);
+    transform: translateX(-50%);
+    transition: width 0.3s ease;
+    border-radius: 10px;
+}
+
+.header-link:hover::after,
+.header-link.active::after {
+    width: 80%;
+}
+
+.header-link:hover {
+    transform: translateY(-3px);
+    color: #667eea !important;
+    text-shadow: 0 0 15px rgba(102, 126, 234, 0.8);
+}
+
+/* Sidebar with Blur Effect */
+.sidebar {
+    background: rgba(26, 29, 53, 0.9) !important;
+    backdrop-filter: blur(20px) !important;
+    border-right: 1px solid rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Notification Enhancement */
+.notification {
+    animation: notificationSlide 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+               notificationPulse 2s ease-in-out infinite !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes notificationSlide {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes notificationPulse {
+    0%, 100% { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); }
+    50% { box-shadow: 0 10px 30px rgba(102, 126, 234, 0.6); }
+}
+
+/* Preview Frame Enhancement */
+.preview-section {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+}
+
+.device-frame {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                inset 0 0 30px rgba(102, 126, 234, 0.1);
+    transition: all 0.4s ease;
+}
+
+.device-frame:hover {
+    transform: scale(1.02);
+    box-shadow: 0 25px 80px rgba(102, 126, 234, 0.4);
+}
+
+/* Scroll Progress Indicator */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 4px;
+    background: var(--primary-gradient);
+    z-index: 99999;
+    animation: scrollProgress linear;
+    animation-timeline: scroll();
+    width: 0;
+}
+
+/* Text Selection Styling */
+::selection {
+    background: rgba(102, 126, 234, 0.5);
+    color: white;
+    text-shadow: 0 0 10px rgba(102, 126, 234, 0.8);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-gradient);
+    border-radius: 10px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-gradient);
+}
+
+/* Cursor Effect */
+body {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="%23667eea" opacity="0.5"/></svg>') 16 16, auto;
+}
+
+button, a, .clickable {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="%23f093fb" opacity="0.7"/></svg>') 16 16, pointer;
+}
+
+/* Skeleton Loading Animation */
+.skeleton {
+    background: linear-gradient(90deg, 
+        rgba(255, 255, 255, 0.05) 25%, 
+        rgba(102, 126, 234, 0.2) 50%, 
+        rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Parallax Effect for Sections */
+.container {
+    transform-style: preserve-3d;
+}
+
+/* Spotlight Effect on Hover */
+.input-card,
+.template-card,
+.metric-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.input-card::before,
+.template-card::before,
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(102, 126, 234, 0.3) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+.input-card:hover::before,
+.template-card:hover::before,
+.metric-card:hover::before {
+    opacity: 1;
+    animation: spotlight 2s ease infinite;
+}
+
+@keyframes spotlight {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(20px, 20px); }
+}
+
+/* Advanced Grid Layout */
+.metrics-grid,
+.template-grid,
+.features-grid {
+    animation: fadeInUp 0.8s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stagger Animation for Children */
+.metrics-grid > *,
+.template-grid > *,
+.features-grid > * {
+    animation: fadeInUp 0.6s ease backwards;
+}
+
+.metrics-grid > *:nth-child(1) { animation-delay: 0.1s; }
+.metrics-grid > *:nth-child(2) { animation-delay: 0.2s; }
+.metrics-grid > *:nth-child(3) { animation-delay: 0.3s; }
+.metrics-grid > *:nth-child(4) { animation-delay: 0.4s; }
+
+.template-grid > *:nth-child(1) { animation-delay: 0.1s; }
+.template-grid > *:nth-child(2) { animation-delay: 0.2s; }
+.template-grid > *:nth-child(3) { animation-delay: 0.3s; }
+.template-grid > *:nth-child(4) { animation-delay: 0.4s; }
+.template-grid > *:nth-child(5) { animation-delay: 0.5s; }
+.template-grid > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+    .input-card:hover,
+    .file-block:hover {
+        transform: translateY(-5px) scale(1.01);
+    }
+
+    .generate-btn:hover,
+    .action-btn:hover {
+        transform: perspective(1000px) translateY(-3px) scale(1.03);
+    }
+}
+
+/* Dark Theme Adjustments */
+body.dark-theme {
+    background: linear-gradient(135deg, #000000 0%, #1a1a2e 50%, #16213e 100%) !important;
+}
+
+body.dark-theme .input-card,
+body.dark-theme .output-section,
+body.dark-theme .file-block {
+    background: rgba(0, 0, 0, 0.6) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
+}
+
+/* Performance Optimization */
+* {
+    will-change: transform;
+}
+
+.generate-btn,
+.action-btn,
+.template-card,
+.metric-card {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}

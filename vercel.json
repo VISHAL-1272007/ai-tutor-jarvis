@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/ask", "destination": "/api/ask" },
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/api/user", "destination": "/api/user" },
+    { "source": "/login", "destination": "/frontend/login.html" },
+    { "source": "/", "destination": "/frontend/index.html" }
+  ]
+}
