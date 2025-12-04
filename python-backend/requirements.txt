@@ -1,32 +1,14 @@
-# JARVIS Python Backend - Dependencies
-# Install with: pip install -r requirements.txt
+# JARVIS Python Backend - Minimal Dependencies
+# Optimized for fast deployment on Render Free Tier
 
 # Web Framework
 Flask==3.0.0
 Flask-CORS==4.0.0
 Werkzeug==3.0.1
 
-# Basic ML/Data Science
-numpy==1.26.2
-pandas==2.2.0
-scikit-learn==1.3.2
-
-# Optional: Advanced ML (uncomment if needed)
-# tensorflow==2.15.0
-# torch==2.1.0
-# transformers==4.36.0
-
-# Optional: Image Processing (uncomment if needed)
-# opencv-python==4.8.1.78
-# Pillow==10.1.0
-
-# Optional: NLP (uncomment if needed)
-# nltk==3.8.1
-# spacy==3.7.2
-
 # Utilities
-python-dotenv==1.0.0
 requests==2.31.0
+python-dotenv==1.0.0
 
 # Production Server
 gunicorn==21.2.0

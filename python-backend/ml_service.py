@@ -1,252 +1,213 @@
 """
-Machine Learning Service Module
-Provides AI/ML functionality for JARVIS
+Machine Learning Service Module for JARVIS
+Lightweight version without heavy ML dependencies
 """
 
-import numpy as np
-from datetime import datetime
 import re
+from datetime import datetime
+import json
 
-# Try to import ML libraries (gracefully handle if not installed)
-try:
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import accuracy_score
-    SKLEARN_AVAILABLE = True
-except ImportError:
-    SKLEARN_AVAILABLE = False
-
-def predict_model(features):
-    """
-    Simple prediction using a pre-trained model or heuristics
-    Args:
-        features: List of numerical features
-    Returns:
-        dict: Prediction result
-    """
-    try:
-        # Simple heuristic prediction (replace with actual model)
-        features_array = np.array(features)
-        prediction = np.mean(features_array) > 0.5
-        confidence = abs(np.mean(features_array) - 0.5) * 2
-        
-        return {
-            'prediction': bool(prediction),
-            'confidence': float(confidence),
-            'features_count': len(features),
-            'method': 'heuristic'
-        }
-    except Exception as e:
-        return {'error': str(e)}
-
-def analyze_image(image_file):
-    """
-    Analyze uploaded image
-    Args:
-        image_file: Flask file object
-    Returns:
-        dict: Image analysis result
-    """
-    try:
-        # Basic image info (expand with OpenCV/PIL for real analysis)
-        filename = image_file.filename
-        file_size = len(image_file.read())
-        image_file.seek(0)  # Reset file pointer
-        
-        # Determine image type
-        extension = filename.split('.')[-1].lower()
-        
-        return {
-            'filename': filename,
-            'size_bytes': file_size,
-            'size_kb': round(file_size / 1024, 2),
-            'format': extension,
-            'analysis': 'Basic image info',
-            'notes': 'Install OpenCV/Pillow for advanced analysis'
-        }
-    except Exception as e:
-        return {'error': str(e)}
-
-def sentiment_analysis(text):
-    """
-    Analyze sentiment of text
-    Args:
-        text: Input text string
-    Returns:
-        dict: Sentiment analysis result
-    """
-    try:
-        # Simple keyword-based sentiment (replace with NLP model)
-        positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 
-                         'fantastic', 'love', 'happy', 'best', 'awesome']
-        negative_words = ['bad', 'terrible', 'awful', 'horrible', 'hate', 
-                         'worst', 'poor', 'disappointing', 'sad', 'angry']
-        
-        text_lower = text.lower()
-        words = text_lower.split()
-        
-        positive_count = sum(1 for word in words if word in positive_words)
-        negative_count = sum(1 for word in words if word in negative_words)
-        
-        total = positive_count + negative_count
-        if total == 0:
-            sentiment = 'neutral'
-            score = 0.5
-        elif positive_count > negative_count:
-            sentiment = 'positive'
-            score = 0.5 + (positive_count / (total * 2))
-        else:
-            sentiment = 'negative'
-            score = 0.5 - (negative_count / (total * 2))
-        
-        return {
-            'sentiment': sentiment,
-            'score': round(score, 3),
-            'positive_words': positive_count,
-            'negative_words': negative_count,
-            'word_count': len(words),
-            'method': 'keyword-based'
-        }
-    except Exception as e:
-        return {'error': str(e)}
-
-def summarize_text(text, max_length=150):
-    """
-    Summarize long text
-    Args:
-        text: Input text
-        max_length: Maximum summary length
-    Returns:
-        str: Summarized text
-    """
-    try:
-        # Simple extractive summarization
-        sentences = text.split('.')
-        
-        if len(sentences) <= 3:
-            return text
-        
-        # Take first and most important sentences
-        summary_sentences = sentences[:2]
-        
-        # Add middle sentence if space allows
-        if len(sentences) > 4:
-            middle = sentences[len(sentences) // 2]
-            summary_sentences.append(middle)
-        
-        summary = '. '.join(s.strip() for s in summary_sentences if s.strip())
-        
-        # Truncate if too long
-        if len(summary) > max_length:
-            summary = summary[:max_length] + '...'
-        
-        return summary
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-def analyze_code_quality(code, language='python'):
-    """
-    Analyze code quality metrics
-    Args:
-        code: Source code string
-        language: Programming language
-    Returns:
-        dict: Code quality metrics
-    """
-    try:
-        lines = code.split('\n')
-        total_lines = len(lines)
-        code_lines = len([line for line in lines if line.strip() and not line.strip().startswith('#')])
-        comment_lines = len([line for line in lines if line.strip().startswith('#')])
-        blank_lines = total_lines - code_lines - comment_lines
-        
-        # Calculate complexity (simplified)
-        complexity_keywords = ['if', 'for', 'while', 'elif', 'else', 'try', 'except', 'with']
-        complexity = sum(code.lower().count(keyword) for keyword in complexity_keywords)
-        
-        # Calculate quality score
-        comment_ratio = comment_lines / max(code_lines, 1)
-        complexity_per_line = complexity / max(code_lines, 1)
-        
-        quality_score = min(100, max(0, 
-            70 + (comment_ratio * 20) - (complexity_per_line * 10)
-        ))
-        
-        # Detect potential issues
-        issues = []
-        if comment_ratio < 0.1:
-            issues.append("Low comment coverage")
-        if complexity_per_line > 0.3:
-            issues.append("High complexity detected")
-        if any(len(line) > 100 for line in lines):
-            issues.append("Long lines detected (>100 chars)")
-        
-        return {
-            'quality_score': round(quality_score, 2),
-            'total_lines': total_lines,
-            'code_lines': code_lines,
-            'comment_lines': comment_lines,
-            'blank_lines': blank_lines,
-            'complexity': complexity,
-            'comment_ratio': round(comment_ratio, 3),
-            'issues': issues,
-            'language': language,
-            'analysis_method': 'static'
-        }
-    except Exception as e:
-        return {'error': str(e)}
-
-def train_simple_model(X, y):
-    """
-    Train a simple machine learning model
-    Args:
-        X: Feature matrix (list of lists)
-        y: Target labels (list)
-    Returns:
-        dict: Training results
-    """
-    try:
-        if not SKLEARN_AVAILABLE:
+class MLService:
+    """Lightweight ML/AI Service for JARVIS"""
+    
+    def __init__(self):
+        """Initialize the ML service"""
+        print("🤖 ML Service initialized (lightweight mode)")
+    
+    def predict_with_model(self, features):
+        """
+        Simple prediction using heuristics
+        Args:
+            features: List of numerical values
+        Returns:
+            dict: Prediction result
+        """
+        try:
+            if not features or not isinstance(features, list):
+                return {'error': 'Invalid features provided'}
+            
+            # Simple heuristic: average-based prediction
+            avg = sum(features) / len(features)
+            prediction = avg > 0.5
+            confidence = abs(avg - 0.5) * 2
+            
             return {
-                'error': 'scikit-learn not installed',
-                'note': 'Run: pip install scikit-learn'
+                'success': True,
+                'prediction': bool(prediction),
+                'confidence': round(confidence, 2),
+                'features_count': len(features),
+                'method': 'heuristic',
+                'timestamp': datetime.now().isoformat()
             }
-        
-        X_array = np.array(X)
-        y_array = np.array(y)
-        
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_array, y_array, test_size=0.2, random_state=42
-        )
-        
-        # Train model
-        model = LogisticRegression(max_iter=1000)
-        model.fit(X_train, y_train)
-        
-        # Evaluate
-        train_accuracy = accuracy_score(y_train, model.predict(X_train))
-        test_accuracy = accuracy_score(y_test, model.predict(X_test))
-        
-        return {
-            'model_type': 'LogisticRegression',
-            'training_samples': len(X_train),
-            'test_samples': len(X_test),
-            'train_accuracy': round(train_accuracy, 4),
-            'test_accuracy': round(test_accuracy, 4),
-            'features': X_array.shape[1] if len(X_array.shape) > 1 else 1,
-            'status': 'trained',
-            'timestamp': datetime.now().isoformat()
-        }
-    except Exception as e:
-        return {'error': str(e)}
-
-# Export functions
-__all__ = [
-    'predict_model',
-    'analyze_image',
-    'sentiment_analysis',
-    'summarize_text',
-    'analyze_code_quality',
-    'train_simple_model'
-]
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def analyze_image(self, image_data):
+        """
+        Basic image analysis (placeholder)
+        Args:
+            image_data: Image file data
+        Returns:
+            dict: Analysis result
+        """
+        try:
+            # Basic file validation
+            if not image_data:
+                return {'error': 'No image data provided'}
+            
+            file_size = len(image_data) if hasattr(image_data, '__len__') else 0
+            
+            return {
+                'success': True,
+                'file_size': file_size,
+                'format': 'unknown',
+                'dimensions': 'N/A',
+                'message': 'Basic image validation passed',
+                'note': 'Full image analysis requires opencv-python (not installed)',
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def analyze_sentiment(self, text):
+        """
+        Simple sentiment analysis using keyword matching
+        Args:
+            text: Text to analyze
+        Returns:
+            dict: Sentiment analysis result
+        """
+        try:
+            if not text or not isinstance(text, str):
+                return {'error': 'Invalid text provided'}
+            
+            text_lower = text.lower()
+            
+            # Simple keyword-based sentiment
+            positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'love', 'best', 'awesome', 'perfect']
+            negative_words = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'hate', 'poor', 'disappointing', 'useless']
+            
+            positive_count = sum(1 for word in positive_words if word in text_lower)
+            negative_count = sum(1 for word in negative_words if word in text_lower)
+            
+            total = positive_count + negative_count
+            if total == 0:
+                sentiment = 'neutral'
+                score = 0.5
+            else:
+                score = positive_count / total
+                if score > 0.6:
+                    sentiment = 'positive'
+                elif score < 0.4:
+                    sentiment = 'negative'
+                else:
+                    sentiment = 'neutral'
+            
+            return {
+                'success': True,
+                'sentiment': sentiment,
+                'score': round(score, 2),
+                'positive_count': positive_count,
+                'negative_count': negative_count,
+                'text_length': len(text),
+                'method': 'keyword_matching',
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def summarize_text(self, text, max_sentences=3):
+        """
+        Simple text summarization
+        Args:
+            text: Text to summarize
+            max_sentences: Number of sentences to include
+        Returns:
+            dict: Summary result
+        """
+        try:
+            if not text or not isinstance(text, str):
+                return {'error': 'Invalid text provided'}
+            
+            # Split into sentences
+            sentences = re.split(r'[.!?]+', text)
+            sentences = [s.strip() for s in sentences if s.strip()]
+            
+            if len(sentences) <= max_sentences:
+                summary = text
+            else:
+                # Take first and last sentences, plus middle ones
+                summary_sentences = sentences[:max_sentences]
+                summary = '. '.join(summary_sentences) + '.'
+            
+            return {
+                'success': True,
+                'summary': summary,
+                'original_length': len(text),
+                'summary_length': len(summary),
+                'total_sentences': len(sentences),
+                'summary_sentences': min(max_sentences, len(sentences)),
+                'method': 'extractive',
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def analyze_code_quality(self, code):
+        """
+        Basic code quality analysis
+        Args:
+            code: Source code string
+        Returns:
+            dict: Code quality metrics
+        """
+        try:
+            if not code or not isinstance(code, str):
+                return {'error': 'Invalid code provided'}
+            
+            lines = code.split('\n')
+            total_lines = len(lines)
+            code_lines = len([l for l in lines if l.strip() and not l.strip().startswith('#')])
+            comment_lines = len([l for l in lines if l.strip().startswith('#')])
+            blank_lines = total_lines - code_lines - comment_lines
+            
+            # Count functions
+            function_count = len(re.findall(r'\bdef\s+\w+\s*\(', code))
+            class_count = len(re.findall(r'\bclass\s+\w+', code))
+            
+            # Calculate complexity (simple heuristic)
+            complexity = code.count('if ') + code.count('for ') + code.count('while ') + function_count
+            
+            return {
+                'success': True,
+                'total_lines': total_lines,
+                'code_lines': code_lines,
+                'comment_lines': comment_lines,
+                'blank_lines': blank_lines,
+                'function_count': function_count,
+                'class_count': class_count,
+                'complexity_score': complexity,
+                'comment_ratio': round(comment_lines / total_lines * 100, 1) if total_lines > 0 else 0,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+    
+    def train_simple_model(self, data):
+        """
+        Placeholder for model training
+        Args:
+            data: Training data
+        Returns:
+            dict: Training result
+        """
+        try:
+            return {
+                'success': True,
+                'message': 'Model training requires scikit-learn (not installed in lightweight mode)',
+                'recommendation': 'Use external ML APIs like Hugging Face for model training',
+                'data_received': len(data) if hasattr(data, '__len__') else 0,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
