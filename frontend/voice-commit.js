@@ -311,6 +311,10 @@ class VoiceCommit {
                 content: query
             });
 
+            // Longer timeout for first request (backend might be sleeping)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
             const response = await fetch(`${backendUrl}/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -319,8 +323,11 @@ class VoiceCommit {
                     mode: this.currentMode,
                     enableWebSearch: true,
                     history: this.conversationHistory.slice(-6) // Last 3 exchanges
-                })
+                }),
+                signal: controller.signal
             });
+
+            clearTimeout(timeoutId);
 
             const data = await response.json();
 
@@ -354,15 +361,29 @@ class VoiceCommit {
 
         } catch (error) {
             console.error('Error:', error);
-            this.showResponse('❌ Sorry, I encountered an error. Please try again.', [], [], false);
-            this.updateStatus('Error occurred', 'error');
+            
+            let errorMessage = '❌ Sorry, I encountered an error.';
+            
+            if (error.name === 'AbortError') {
+                errorMessage = '⏱️ Request timed out. The backend might be waking up. Please try again in 30 seconds.';
+            } else if (error.message.includes('Failed to fetch')) {
+                errorMessage = '🌐 Cannot connect to backend. Please check your internet connection or try again in a moment.';
+            }
+            
+            this.showResponse(errorMessage, [], [], false);
+            this.updateStatus('Error - Please try again', 'error');
+            
+            // Speak error message
+            if (this.autoSpeak) {
+                this.speakResponse(errorMessage);
+            }
             
             // Resume listening after error
             setTimeout(() => {
                 if (this.continuousMode) {
                     this.startListening();
                 }
-            }, 2000);
+            }, 3000);
         } finally {
             this.submitBtn.disabled = false;
         }
