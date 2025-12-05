@@ -103,24 +103,41 @@ class VoiceCommit {
                 // Auto-restart listening after AI speaks (continuous conversation)
                 if (this.continuousMode && this.modal?.classList.contains('active') && !this.isSpeaking) {
                     setTimeout(() => {
-                        this.startListening();
-                    }, 1000);
+                        if (!this.isListening) { // Double check not already listening
+                            this.startListening();
+                        }
+                    }, 1500);
                 }
             };
 
             this.recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
+                this.isListening = false;
+                this.orb?.classList.remove('listening');
                 
                 // Don't show error for "no-speech" - just restart
                 if (event.error === 'no-speech') {
                     if (this.continuousMode && this.modal?.classList.contains('active')) {
-                        setTimeout(() => this.startListening(), 1000);
+                        setTimeout(() => {
+                            if (!this.isListening && !this.isSpeaking) {
+                                this.startListening();
+                            }
+                        }, 1500);
                     }
+                } else if (event.error === 'aborted') {
+                    // Normal stop, don't restart
+                    console.log('Recognition aborted normally');
                 } else {
                     this.updateStatus('Error: ' + event.error, 'error');
+                    // Try to restart after other errors
+                    if (this.continuousMode) {
+                        setTimeout(() => {
+                            if (!this.isListening && !this.isSpeaking) {
+                                this.startListening();
+                            }
+                        }, 2000);
+                    }
                 }
-                
-                this.orb.classList.remove('listening');
             };
         }
     }
@@ -198,8 +215,10 @@ class VoiceCommit {
         // Auto-start listening when modal opens (Iron Man style!)
         setTimeout(() => {
             this.input?.focus();
-            this.startListening();
-        }, 500);
+            if (!this.isListening) {
+                this.startListening();
+            }
+        }, 800);
     }
 
     close() {
@@ -231,20 +250,34 @@ class VoiceCommit {
     }
 
     startListening() {
-        if (!this.recognition || this.isListening || this.isSpeaking) return;
+        if (!this.recognition || this.isListening || this.isSpeaking) {
+            console.log('Cannot start listening:', { 
+                hasRecognition: !!this.recognition, 
+                isListening: this.isListening, 
+                isSpeaking: this.isSpeaking 
+            });
+            return;
+        }
         
         try {
             this.recognition.start();
             console.log('🎤 Started listening...');
         } catch (error) {
             console.error('Error starting recognition:', error);
+            // Reset state if start fails
+            this.isListening = false;
         }
     }
 
     stopListening() {
         if (this.recognition && this.isListening) {
-            this.recognition.stop();
-            console.log('🛑 Stopped listening');
+            try {
+                this.recognition.stop();
+                console.log('🛑 Stopped listening');
+            } catch (error) {
+                console.error('Error stopping recognition:', error);
+            }
+            this.isListening = false;
         }
     }
 
@@ -438,85 +471,123 @@ class VoiceCommit {
         // Stop any ongoing speech
         if (this.isSpeaking) {
             this.synthesis.cancel();
-        }
-
-        // Clean text for speech (remove markdown, HTML, URLs)
-        let cleanText = text
-            .replace(/#{1,6}\s/g, '') // Remove markdown headers
-            .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-            .replace(/\*(.*?)\*/g, '$1') // Remove italic
-            .replace(/`([^`]+)`/g, '$1') // Remove code markers
-            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
-            .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
-            .replace(/\n+/g, '. ') // Replace newlines with periods
-            .replace(/\s+/g, ' ') // Normalize spaces
-            .trim();
-
-        // Limit to first 500 characters for reasonable speech length
-        if (cleanText.length > 500) {
-            cleanText = cleanText.substring(0, 500) + '... You can read the full response on screen.';
-        }
-
-        // Create speech utterance
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        
-        // Voice settings
-        utterance.rate = 1.0; // Normal speed
-        utterance.pitch = 1.0; // Normal pitch
-        utterance.volume = 1.0; // Full volume
-
-        // Try to use a good English voice
-        const voices = this.synthesis.getVoices();
-        const preferredVoices = [
-            'Google US English',
-            'Microsoft David',
-            'Microsoft Mark',
-            'Alex',
-            'Samantha'
-        ];
-
-        for (const preferred of preferredVoices) {
-            const voice = voices.find(v => v.name.includes(preferred));
-            if (voice) {
-                utterance.voice = voice;
-                break;
-            }
-        }
-
-        // If no preferred voice, use first English voice
-        if (!utterance.voice) {
-            const englishVoice = voices.find(v => v.lang.startsWith('en'));
-            if (englishVoice) utterance.voice = englishVoice;
-        }
-
-        // Event handlers
-        utterance.onstart = () => {
-            this.isSpeaking = true;
-            this.orb?.classList.add('speaking');
-            this.updateStatus('🔊 Speaking...', 'speaking');
-        };
-
-        utterance.onend = () => {
             this.isSpeaking = false;
-            this.orb?.classList.remove('speaking');
-            this.updateStatus('🎤 Ready - Speak now!', 'ready');
+        }
+
+        // Wait a moment for synthesis to fully stop
+        setTimeout(() => {
+            // Clean text for speech (remove markdown, HTML, URLs)
+            let cleanText = text
+                .replace(/#{1,6}\s/g, '') // Remove markdown headers
+                .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                .replace(/\*(.*?)\*/g, '$1') // Remove italic
+                .replace(/`([^`]+)`/g, '$1') // Remove code markers
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
+                .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
+                .replace(/\n+/g, '. ') // Replace newlines with periods
+                .replace(/\s+/g, ' ') // Normalize spaces
+                .trim();
+
+            // Limit to first 500 characters for reasonable speech length
+            if (cleanText.length > 500) {
+                cleanText = cleanText.substring(0, 500) + '... You can read the full response on screen.';
+            }
+
+            // Skip if text is empty or just symbols
+            if (!cleanText || cleanText.length < 3) {
+                console.log('Skipping speech - text too short');
+                // Still restart listening
+                if (this.continuousMode && this.modal?.classList.contains('active')) {
+                    setTimeout(() => {
+                        if (!this.isListening) {
+                            this.startListening();
+                        }
+                    }, 1000);
+                }
+                return;
+            }
+
+            // Create speech utterance
+            const utterance = new SpeechSynthesisUtterance(cleanText);
             
-            // Auto-restart listening after speaking (continuous conversation!)
-            if (this.continuousMode && this.modal?.classList.contains('active')) {
-                setTimeout(() => {
-                    this.startListening();
-                }, 1000); // 1 second delay before listening again
+            // Voice settings
+            utterance.rate = 1.0; // Normal speed
+            utterance.pitch = 1.0; // Normal pitch
+            utterance.volume = 1.0; // Full volume
+
+            // Try to use a good English voice
+            const voices = this.synthesis.getVoices();
+            const preferredVoices = [
+                'Google US English',
+                'Microsoft David',
+                'Microsoft Mark',
+                'Alex',
+                'Samantha'
+            ];
+
+            for (const preferred of preferredVoices) {
+                const voice = voices.find(v => v.name.includes(preferred));
+                if (voice) {
+                    utterance.voice = voice;
+                    break;
+                }
             }
-        };
 
-        utterance.onerror = (event) => {
-            console.error('Speech synthesis error:', event);
-            this.isSpeaking = false;
-            this.orb?.classList.remove('speaking');
-        };
+            // If no preferred voice, use first English voice
+            if (!utterance.voice) {
+                const englishVoice = voices.find(v => v.lang.startsWith('en'));
+                if (englishVoice) utterance.voice = englishVoice;
+            }
 
-        // Speak!
-        this.synthesis.speak(utterance);
+            // Event handlers
+            utterance.onstart = () => {
+                this.isSpeaking = true;
+                this.orb?.classList.add('speaking');
+                this.updateStatus('🔊 Speaking...', 'speaking');
+            };
+
+            utterance.onend = () => {
+                this.isSpeaking = false;
+                this.orb?.classList.remove('speaking');
+                this.updateStatus('🎤 Ready - Speak now!', 'ready');
+                
+                // Auto-restart listening after speaking (continuous conversation!)
+                if (this.continuousMode && this.modal?.classList.contains('active')) {
+                    setTimeout(() => {
+                        if (!this.isListening && !this.isSpeaking) { // Double check
+                            this.startListening();
+                        }
+                    }, 1500); // 1.5 second delay before listening again
+                }
+            };
+
+            utterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event);
+                this.isSpeaking = false;
+                this.orb?.classList.remove('speaking');
+                
+                // Still restart listening even if speech fails
+                if (this.continuousMode && this.modal?.classList.contains('active')) {
+                    setTimeout(() => {
+                        if (!this.isListening && !this.isSpeaking) {
+                            this.startListening();
+                        }
+                    }, 1500);
+                }
+            };
+
+            // Speak!
+            try {
+                this.synthesis.speak(utterance);
+            } catch (error) {
+                console.error('Error starting speech:', error);
+                this.isSpeaking = false;
+                // Restart listening if speech fails to start
+                if (this.continuousMode) {
+                    setTimeout(() => this.startListening(), 1000);
+                }
+            }
+        }, 200); // Small delay before starting new speech
     }
 
     stopSpeaking() {
