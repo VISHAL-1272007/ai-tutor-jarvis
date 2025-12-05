@@ -474,99 +474,99 @@ class VoiceCommit {
             this.isSpeaking = false;
         }
 
-        // Wait a moment for synthesis to fully stop
-        setTimeout(() => {
-            // Clean text for speech (remove markdown, HTML, URLs)
-            let cleanText = text
-                .replace(/#{1,6}\s/g, '') // Remove markdown headers
-                .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-                .replace(/\*(.*?)\*/g, '$1') // Remove italic
-                .replace(/`([^`]+)`/g, '$1') // Remove code markers
-                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
-                .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
-                .replace(/\n+/g, '. ') // Replace newlines with periods
-                .replace(/\s+/g, ' ') // Normalize spaces
-                .trim();
+        // Clean text for speech (remove markdown, HTML, URLs)
+        let cleanText = text
+            .replace(/#{1,6}\s/g, '') // Remove markdown headers
+            .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+            .replace(/\*(.*?)\*/g, '$1') // Remove italic
+            .replace(/`([^`]+)`/g, '$1') // Remove code markers
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
+            .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
+            .replace(/📚.*Sources:/g, '') // Remove sources section
+            .replace(/\d+\.\s*\[.*?\]\(.*?\)/g, '') // Remove citation links
+            .replace(/Powered by.*$/g, '') // Remove powered by text
+            .replace(/\n+/g, '. ') // Replace newlines with periods
+            .replace(/\s+/g, ' ') // Normalize spaces
+            .trim();
 
-            // Limit to first 500 characters for reasonable speech length
-            if (cleanText.length > 500) {
-                cleanText = cleanText.substring(0, 500) + '... You can read the full response on screen.';
+        // Limit to first 500 characters for reasonable speech length
+        if (cleanText.length > 500) {
+            cleanText = cleanText.substring(0, 500) + '... You can read the full response on screen.';
+        }
+
+        // Skip if text is empty or just symbols
+        if (!cleanText || cleanText.length < 3) {
+            console.log('Skipping speech - text too short');
+            // Still restart listening
+            if (this.continuousMode && this.modal?.classList.contains('active')) {
+                setTimeout(() => {
+                    if (!this.isListening) {
+                        this.startListening();
+                    }
+                }, 1000);
             }
+            return;
+        }
 
-            // Skip if text is empty or just symbols
-            if (!cleanText || cleanText.length < 3) {
-                console.log('Skipping speech - text too short');
-                // Still restart listening
-                if (this.continuousMode && this.modal?.classList.contains('active')) {
-                    setTimeout(() => {
-                        if (!this.isListening) {
-                            this.startListening();
-                        }
-                    }, 1000);
-                }
-                return;
-            }
+        console.log('🔊 Will speak:', cleanText.substring(0, 100) + '...');
 
-            // Create speech utterance
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            
-            // Voice settings
-            utterance.rate = 1.0; // Normal speed
-            utterance.pitch = 1.0; // Normal pitch
-            utterance.volume = 1.0; // Full volume
+        // Create speech utterance
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        
+        // Voice settings
+        utterance.rate = 1.0; // Normal speed
+        utterance.pitch = 1.0; // Normal pitch
+        utterance.volume = 1.0; // Full volume
+        utterance.lang = 'en-US';
 
-            // Try to use a good English voice
+        // Load voices if not loaded yet
+        const loadVoices = () => {
             const voices = this.synthesis.getVoices();
-            const preferredVoices = [
-                'Google US English',
-                'Microsoft David',
-                'Microsoft Mark',
-                'Alex',
-                'Samantha'
-            ];
+            console.log('Available voices:', voices.length);
+            
+            if (voices.length > 0) {
+                const preferredVoices = [
+                    'Google US English',
+                    'Microsoft David',
+                    'Microsoft Mark',
+                    'Alex',
+                    'Samantha'
+                ];
 
-            for (const preferred of preferredVoices) {
-                const voice = voices.find(v => v.name.includes(preferred));
-                if (voice) {
-                    utterance.voice = voice;
-                    break;
+                for (const preferred of preferredVoices) {
+                    const voice = voices.find(v => v.name.includes(preferred));
+                    if (voice) {
+                        utterance.voice = voice;
+                        console.log('Using voice:', voice.name);
+                        break;
+                    }
                 }
-            }
 
-            // If no preferred voice, use first English voice
-            if (!utterance.voice) {
-                const englishVoice = voices.find(v => v.lang.startsWith('en'));
-                if (englishVoice) utterance.voice = englishVoice;
+                // If no preferred voice, use first English voice
+                if (!utterance.voice) {
+                    const englishVoice = voices.find(v => v.lang.startsWith('en'));
+                    if (englishVoice) {
+                        utterance.voice = englishVoice;
+                        console.log('Using English voice:', englishVoice.name);
+                    }
+                }
             }
 
             // Event handlers
             utterance.onstart = () => {
+                console.log('🔊 Speech started');
                 this.isSpeaking = true;
                 this.orb?.classList.add('speaking');
                 this.updateStatus('🔊 Speaking...', 'speaking');
             };
 
             utterance.onend = () => {
+                console.log('✅ Speech ended');
                 this.isSpeaking = false;
                 this.orb?.classList.remove('speaking');
                 this.updateStatus('🎤 Ready - Speak now!', 'ready');
                 
                 // Auto-restart listening after speaking (continuous conversation!)
-                if (this.continuousMode && this.modal?.classList.contains('active')) {
-                    setTimeout(() => {
-                        if (!this.isListening && !this.isSpeaking) { // Double check
-                            this.startListening();
-                        }
-                    }, 1500); // 1.5 second delay before listening again
-                }
-            };
-
-            utterance.onerror = (event) => {
-                console.error('Speech synthesis error:', event);
-                this.isSpeaking = false;
-                this.orb?.classList.remove('speaking');
-                
-                // Still restart listening even if speech fails
                 if (this.continuousMode && this.modal?.classList.contains('active')) {
                     setTimeout(() => {
                         if (!this.isListening && !this.isSpeaking) {
@@ -576,9 +576,25 @@ class VoiceCommit {
                 }
             };
 
+            utterance.onerror = (event) => {
+                console.error('❌ Speech synthesis error:', event.error);
+                this.isSpeaking = false;
+                this.orb?.classList.remove('speaking');
+                
+                // Still restart listening even if speech fails
+                if (this.continuousMode && this.modal?.classList.contains('active')) {
+                    setTimeout(() => {
+                        if (!this.isListening && !this.isSpeaking) {
+                            this.startListening();
+                        }
+                    }, 1000);
+                }
+            };
+
             // Speak!
             try {
                 this.synthesis.speak(utterance);
+                console.log('📢 Speech queued');
             } catch (error) {
                 console.error('Error starting speech:', error);
                 this.isSpeaking = false;
@@ -587,7 +603,17 @@ class VoiceCommit {
                     setTimeout(() => this.startListening(), 1000);
                 }
             }
-        }, 200); // Small delay before starting new speech
+        };
+
+        // Make sure voices are loaded
+        if (this.synthesis.getVoices().length === 0) {
+            console.log('Loading voices...');
+            this.synthesis.onvoiceschanged = loadVoices;
+            // Also try immediately in case they're already loaded
+            setTimeout(loadVoices, 100);
+        } else {
+            loadVoices();
+        }
     }
 
     stopSpeaking() {
