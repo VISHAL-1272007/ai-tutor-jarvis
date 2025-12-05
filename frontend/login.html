@@ -4,20 +4,334 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JARVIS AI - Professional AI Assistant</title>
+    <title>Login - JARVIS AI</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+
     <!-- Professional Styles -->
-    <div class="login-header">
-        <h1>Identity Verification</h1>
-        <p>Please authenticate to access JARVIS</p>
+    <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(40px, 40px); }
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 60px 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .jarvis-logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            position: relative;
+        }
+
+        .jarvis-orb-3d {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .orb-core-3d {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 40px rgba(102, 126, 234, 0.6),
+                        0 0 80px rgba(118, 75, 162, 0.4),
+                        inset 0 0 40px rgba(255, 255, 255, 0.1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        .core-inner i {
+            font-size: 40px;
+            color: #fff;
+        }
+
+        .orb-ring-outer,
+        .orb-ring-middle,
+        .orb-ring-inner {
+            position: absolute;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            animation: rotate 10s linear infinite;
+        }
+
+        .orb-ring-outer {
+            width: 120px;
+            height: 120px;
+            margin: -60px 0 0 -60px;
+            border-top-color: rgba(102, 126, 234, 0.8);
+        }
+
+        .orb-ring-middle {
+            width: 100px;
+            height: 100px;
+            margin: -50px 0 0 -50px;
+            border-right-color: rgba(118, 75, 162, 0.8);
+            animation-duration: 8s;
+            animation-direction: reverse;
+        }
+
+        .orb-ring-inner {
+            width: 90px;
+            height: 90px;
+            margin: -45px 0 0 -45px;
+            border-left-color: rgba(102, 126, 234, 0.8);
+            animation-duration: 6s;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .login-header h1 {
+            color: #fff;
+            font-size: 32px;
+            margin: 0 0 15px 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .login-header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            margin: 0 0 40px 0;
+            line-height: 1.6;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 18px 30px;
+            background: #fff;
+            color: #333;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .auth-btn:active {
+            transform: translateY(0);
+        }
+
+        .auth-btn.google {
+            background: #fff;
+        }
+
+        .auth-btn.google:hover {
+            background: #f8f8f8;
+        }
+
+        .auth-btn i {
+            font-size: 20px;
+        }
+
+        .auth-btn.google i {
+            color: #4285F4;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 30px 0;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .features {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .feature-item i {
+            color: #38ef7d;
+            font-size: 18px;
+            min-width: 20px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-size: 14px;
+            margin-top: 20px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                padding: 40px 30px;
+            }
+
+            .login-header h1 {
+                font-size: 26px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="jarvis-logo">
+            <div class="jarvis-orb-3d">
+                <div class="orb-ring-outer"></div>
+                <div class="orb-ring-middle"></div>
+                <div class="orb-ring-inner"></div>
+                <div class="orb-core-3d">
+                    <div class="core-inner">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="login-header">
+            <h1>Welcome to JARVIS AI</h1>
+            <p>Your Professional AI Assistant - Built for 30,000+ Students</p>
+        </div>
+
+        <button id="googleSignInBtn" onclick="loginWithGoogle()" class="auth-btn google">
+            <i class="fab fa-google"></i>
+            <span>Sign in with Google</span>
+        </button>
+
+        <div class="divider">or explore as guest</div>
+
+        <a href="index.html" class="back-btn">
+            <i class="fas fa-arrow-left"></i>
+            Continue without login
+        </a>
+
+        <div class="features">
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>AI-powered code editor with Monaco</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Smart conversation with web search</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Project & file generation (PDF, DOCX, PPTX)</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Voice-controlled Iron Man interface</span>
+            </div>
+        </div>
     </div>
-    <button id="googleSignInBtn" onclick="loginWithGoogle()" class="auth-btn google">
-        <i class="fab fa-google"></i>
-        <span>Sign in with Google</span>
-    </button>
-    </div>
+
+    <script type="module" src="firebase-config.js"></script>
     <script type="module" src="auth.js"></script>
-    </body>
+</body>
 
 </html>
