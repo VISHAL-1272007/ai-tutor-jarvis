@@ -126,14 +126,8 @@ class VoiceCommit {
     }
 
     setupEventListeners() {
-        // Open modal when clicking voice button (find it in the page)
-        const voiceButtons = document.querySelectorAll('.voice-btn, #voiceBtn, .jarvis-orb-3d');
-        voiceButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.open();
-            });
-        });
+        // Voice commit modal can be opened with Ctrl+K only
+        // No need for old voice buttons
 
         // Close modal
         document.getElementById('voiceCommitClose')?.addEventListener('click', () => this.close());
