@@ -10,8 +10,11 @@ class VoiceCommit {
         this.submitBtn = null;
         this.responseArea = null;
         this.recognition = null;
+        this.synthesis = window.speechSynthesis;
         this.isListening = false;
+        this.isSpeaking = false;
         this.currentMode = 'all';
+        this.autoSpeak = true; // Auto-speak responses by default
         
         this.init();
     }
@@ -140,6 +143,9 @@ class VoiceCommit {
         document.getElementById('copyResponseBtn')?.addEventListener('click', () => this.copyResponse());
         document.getElementById('continueInChatBtn')?.addEventListener('click', () => this.continueInChat());
         document.getElementById('responseClose')?.addEventListener('click', () => this.closeResponse());
+        
+        // Speaker toggle button
+        document.getElementById('voiceSpeakerBtn')?.addEventListener('click', () => this.toggleAutoSpeak());
     }
 
     setupKeyboardShortcuts() {
@@ -170,8 +176,13 @@ class VoiceCommit {
         document.body.style.overflow = '';
         this.input.value = '';
         this.closeResponse();
+        
+        // Stop speech and recognition
         if (this.isListening) {
             this.recognition?.stop();
+        }
+        if (this.isSpeaking) {
+            this.stopSpeaking();
         }
     }
 
@@ -252,6 +263,11 @@ class VoiceCommit {
             if (data.answer) {
                 this.showResponse(data.answer, data.citations, data.sources, data.webSearchUsed, data.searchEngine);
                 this.updateStatus('Response ready!', 'ready');
+                
+                // Auto-speak the response
+                if (this.autoSpeak) {
+                    this.speakResponse(data.answer);
+                }
             } else {
                 throw new Error('No answer received');
             }
@@ -316,6 +332,93 @@ class VoiceCommit {
         this.responseArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    speakResponse(text) {
+        // Stop any ongoing speech
+        if (this.isSpeaking) {
+            this.synthesis.cancel();
+        }
+
+        // Clean text for speech (remove markdown, HTML, URLs)
+        let cleanText = text
+            .replace(/#{1,6}\s/g, '') // Remove markdown headers
+            .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+            .replace(/\*(.*?)\*/g, '$1') // Remove italic
+            .replace(/`([^`]+)`/g, '$1') // Remove code markers
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
+            .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
+            .replace(/\n+/g, '. ') // Replace newlines with periods
+            .replace(/\s+/g, ' ') // Normalize spaces
+            .trim();
+
+        // Limit to first 500 characters for reasonable speech length
+        if (cleanText.length > 500) {
+            cleanText = cleanText.substring(0, 500) + '... You can read the full response on screen.';
+        }
+
+        // Create speech utterance
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        
+        // Voice settings
+        utterance.rate = 1.0; // Normal speed
+        utterance.pitch = 1.0; // Normal pitch
+        utterance.volume = 1.0; // Full volume
+
+        // Try to use a good English voice
+        const voices = this.synthesis.getVoices();
+        const preferredVoices = [
+            'Google US English',
+            'Microsoft David',
+            'Microsoft Mark',
+            'Alex',
+            'Samantha'
+        ];
+
+        for (const preferred of preferredVoices) {
+            const voice = voices.find(v => v.name.includes(preferred));
+            if (voice) {
+                utterance.voice = voice;
+                break;
+            }
+        }
+
+        // If no preferred voice, use first English voice
+        if (!utterance.voice) {
+            const englishVoice = voices.find(v => v.lang.startsWith('en'));
+            if (englishVoice) utterance.voice = englishVoice;
+        }
+
+        // Event handlers
+        utterance.onstart = () => {
+            this.isSpeaking = true;
+            this.orb?.classList.add('speaking');
+            this.updateStatus('🔊 Speaking...', 'speaking');
+        };
+
+        utterance.onend = () => {
+            this.isSpeaking = false;
+            this.orb?.classList.remove('speaking');
+            this.updateStatus('Ready to listen', 'ready');
+        };
+
+        utterance.onerror = (event) => {
+            console.error('Speech synthesis error:', event);
+            this.isSpeaking = false;
+            this.orb?.classList.remove('speaking');
+        };
+
+        // Speak!
+        this.synthesis.speak(utterance);
+    }
+
+    stopSpeaking() {
+        if (this.isSpeaking) {
+            this.synthesis.cancel();
+            this.isSpeaking = false;
+            this.orb?.classList.remove('speaking');
+            this.updateStatus('Ready to listen', 'ready');
+        }
+    }
+
     closeResponse() {
         if (this.responseArea) {
             this.responseArea.style.display = 'none';
@@ -344,6 +447,24 @@ class VoiceCommit {
         if (mainInput) {
             mainInput.value = query;
             mainInput.focus();
+        }
+    }
+
+    toggleAutoSpeak() {
+        this.autoSpeak = !this.autoSpeak;
+        const btn = document.getElementById('voiceSpeakerBtn');
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (this.autoSpeak) {
+                icon.className = 'fas fa-volume-up';
+                btn.style.color = '#00d4ff';
+                btn.title = 'Voice ON - Click to disable';
+            } else {
+                icon.className = 'fas fa-volume-mute';
+                btn.style.color = 'rgba(255, 255, 255, 0.5)';
+                btn.title = 'Voice OFF - Click to enable';
+                this.stopSpeaking();
+            }
         }
     }
 }

@@ -201,6 +201,16 @@
     box-shadow: 0 8px 30px rgba(0, 212, 255, 0.6);
 }
 
+.voice-orb-container.speaking .voice-orb-core {
+    animation: speakPulse 0.5s infinite;
+    background: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+}
+
+@keyframes speakPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
 .voice-listening-wave {
     position: absolute;
     bottom: -10px;
@@ -296,6 +306,24 @@
     color: rgba(255, 255, 255, 0.6);
     font-size: 14px;
     margin-bottom: 20px;
+    position: relative;
+}
+
+.voice-speaker-btn {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: #00d4ff;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.voice-speaker-btn:hover {
+    background: rgba(0, 212, 255, 0.1);
+    transform: scale(1.05);
 }
 
 .voice-status i {
@@ -314,6 +342,11 @@
 
 .voice-status.error i {
     color: #f44336;
+}
+
+.voice-status.speaking i {
+    color: #00ff88;
+    animation: blink 0.5s infinite;
 }
 
 @keyframes blink {
