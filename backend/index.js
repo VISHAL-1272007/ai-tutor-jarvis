@@ -1441,6 +1441,233 @@ app.post('/api/generate-file', async (req, res) => {
     }
 });
 
+// ===== ASSIGNMENT SYSTEM API ENDPOINTS =====
+
+// In-memory storage (replace with database in production)
+const assignments = [];
+const submissions = [];
+
+// Get all assignments
+app.get('/api/assignments', (req, res) => {
+    try {
+        res.json({
+            success: true,
+            assignments: assignments
+        });
+    } catch (error) {
+        console.error('Error fetching assignments:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get single assignment
+app.get('/api/assignments/:id', (req, res) => {
+    try {
+        const assignment = assignments.find(a => a.id === req.params.id);
+        if (!assignment) {
+            return res.status(404).json({ success: false, error: 'Assignment not found' });
+        }
+        res.json({
+            success: true,
+            assignment: assignment
+        });
+    } catch (error) {
+        console.error('Error fetching assignment:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Create new assignment (Teacher)
+app.post('/api/assignments', (req, res) => {
+    try {
+        const { title, subject, description, deadline, points } = req.body;
+        
+        if (!title || !subject || !description || !deadline) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing required fields' 
+            });
+        }
+
+        const newAssignment = {
+            id: Date.now().toString(),
+            title,
+            subject,
+            description,
+            deadline,
+            points: points || 100,
+            createdAt: new Date().toISOString(),
+            submissions: 0
+        };
+
+        assignments.push(newAssignment);
+        
+        console.log(`✅ Assignment created: ${title}`);
+        
+        res.json({
+            success: true,
+            assignment: newAssignment
+        });
+    } catch (error) {
+        console.error('Error creating assignment:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Update assignment (Teacher)
+app.put('/api/assignments/:id', (req, res) => {
+    try {
+        const assignmentIndex = assignments.findIndex(a => a.id === req.params.id);
+        
+        if (assignmentIndex === -1) {
+            return res.status(404).json({ success: false, error: 'Assignment not found' });
+        }
+
+        assignments[assignmentIndex] = {
+            ...assignments[assignmentIndex],
+            ...req.body,
+            updatedAt: new Date().toISOString()
+        };
+
+        res.json({
+            success: true,
+            assignment: assignments[assignmentIndex]
+        });
+    } catch (error) {
+        console.error('Error updating assignment:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Delete assignment (Teacher)
+app.delete('/api/assignments/:id', (req, res) => {
+    try {
+        const assignmentIndex = assignments.findIndex(a => a.id === req.params.id);
+        
+        if (assignmentIndex === -1) {
+            return res.status(404).json({ success: false, error: 'Assignment not found' });
+        }
+
+        assignments.splice(assignmentIndex, 1);
+
+        res.json({
+            success: true,
+            message: 'Assignment deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting assignment:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Submit assignment (Student)
+app.post('/api/submissions', (req, res) => {
+    try {
+        const { assignmentId, studentId, text, files } = req.body;
+        
+        if (!assignmentId || !text) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing required fields' 
+            });
+        }
+
+        const newSubmission = {
+            id: Date.now().toString(),
+            assignmentId,
+            studentId: studentId || 'anonymous',
+            text,
+            files: files || [],
+            submittedAt: new Date().toISOString(),
+            status: 'submitted',
+            grade: null,
+            feedback: null
+        };
+
+        submissions.push(newSubmission);
+        
+        // Update assignment submission count
+        const assignment = assignments.find(a => a.id === assignmentId);
+        if (assignment) {
+            assignment.submissions = (assignment.submissions || 0) + 1;
+        }
+        
+        console.log(`✅ Assignment submitted: ${assignmentId}`);
+        
+        res.json({
+            success: true,
+            submission: newSubmission
+        });
+    } catch (error) {
+        console.error('Error submitting assignment:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get submissions for an assignment (Teacher)
+app.get('/api/assignments/:id/submissions', (req, res) => {
+    try {
+        const assignmentSubmissions = submissions.filter(
+            s => s.assignmentId === req.params.id
+        );
+        
+        res.json({
+            success: true,
+            submissions: assignmentSubmissions
+        });
+    } catch (error) {
+        console.error('Error fetching submissions:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Grade submission (Teacher)
+app.put('/api/submissions/:id/grade', (req, res) => {
+    try {
+        const { grade, feedback } = req.body;
+        const submissionIndex = submissions.findIndex(s => s.id === req.params.id);
+        
+        if (submissionIndex === -1) {
+            return res.status(404).json({ success: false, error: 'Submission not found' });
+        }
+
+        submissions[submissionIndex] = {
+            ...submissions[submissionIndex],
+            grade,
+            feedback,
+            status: 'graded',
+            gradedAt: new Date().toISOString()
+        };
+
+        res.json({
+            success: true,
+            submission: submissions[submissionIndex]
+        });
+    } catch (error) {
+        console.error('Error grading submission:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Get student's submissions
+app.get('/api/students/:studentId/submissions', (req, res) => {
+    try {
+        const studentSubmissions = submissions.filter(
+            s => s.studentId === req.params.studentId
+        );
+        
+        res.json({
+            success: true,
+            submissions: studentSubmissions
+        });
+    } catch (error) {
+        console.error('Error fetching student submissions:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+console.log('✅ Assignment System API endpoints loaded');
+
 function startServer(port, attempts = 0) {
     const server = app.listen(port, () => {
         activePort = port;
