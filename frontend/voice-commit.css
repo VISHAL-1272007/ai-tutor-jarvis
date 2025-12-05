@@ -326,6 +326,28 @@
     transform: scale(1.05);
 }
 
+.voice-continuous-btn {
+    background: transparent;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 8px;
+    padding: 6px 12px;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.voice-continuous-btn.active {
+    color: #00ff88;
+    border-color: rgba(0, 255, 136, 0.5);
+    background: rgba(0, 255, 136, 0.1);
+}
+
+.voice-continuous-btn:hover {
+    background: rgba(0, 255, 136, 0.1);
+    transform: scale(1.05);
+}
+
 .voice-status i {
     font-size: 10px;
     color: #4caf50;

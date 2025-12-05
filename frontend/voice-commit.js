@@ -15,6 +15,8 @@ class VoiceCommit {
         this.isSpeaking = false;
         this.currentMode = 'all';
         this.autoSpeak = true; // Auto-speak responses by default
+        this.continuousMode = true; // Continuous conversation mode
+        this.conversationHistory = [];
         
         this.init();
     }
@@ -61,34 +63,63 @@ class VoiceCommit {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             this.recognition = new SpeechRecognition();
             
-            this.recognition.continuous = false;
+            this.recognition.continuous = true; // Keep listening
             this.recognition.interimResults = true;
             this.recognition.lang = 'en-US';
 
             this.recognition.onstart = () => {
                 this.isListening = true;
                 this.orb.classList.add('listening');
-                this.updateStatus('Listening...', 'listening');
+                this.updateStatus('🎤 Listening...', 'listening');
             };
 
             this.recognition.onresult = (event) => {
                 let transcript = '';
+                let isFinal = false;
+                
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     transcript += event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        isFinal = true;
+                    }
                 }
+                
                 this.input.value = transcript;
                 this.autoResize();
+                
+                // Auto-submit when user finishes speaking (final result)
+                if (isFinal && transcript.trim().length > 0) {
+                    console.log('Final transcript:', transcript);
+                    setTimeout(() => {
+                        this.handleSubmit();
+                    }, 500); // Small delay to ensure clean speech end
+                }
             };
 
             this.recognition.onend = () => {
                 this.isListening = false;
                 this.orb.classList.remove('listening');
-                this.updateStatus('Ready to listen', 'ready');
+                
+                // Auto-restart listening after AI speaks (continuous conversation)
+                if (this.continuousMode && this.modal?.classList.contains('active') && !this.isSpeaking) {
+                    setTimeout(() => {
+                        this.startListening();
+                    }, 1000);
+                }
             };
 
             this.recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
-                this.updateStatus('Error: ' + event.error, 'error');
+                
+                // Don't show error for "no-speech" - just restart
+                if (event.error === 'no-speech') {
+                    if (this.continuousMode && this.modal?.classList.contains('active')) {
+                        setTimeout(() => this.startListening(), 1000);
+                    }
+                } else {
+                    this.updateStatus('Error: ' + event.error, 'error');
+                }
+                
                 this.orb.classList.remove('listening');
             };
         }
@@ -146,6 +177,9 @@ class VoiceCommit {
         
         // Speaker toggle button
         document.getElementById('voiceSpeakerBtn')?.addEventListener('click', () => this.toggleAutoSpeak());
+        
+        // Continuous mode toggle button
+        document.getElementById('voiceContinuousBtn')?.addEventListener('click', () => this.toggleContinuousMode());
     }
 
     setupKeyboardShortcuts() {
@@ -166,9 +200,12 @@ class VoiceCommit {
     open() {
         this.modal?.classList.add('active');
         document.body.style.overflow = 'hidden';
+        
+        // Auto-start listening when modal opens (Iron Man style!)
         setTimeout(() => {
             this.input?.focus();
-        }, 300);
+            this.startListening();
+        }, 500);
     }
 
     close() {
@@ -193,9 +230,27 @@ class VoiceCommit {
         }
 
         if (this.isListening) {
-            this.recognition.stop();
+            this.stopListening();
         } else {
+            this.startListening();
+        }
+    }
+
+    startListening() {
+        if (!this.recognition || this.isListening || this.isSpeaking) return;
+        
+        try {
             this.recognition.start();
+            console.log('🎤 Started listening...');
+        } catch (error) {
+            console.error('Error starting recognition:', error);
+        }
+    }
+
+    stopListening() {
+        if (this.recognition && this.isListening) {
+            this.recognition.stop();
+            console.log('🛑 Stopped listening');
         }
     }
 
@@ -240,33 +295,58 @@ class VoiceCommit {
         const query = this.input.value.trim();
         if (!query) return;
 
-        this.updateStatus('Processing your question...', 'processing');
+        // Stop listening while processing
+        this.stopListening();
+        
+        this.updateStatus('🤔 Thinking...', 'processing');
         this.submitBtn.disabled = true;
 
         try {
             // Get backend URL from config if available
             const backendUrl = window.getBackendURL ? window.getBackendURL() : 'https://ai-tutor-jarvis.onrender.com';
             
+            // Add to conversation history
+            this.conversationHistory.push({
+                role: 'user',
+                content: query
+            });
+
             const response = await fetch(`${backendUrl}/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: query,
                     mode: this.currentMode,
-                    enableWebSearch: true, // Enable web search for voice commit
-                    history: []
+                    enableWebSearch: true,
+                    history: this.conversationHistory.slice(-6) // Last 3 exchanges
                 })
             });
 
             const data = await response.json();
 
             if (data.answer) {
+                // Add to history
+                this.conversationHistory.push({
+                    role: 'assistant',
+                    content: data.answer
+                });
+
                 this.showResponse(data.answer, data.citations, data.sources, data.webSearchUsed, data.searchEngine);
-                this.updateStatus('Response ready!', 'ready');
+                this.updateStatus('💬 Speaking...', 'speaking');
+                
+                // Clear input for next question
+                this.input.value = '';
                 
                 // Auto-speak the response
                 if (this.autoSpeak) {
                     this.speakResponse(data.answer);
+                } else {
+                    // If not speaking, resume listening immediately
+                    setTimeout(() => {
+                        if (this.continuousMode) {
+                            this.startListening();
+                        }
+                    }, 1000);
                 }
             } else {
                 throw new Error('No answer received');
@@ -276,6 +356,13 @@ class VoiceCommit {
             console.error('Error:', error);
             this.showResponse('❌ Sorry, I encountered an error. Please try again.', [], [], false);
             this.updateStatus('Error occurred', 'error');
+            
+            // Resume listening after error
+            setTimeout(() => {
+                if (this.continuousMode) {
+                    this.startListening();
+                }
+            }, 2000);
         } finally {
             this.submitBtn.disabled = false;
         }
@@ -397,7 +484,14 @@ class VoiceCommit {
         utterance.onend = () => {
             this.isSpeaking = false;
             this.orb?.classList.remove('speaking');
-            this.updateStatus('Ready to listen', 'ready');
+            this.updateStatus('🎤 Ready - Speak now!', 'ready');
+            
+            // Auto-restart listening after speaking (continuous conversation!)
+            if (this.continuousMode && this.modal?.classList.contains('active')) {
+                setTimeout(() => {
+                    this.startListening();
+                }, 1000); // 1 second delay before listening again
+            }
         };
 
         utterance.onerror = (event) => {
@@ -464,6 +558,28 @@ class VoiceCommit {
                 btn.style.color = 'rgba(255, 255, 255, 0.5)';
                 btn.title = 'Voice OFF - Click to enable';
                 this.stopSpeaking();
+            }
+        }
+    }
+
+    toggleContinuousMode() {
+        this.continuousMode = !this.continuousMode;
+        const btn = document.getElementById('voiceContinuousBtn');
+        if (btn) {
+            if (this.continuousMode) {
+                btn.classList.add('active');
+                btn.style.color = '#00ff88';
+                btn.title = 'Continuous Mode ON - Auto-listens after response';
+                
+                // Start listening if not already
+                if (!this.isListening && !this.isSpeaking) {
+                    this.startListening();
+                }
+            } else {
+                btn.classList.remove('active');
+                btn.style.color = 'rgba(255, 255, 255, 0.5)';
+                btn.title = 'Continuous Mode OFF - Click to enable';
+                this.stopListening();
             }
         }
     }
