@@ -272,6 +272,26 @@
             color: #fff;
             max-height: 600px;
             overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        #generatedContent::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        #generatedContent::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        #generatedContent::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        #generatedContent::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
         }
 
         #generatedContent pre {
@@ -279,6 +299,20 @@
             padding: 20px;
             border-radius: 10px;
             overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        #generatedContent pre::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        #generatedContent pre::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        #generatedContent pre::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
         }
 
         #generatedContent code {
