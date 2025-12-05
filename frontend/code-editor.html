@@ -207,9 +207,18 @@
     </div>
 
     <!-- Monaco Editor CDN -->
+    <!-- Monaco Editor - Proper Loading Sequence -->
+    <script>
+        var require = { 
+            paths: { 
+                vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' 
+            } 
+        };
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.nls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/editor/editor.main.js"></script>
     <script type="module" src="code-editor.js"></script>
-    <script src="3d-animations.js"></script>
 </body>
 
 </html>
