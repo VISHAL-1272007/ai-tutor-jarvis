@@ -453,11 +453,22 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         let usedAPI = 'Unknown';
 
         // Try APIs in priority order with automatic failover
+        // FREE Self-Hosted API FIRST (unlimited capacity!)
         const apiAttempts = [
+            {
+                name: 'FREE Self-Hosted',
+                enabled: !!FREE_API_URL,
+                call: async () => await callFreeAPI(messages)
+            },
             {
                 name: 'Groq',
                 enabled: !!process.env.GROQ_API_KEY,
                 call: async () => await callGroqAPI(messages)
+            },
+            {
+                name: 'AIMLAPI',
+                enabled: !!process.env.AIML_API_KEY,
+                call: async () => await callAimlApi(messages)
             },
             {
                 name: 'Gemini',
@@ -470,19 +481,9 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 call: async () => await callOpenRouterAPI(messages)
             },
             {
-                name: 'AIMLAPI',
-                enabled: !!process.env.AIML_API_KEY,
-                call: async () => await callAimlApi(messages)
-            },
-            {
                 name: 'HuggingFace',
                 enabled: !!process.env.HUGGINGFACE_API_KEY,
                 call: async () => await callHuggingFaceAPI(finalSystemPrompt, history, question)
-            },
-            {
-                name: 'FREE Self-Hosted',
-                enabled: !!FREE_API_URL,
-                call: async () => await callFreeAPI(messages)
             }
         ];
 
