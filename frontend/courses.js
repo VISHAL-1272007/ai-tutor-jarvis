@@ -94,6 +94,146 @@ const courses = [
         duration: '3 weeks',
         level: 'Intermediate',
         color: '#2496ed'
+    },
+    {
+        id: 'react-fundamentals',
+        title: 'React Fundamentals',
+        description: 'Build modern UIs with React. Learn components, hooks, state management, and React Router.',
+        icon: 'fa-react',
+        lessonCount: 12,
+        duration: '6 weeks',
+        level: 'Intermediate',
+        color: '#61dafb'
+    },
+    {
+        id: 'nodejs-backend',
+        title: 'Node.js Backend',
+        description: 'Create server-side applications with Node.js. Learn Express, REST APIs, databases, and authentication.',
+        icon: 'fa-node-js',
+        lessonCount: 14,
+        duration: '7 weeks',
+        level: 'Intermediate',
+        color: '#68a063'
+    },
+    {
+        id: 'sql-databases',
+        title: 'SQL Databases',
+        description: 'Master database design and SQL queries. Learn MySQL, PostgreSQL, joins, indexes, and optimization.',
+        icon: 'fa-database',
+        lessonCount: 10,
+        duration: '5 weeks',
+        level: 'Beginner',
+        color: '#00758f'
+    },
+    {
+        id: 'git-github',
+        title: 'Git & GitHub',
+        description: 'Version control mastery. Learn Git commands, branching, merging, pull requests, and collaboration.',
+        icon: 'fa-git-alt',
+        lessonCount: 6,
+        duration: '2 weeks',
+        level: 'Beginner',
+        color: '#f05032'
+    },
+    {
+        id: 'cpp-programming',
+        title: 'C++ Programming',
+        description: 'Learn C++ from basics to advanced: pointers, STL, templates, and object-oriented programming.',
+        icon: 'fa-code',
+        lessonCount: 16,
+        duration: '8 weeks',
+        level: 'Intermediate',
+        color: '#00599c'
+    },
+    {
+        id: 'cybersecurity',
+        title: 'Cybersecurity Basics',
+        description: 'Introduction to security: encryption, network security, ethical hacking, and secure coding practices.',
+        icon: 'fa-shield-alt',
+        lessonCount: 12,
+        duration: '6 weeks',
+        level: 'Advanced',
+        color: '#ff0000'
+    },
+    {
+        id: 'cloud-computing',
+        title: 'Cloud Computing',
+        description: 'Learn cloud platforms: AWS, Azure, Google Cloud. Deployment, scaling, and serverless architecture.',
+        icon: 'fa-cloud',
+        lessonCount: 14,
+        duration: '7 weeks',
+        level: 'Advanced',
+        color: '#ff9900'
+    },
+    {
+        id: 'angular-framework',
+        title: 'Angular Framework',
+        description: 'Build enterprise applications with Angular. Components, services, routing, and RxJS.',
+        icon: 'fa-angular',
+        lessonCount: 12,
+        duration: '6 weeks',
+        level: 'Intermediate',
+        color: '#dd0031'
+    },
+    {
+        id: 'flutter-mobile',
+        title: 'Flutter Mobile Dev',
+        description: 'Create beautiful mobile apps with Flutter. Dart programming, widgets, and cross-platform development.',
+        icon: 'fa-mobile-alt',
+        lessonCount: 14,
+        duration: '7 weeks',
+        level: 'Intermediate',
+        color: '#02569b'
+    },
+    {
+        id: 'blockchain-basics',
+        title: 'Blockchain & Web3',
+        description: 'Understand blockchain technology, smart contracts, cryptocurrencies, and decentralized applications.',
+        icon: 'fa-link',
+        lessonCount: 10,
+        duration: '5 weeks',
+        level: 'Advanced',
+        color: '#f7931a'
+    },
+    {
+        id: 'mongodb-nosql',
+        title: 'MongoDB & NoSQL',
+        description: 'Master NoSQL databases with MongoDB. Documents, collections, aggregation, and Mongoose.',
+        icon: 'fa-database',
+        lessonCount: 8,
+        duration: '4 weeks',
+        level: 'Intermediate',
+        color: '#4db33d'
+    },
+    {
+        id: 'typescript',
+        title: 'TypeScript',
+        description: 'Learn TypeScript for type-safe JavaScript. Interfaces, generics, decorators, and advanced types.',
+        icon: 'fa-code',
+        lessonCount: 8,
+        duration: '4 weeks',
+        level: 'Intermediate',
+        color: '#3178c6'
+    },
+    {
+        id: 'devops-basics',
+        title: 'DevOps Essentials',
+        description: 'CI/CD pipelines, Jenkins, Docker, Kubernetes, monitoring, and infrastructure as code.',
+        icon: 'fa-cogs',
+        lessonCount: 16,
+        duration: '8 weeks',
+        level: 'Advanced',
+        color: '#326ce5'
+    },
+    {
+        id: 'ui-ux-design',
+        title: 'UI/UX Design',
+        description: 'Design principles, user research, wireframing, prototyping with Figma, and usability testing.',
+        icon: 'fa-paint-brush',
+        lessonCount: 10,
+        duration: '5 weeks',
+        level: 'Beginner',
+        color: '#ff7262'
     }
 ];
 
