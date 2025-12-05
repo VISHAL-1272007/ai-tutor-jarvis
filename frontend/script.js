@@ -888,7 +888,10 @@ async function sendMessage() {
             code: 'You are JARVIS, an expert programming assistant. Help with coding problems, provide code examples with explanations, debug errors, and suggest optimizations. Format code properly with syntax highlighting.'
         };
 
-        // Send context (history) to backend with timeout
+        // Send only last 5 messages as context to keep requests small
+        // This prevents API failures with long conversation histories
+        const recentHistory = currentChatMessages.slice(0, -1).slice(-5); // Last 5 messages before current
+        
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for first request
 
@@ -897,7 +900,7 @@ async function sendMessage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 question,
-                history: currentChatMessages.slice(0, -1), // Send history excluding current question
+                history: recentHistory, // Send only last 5 messages as context
                 mode: currentMode,
                 systemPrompt: modeContext[currentMode]
             }),
