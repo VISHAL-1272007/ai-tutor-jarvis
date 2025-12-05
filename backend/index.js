@@ -738,16 +738,12 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         // Try each enabled API until one succeeds
         for (const api of apiAttempts.filter(a => a.enabled)) {
             try {
-                if (process.env.NODE_ENV !== 'production') {
-                    console.log(`🤖 Trying ${api.name}...`);
-                }
+                console.log(`🤖 Trying ${api.name}...`);
 
                 answer = await api.call();
                 usedAPI = api.name;
 
-                if (process.env.NODE_ENV !== 'production') {
-                    console.log(`✅ Got answer from ${api.name}!`);
-                }
+                console.log(`✅ Got answer from ${api.name}!`);
                 break; // Success! Stop trying other APIs
             } catch (error) {
                 console.log(`⚠️ ${api.name} failed:`, error.message);
@@ -755,9 +751,61 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             }
         }
 
+        // If all APIs failed, try simple Groq call directly (last resort)
+        if (!answer && process.env.GROQ_API_KEY) {
+            try {
+                console.log('🔄 Last resort: Direct Groq API call...');
+                const response = await axios.post(
+                    'https://api.groq.com/openai/v1/chat/completions',
+                    {
+                        model: 'llama-3.1-8b-instant',
+                        messages: [
+                            { role: 'system', content: 'You are JARVIS, a helpful AI assistant.' },
+                            { role: 'user', content: question }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 30000
+                    }
+                );
+                answer = response.data.choices[0].message.content;
+                usedAPI = 'Groq (Direct)';
+                console.log('✅ Direct Groq call succeeded!');
+            } catch (error) {
+                console.log('❌ Direct Groq also failed:', error.message);
+            }
+        }
+
         // If all APIs failed
         if (!answer) {
-            throw new Error('All AI APIs failed. Please try again later.');
+            // Return a helpful error message instead of throwing
+            return res.json({ 
+                answer: `⚠️ **Service Temporarily Unavailable**
+
+I'm having trouble connecting to the AI service right now.
+
+🔧 **Quick Fixes:**
+1. **Wait 30 seconds** and try again
+2. Check your internet connection
+3. Backend might be waking up (Render free tier sleeps after inactivity)
+
+💡 **Why this happens:**
+- Backend on Render free tier goes to sleep after 15 minutes
+- First request after sleep takes 30-60 seconds to wake up
+- All AI APIs are busy/rate limited
+
+🚀 **What to do:**
+- Try again in 30-60 seconds
+- Backend is waking up...
+
+*Your question was: "${question}"*`
+            });
         }
 
         // Add API source to response (for debugging)
