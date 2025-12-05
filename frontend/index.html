@@ -334,10 +334,122 @@
         </div>
     </div>
 
+    <!-- Voice Commit Modal -->
+    <div class="voice-commit-modal" id="voiceCommitModal">
+        <div class="voice-commit-backdrop" id="voiceCommitBackdrop"></div>
+        <div class="voice-commit-container">
+            <button class="voice-commit-close" id="voiceCommitClose" aria-label="Close">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <div class="voice-commit-header">
+                <div class="voice-commit-logo">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h2>Ask JARVIS</h2>
+                <p>Type or speak your question</p>
+            </div>
+
+            <div class="voice-commit-modes">
+                <button class="voice-mode-btn active" data-voice-mode="all">
+                    <i class="fas fa-globe"></i>
+                    All
+                </button>
+                <button class="voice-mode-btn" data-voice-mode="academic">
+                    <i class="fas fa-graduation-cap"></i>
+                    Academic
+                </button>
+                <button class="voice-mode-btn" data-voice-mode="writing">
+                    <i class="fas fa-pen"></i>
+                    Writing
+                </button>
+                <button class="voice-mode-btn" data-voice-mode="video">
+                    <i class="fas fa-video"></i>
+                    Video
+                </button>
+                <button class="voice-mode-btn" data-voice-mode="code">
+                    <i class="fas fa-code"></i>
+                    Code
+                </button>
+            </div>
+
+            <div class="voice-orb-container" id="voiceOrb">
+                <div class="voice-orb-pulse"></div>
+                <div class="voice-orb-core">
+                    <i class="fas fa-microphone"></i>
+                </div>
+                <div class="voice-listening-wave">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+            </div>
+
+            <div class="voice-input-wrapper">
+                <textarea 
+                    class="voice-commit-input" 
+                    id="voiceCommitInput" 
+                    placeholder="Ask anything..."
+                    rows="1"
+                ></textarea>
+                <button class="voice-submit-btn" id="voiceSubmitBtn">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="voice-status" id="voiceStatus">
+                <i class="fas fa-circle"></i>
+                <span id="voiceStatusText">Ready to listen</span>
+            </div>
+
+            <div class="voice-suggestions">
+                <button class="suggestion-chip" data-query="Explain quantum computing">
+                    <i class="fas fa-atom"></i>
+                    Explain quantum computing
+                </button>
+                <button class="suggestion-chip" data-query="Write a Python function">
+                    <i class="fas fa-code"></i>
+                    Write a Python function
+                </button>
+                <button class="suggestion-chip" data-query="Summarize machine learning">
+                    <i class="fas fa-brain"></i>
+                    Summarize machine learning
+                </button>
+                <button class="suggestion-chip" data-query="Debug my code">
+                    <i class="fas fa-bug"></i>
+                    Debug my code
+                </button>
+            </div>
+
+            <div class="voice-commit-response" id="voiceCommitResponse" style="display: none;">
+                <div class="response-header">
+                    <h3>
+                        <i class="fas fa-check-circle"></i>
+                        Response
+                    </h3>
+                    <button class="response-close" id="responseClose">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="response-content" id="responseContent"></div>
+                <div class="response-actions">
+                    <button class="response-action-btn" id="copyResponseBtn">
+                        <i class="fas fa-copy"></i>
+                        Copy
+                    </button>
+                    <button class="response-action-btn" id="continueInChatBtn">
+                        <i class="fas fa-comments"></i>
+                        Continue in Chat
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
+    <link rel="stylesheet" href="voice-commit.css">
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="script.js?v=4"></script>
     <script src="voice-control.js"></script>
+    <script src="voice-commit.js"></script>
 </body>
 
 </html>

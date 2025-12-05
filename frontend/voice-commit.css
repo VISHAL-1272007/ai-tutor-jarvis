@@ -1,0 +1,579 @@
+/* ===== PERPLEXITY-STYLE VOICE COMMIT INTERFACE STYLES ===== */
+
+/* Modal Container */
+.voice-commit-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.voice-commit-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+/* Backdrop */
+.voice-commit-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+}
+
+/* Main Container */
+.voice-commit-container {
+    position: relative;
+    width: 90%;
+    max-width: 700px;
+    max-height: 85vh;
+    background: linear-gradient(135deg, rgba(15, 25, 35, 0.95) 0%, rgba(25, 35, 50, 0.95) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.1);
+    overflow-y: auto;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(30px) scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* Close Button */
+.voice-commit-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.voice-commit-close:hover {
+    background: rgba(255, 59, 48, 0.2);
+    border-color: rgba(255, 59, 48, 0.4);
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+/* Header */
+.voice-commit-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.voice-commit-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 15px;
+    background: linear-gradient(135deg, #00d4ff 0%, #667eea 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #fff;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.voice-commit-header h2 {
+    color: #fff;
+    font-size: 28px;
+    margin: 0 0 10px 0;
+}
+
+.voice-commit-header p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Mode Buttons */
+.voice-commit-modes {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.voice-mode-btn {
+    flex-shrink: 0;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.voice-mode-btn:hover {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.3);
+    color: #00d4ff;
+}
+
+.voice-mode-btn.active {
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(102, 126, 234, 0.2));
+    border-color: #00d4ff;
+    color: #00d4ff;
+}
+
+/* Voice Orb */
+.voice-orb-container {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 30px;
+    position: relative;
+    cursor: pointer;
+}
+
+.voice-orb-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 212, 255, 0.2) 0%, transparent 70%);
+    animation: orbPulse 2s infinite;
+}
+
+@keyframes orbPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+    50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+}
+
+.voice-orb-core {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #00d4ff 0%, #667eea 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #fff;
+    box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+    transition: all 0.3s;
+}
+
+.voice-orb-container:hover .voice-orb-core {
+    transform: scale(1.1);
+    box-shadow: 0 8px 30px rgba(0, 212, 255, 0.6);
+}
+
+.voice-listening-wave {
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: 3px;
+}
+
+.voice-orb-container.listening .voice-listening-wave {
+    display: flex;
+}
+
+.voice-listening-wave span {
+    width: 4px;
+    height: 20px;
+    background: #00d4ff;
+    border-radius: 2px;
+    animation: wave 1s infinite;
+}
+
+.voice-listening-wave span:nth-child(2) { animation-delay: 0.1s; }
+.voice-listening-wave span:nth-child(3) { animation-delay: 0.2s; }
+.voice-listening-wave span:nth-child(4) { animation-delay: 0.3s; }
+.voice-listening-wave span:nth-child(5) { animation-delay: 0.4s; }
+
+@keyframes wave {
+    0%, 100% { height: 20px; }
+    50% { height: 35px; }
+}
+
+/* Input Area */
+.voice-input-wrapper {
+    position: relative;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.voice-commit-input {
+    flex: 1;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    color: #fff;
+    font-size: 16px;
+    font-family: inherit;
+    resize: none;
+    min-height: 56px;
+    max-height: 150px;
+    transition: all 0.3s;
+}
+
+.voice-commit-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #00d4ff;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+}
+
+.voice-commit-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.voice-submit-btn {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #00d4ff 0%, #667eea 100%);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.voice-submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+}
+
+.voice-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Voice Status */
+.voice-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.voice-status i {
+    font-size: 10px;
+    color: #4caf50;
+}
+
+.voice-status.listening i {
+    color: #ff5722;
+    animation: blink 1s infinite;
+}
+
+.voice-status.processing i {
+    color: #00d4ff;
+}
+
+.voice-status.error i {
+    color: #f44336;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Suggestions */
+.voice-suggestions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.suggestion-chip {
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.suggestion-chip:hover {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.3);
+    color: #00d4ff;
+    transform: translateY(-2px);
+}
+
+.suggestion-chip i {
+    font-size: 16px;
+}
+
+/* Response Area */
+.voice-commit-response {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.web-search-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(102, 126, 234, 0.2));
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 20px;
+    color: #00d4ff;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.web-search-badge i {
+    font-size: 14px;
+}
+
+.response-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.response-header h3 {
+    color: #00d4ff;
+    font-size: 18px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.response-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 20px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.response-close:hover {
+    color: #fff;
+}
+
+.response-content {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.response-content h1,
+.response-content h2,
+.response-content h3,
+.response-content h4 {
+    color: #00d4ff;
+    margin: 15px 0 10px 0;
+}
+
+.response-content code {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #00d4ff;
+    font-family: 'Courier New', monospace;
+}
+
+.response-content pre {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.response-content strong {
+    color: #fff;
+    font-weight: 600;
+}
+
+.response-content em {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Citations Section */
+.citations-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.citations-section h4 {
+    color: #00d4ff;
+    font-size: 16px;
+    margin: 0 0 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.citations-list {
+    list-style: none;
+    counter-reset: citation-counter;
+    padding: 0;
+    margin: 0;
+}
+
+.citations-list li {
+    counter-increment: citation-counter;
+    margin-bottom: 12px;
+    padding-left: 30px;
+    position: relative;
+}
+
+.citations-list li::before {
+    content: "[" counter(citation-counter) "]";
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: #00d4ff;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.citations-list a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    display: block;
+    padding: 10px 15px;
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid rgba(0, 212, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.citations-list a:hover {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.3);
+    transform: translateX(5px);
+}
+
+.citations-list a strong {
+    color: #00d4ff;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.citations-list a small {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.response-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.response-action-btn {
+    flex: 1;
+    padding: 10px 20px;
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 10px;
+    color: #00d4ff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.response-action-btn:hover {
+    background: rgba(0, 212, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Scrollbar */
+.voice-commit-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.voice-commit-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.voice-commit-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.3);
+    border-radius: 4px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .voice-commit-container {
+        width: 95%;
+        padding: 25px;
+        max-height: 90vh;
+    }
+
+    .voice-commit-modes {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .voice-suggestions {
+        grid-template-columns: 1fr;
+    }
+
+    .response-actions {
+        flex-direction: column;
+    }
+}

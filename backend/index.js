@@ -100,6 +100,213 @@ function getNextGeminiKey() {
     return key;
 }
 
+// ===== WEB SEARCH APIs =====
+const SEARCH_APIS = {
+    perplexity: {
+        enabled: !!process.env.PERPLEXITY_API_KEY,
+        key: process.env.PERPLEXITY_API_KEY,
+        endpoint: 'https://api.perplexity.ai/chat/completions',
+        model: 'llama-3.1-sonar-small-128k-online'
+    },
+    brave: {
+        enabled: !!process.env.BRAVE_SEARCH_API_KEY,
+        key: process.env.BRAVE_SEARCH_API_KEY,
+        endpoint: 'https://api.search.brave.com/res/v1/web/search'
+    },
+    serpapi: {
+        enabled: !!process.env.SERPAPI_KEY,
+        key: process.env.SERPAPI_KEY,
+        endpoint: 'https://serpapi.com/search'
+    }
+};
+
+// Web Search Function with Multiple API Support
+async function searchWeb(query, mode = 'all') {
+    console.log(`🔍 Searching web for: "${query}" [Mode: ${mode}]`);
+
+    // Try Perplexity API first (best quality with citations)
+    if (SEARCH_APIS.perplexity.enabled) {
+        try {
+            console.log('🌐 Using Perplexity API...');
+            const response = await axios.post(
+                SEARCH_APIS.perplexity.endpoint,
+                {
+                    model: SEARCH_APIS.perplexity.model,
+                    messages: [
+                        {
+                            role: 'system',
+                            content: getSearchSystemPrompt(mode)
+                        },
+                        {
+                            role: 'user',
+                            content: query
+                        }
+                    ],
+                    temperature: 0.2,
+                    top_p: 0.9,
+                    return_citations: true,
+                    search_recency_filter: 'month'
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${SEARCH_APIS.perplexity.key}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 15000
+                }
+            );
+
+            const answer = response.data.choices[0].message.content;
+            const citations = response.data.citations || [];
+
+            console.log('✅ Perplexity search successful!');
+            return {
+                answer,
+                citations,
+                sources: citations.slice(0, 5),
+                searchEngine: 'Perplexity AI'
+            };
+        } catch (error) {
+            console.error('❌ Perplexity API error:', error.message);
+        }
+    }
+
+    // Fallback to Brave Search API
+    if (SEARCH_APIS.brave.enabled) {
+        try {
+            console.log('🦁 Using Brave Search API...');
+            const response = await axios.get(SEARCH_APIS.brave.endpoint, {
+                params: {
+                    q: query,
+                    count: 10
+                },
+                headers: {
+                    'X-Subscription-Token': SEARCH_APIS.brave.key,
+                    'Accept': 'application/json'
+                },
+                timeout: 10000
+            });
+
+            const results = response.data.web?.results || [];
+            const topResults = results.slice(0, 5);
+
+            // Format results with AI
+            const summary = await generateSearchSummary(query, topResults, mode);
+
+            console.log('✅ Brave search successful!');
+            return {
+                answer: summary,
+                citations: topResults.map(r => r.url),
+                sources: topResults.map(r => ({
+                    title: r.title,
+                    url: r.url,
+                    snippet: r.description
+                })),
+                searchEngine: 'Brave Search'
+            };
+        } catch (error) {
+            console.error('❌ Brave Search API error:', error.message);
+        }
+    }
+
+    // Fallback to DuckDuckGo (no API key needed)
+    try {
+        console.log('🦆 Using DuckDuckGo search...');
+        const response = await axios.get('https://api.duckduckgo.com/', {
+            params: {
+                q: query,
+                format: 'json',
+                no_html: 1,
+                skip_disambig: 1
+            },
+            timeout: 8000
+        });
+
+        const data = response.data;
+        const relatedTopics = data.RelatedTopics || [];
+        
+        let summary = '';
+        if (data.AbstractText) {
+            summary = data.AbstractText;
+        } else if (relatedTopics.length > 0) {
+            summary = relatedTopics
+                .filter(t => t.Text)
+                .slice(0, 3)
+                .map(t => t.Text)
+                .join('\n\n');
+        }
+
+        console.log('✅ DuckDuckGo search successful!');
+        return {
+            answer: summary || 'I found some information, but no detailed summary is available. Try rephrasing your question.',
+            citations: relatedTopics.filter(t => t.FirstURL).map(t => t.FirstURL).slice(0, 5),
+            sources: relatedTopics.filter(t => t.FirstURL).slice(0, 5).map(t => ({
+                title: t.Text?.substring(0, 100),
+                url: t.FirstURL
+            })),
+            searchEngine: 'DuckDuckGo'
+        };
+    } catch (error) {
+        console.error('❌ DuckDuckGo search error:', error.message);
+    }
+
+    // All search methods failed
+    console.log('⚠️ All search APIs failed, returning AI-only response');
+    return null;
+}
+
+// Get system prompt based on focus mode
+function getSearchSystemPrompt(mode) {
+    const prompts = {
+        all: 'You are a helpful AI assistant. Provide accurate, well-sourced information from the web. Include citations and be concise.',
+        academic: 'You are an academic research assistant. Focus on scholarly sources, peer-reviewed papers, and educational content. Provide detailed, citation-heavy responses.',
+        writing: 'You are a writing assistant. Help with grammar, style, creative writing, and composition. Provide clear examples and explanations.',
+        video: 'You are a video content specialist. Focus on YouTube tutorials, video guides, and visual learning resources. Provide links and timestamps when relevant.',
+        code: 'You are a programming assistant. Search for code examples, documentation, Stack Overflow solutions, and GitHub repositories. Provide working code snippets.'
+    };
+    return prompts[mode] || prompts.all;
+}
+
+// Generate AI summary from search results
+async function generateSearchSummary(query, results, mode) {
+    const context = results.map((r, i) => 
+        `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r.url}`
+    ).join('\n\n');
+
+    const prompt = `Based on these search results, answer the question: "${query}"\n\nSearch Results:\n${context}\n\nProvide a clear, accurate summary with citations [1], [2], etc.`;
+
+    try {
+        // Use Groq to generate summary
+        const apiKey = getNextGroqKey();
+        if (!apiKey) return 'Unable to generate summary.';
+
+        const response = await axios.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            {
+                model: 'llama-3.1-8b-instant',
+                messages: [
+                    { role: 'system', content: getSearchSystemPrompt(mode) },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.3,
+                max_tokens: 500
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000
+            }
+        );
+
+        return response.data.choices[0].message.content;
+    } catch (error) {
+        console.error('Error generating summary:', error.message);
+        return context; // Return raw results if AI fails
+    }
+}
+
 const enabledAPIs = AI_APIS.filter(api => api.enabled);
 console.log(`🚀 Enabled AI APIs: ${enabledAPIs.map(api => `${api.name} (${api.rateLimit} RPM)`).join(', ')}`);
 console.log(`💪 Total capacity: ${enabledAPIs.reduce((sum, api) => sum + api.rateLimit, 0)} requests/minute`);
@@ -357,7 +564,7 @@ app.get('/logout', (req, res, next) => {
 // Apply rate limiter to /ask endpoint
 app.post('/ask', apiLimiter, async (req, res) => {
     try {
-        const { question, history, systemPrompt } = req.body;
+        const { question, history, systemPrompt, mode, enableWebSearch } = req.body;
         if (!question) return res.status(400).json({ error: 'Question required' });
 
         // Special response for developer questions
@@ -366,6 +573,8 @@ app.post('/ask', apiLimiter, async (req, res) => {
         // Log for debugging
         if (process.env.NODE_ENV !== 'production') {
             console.log('🔍 Question:', lowerQuestion);
+            console.log('🎯 Mode:', mode);
+            console.log('🌐 Web Search:', enableWebSearch);
         }
 
         const developerKeywords = [
@@ -376,10 +585,6 @@ app.post('/ask', apiLimiter, async (req, res) => {
         ];
 
         const isDeveloperQuestion = developerKeywords.some(keyword => lowerQuestion.includes(keyword));
-
-        if (process.env.NODE_ENV !== 'production') {
-            console.log('🎯 Is developer question?', isDeveloperQuestion);
-        }
 
         if (isDeveloperQuestion) {
             if (process.env.NODE_ENV !== 'production') {
@@ -402,6 +607,7 @@ I was developed by **VISHAL** - a talented and passionate developer who brought 
   - 🌐 Multi-language support (English, Tamil, Hindi)
   - 💾 Chat history management
   - 🔐 Google OAuth authentication
+  - 🔍 Web search with Perplexity-style citations
 
 ## 💡 VISHAL's Vision:
 To create an intelligent, accessible AI assistant that democratizes advanced AI technology for everyone - from students to professionals!
@@ -421,10 +627,48 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             });
         }
 
-        // Check for Groq API key
-        const apiKey = process.env.GROQ_API_KEY;
+        // Check if web search is needed
+        const searchKeywords = [
+            'latest', 'current', 'today', 'now', 'recent', 'news', 'weather',
+            'what is happening', 'update', 'breaking', 'trending', 'this week',
+            'this month', 'this year', '2024', '2025', 'stock price', 'bitcoin'
+        ];
+        const needsWebSearch = enableWebSearch !== false && 
+            searchKeywords.some(keyword => lowerQuestion.includes(keyword));
 
-        if (!apiKey || apiKey === 'your_groq_api_key_here') {
+        // Try web search first if needed
+        if (needsWebSearch) {
+            console.log('🌐 Query requires web search...');
+            const searchResults = await searchWeb(question, mode || 'all');
+            
+            if (searchResults) {
+                // Format response with citations
+                let answer = searchResults.answer;
+                
+                if (searchResults.sources && searchResults.sources.length > 0) {
+                    answer += '\n\n---\n\n### 📚 Sources:\n\n';
+                    searchResults.sources.forEach((source, i) => {
+                        if (source.title && source.url) {
+                            answer += `${i + 1}. [${source.title}](${source.url})\n`;
+                        }
+                    });
+                    answer += `\n*Powered by ${searchResults.searchEngine}*`;
+                }
+
+                return res.json({
+                    answer,
+                    citations: searchResults.citations,
+                    sources: searchResults.sources,
+                    searchEngine: searchResults.searchEngine,
+                    webSearchUsed: true
+                });
+            }
+        }
+
+        // Fallback to regular AI response (no web search)
+        const apiKey = getNextGroqKey();
+
+        if (!apiKey) {
             return res.json({
                 answer: '⚠️ Please add your Groq API key to .env file!\n\nGet it FREE from: https://console.groq.com/keys'
             });
