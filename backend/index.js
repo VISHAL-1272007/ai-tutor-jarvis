@@ -50,12 +50,67 @@ const AI_APIS = [
     }
 ];
 
+// ===== MULTI-KEY SUPPORT FOR SCALING =====
+// Support multiple API keys to handle 30,000+ students
+const GROQ_KEYS = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3,
+    process.env.GROQ_API_KEY_4,
+    process.env.GROQ_API_KEY_5
+].filter(k => k && k !== 'your_groq_api_key_here');
+
+const AIML_KEYS = [
+    process.env.AIML_API_KEY,
+    process.env.AIML_API_KEY_2,
+    process.env.AIML_API_KEY_3,
+    process.env.AIML_API_KEY_4,
+    process.env.AIML_API_KEY_5
+].filter(k => k && k !== 'your_aiml_api_key_here');
+
+const GEMINI_KEYS = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3
+].filter(k => k && k !== 'your_gemini_api_key_here');
+
+// Round-robin key rotation
+let currentGroqIndex = 0;
+let currentAIMLIndex = 0;
+let currentGeminiIndex = 0;
+
+function getNextGroqKey() {
+    if (GROQ_KEYS.length === 0) return null;
+    const key = GROQ_KEYS[currentGroqIndex];
+    currentGroqIndex = (currentGroqIndex + 1) % GROQ_KEYS.length;
+    return key;
+}
+
+function getNextAIMLKey() {
+    if (AIML_KEYS.length === 0) return null;
+    const key = AIML_KEYS[currentAIMLIndex];
+    currentAIMLIndex = (currentAIMLIndex + 1) % AIML_KEYS.length;
+    return key;
+}
+
+function getNextGeminiKey() {
+    if (GEMINI_KEYS.length === 0) return null;
+    const key = GEMINI_KEYS[currentGeminiIndex];
+    currentGeminiIndex = (currentGeminiIndex + 1) % GEMINI_KEYS.length;
+    return key;
+}
+
 const enabledAPIs = AI_APIS.filter(api => api.enabled);
 console.log(`🚀 Enabled AI APIs: ${enabledAPIs.map(api => `${api.name} (${api.rateLimit} RPM)`).join(', ')}`);
 console.log(`💪 Total capacity: ${enabledAPIs.reduce((sum, api) => sum + api.rateLimit, 0)} requests/minute`);
+console.log(`🔑 Groq Keys: ${GROQ_KEYS.length} | AIML Keys: ${AIML_KEYS.length} | Gemini Keys: ${GEMINI_KEYS.length}`);
+console.log(`📈 Scaled capacity: ${GROQ_KEYS.length * 30 + AIML_KEYS.length * 50 + GEMINI_KEYS.length * 15} requests/minute`);
 
-// Helper function to call Groq API
+// Helper function to call Groq API with key rotation
 async function callGroqAPI(messages) {
+    const apiKey = getNextGroqKey();
+    if (!apiKey) throw new Error('No Groq API keys available');
+    
     const response = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
         {
@@ -66,7 +121,7 @@ async function callGroqAPI(messages) {
         },
         {
             headers: {
-                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             timeout: 30000
@@ -75,8 +130,11 @@ async function callGroqAPI(messages) {
     return response.data?.choices?.[0]?.message?.content;
 }
 
-// Helper function to call AI/ML API
+// Helper function to call AI/ML API with key rotation
 async function callAimlApi(messages) {
+    const apiKey = getNextAIMLKey();
+    if (!apiKey) throw new Error('No AIML API keys available');
+    
     const response = await axios.post(
         'https://api.aimlapi.com/chat/completions',
         {
@@ -87,7 +145,7 @@ async function callAimlApi(messages) {
         },
         {
             headers: {
-                'Authorization': `Bearer ${process.env.AIML_API_KEY}`,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             timeout: 30000
