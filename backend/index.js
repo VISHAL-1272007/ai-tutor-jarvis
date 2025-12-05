@@ -106,6 +106,12 @@ console.log(`💪 Total capacity: ${enabledAPIs.reduce((sum, api) => sum + api.r
 console.log(`🔑 Groq Keys: ${GROQ_KEYS.length} | AIML Keys: ${AIML_KEYS.length} | Gemini Keys: ${GEMINI_KEYS.length}`);
 console.log(`📈 Scaled capacity: ${GROQ_KEYS.length * 30 + AIML_KEYS.length * 50 + GEMINI_KEYS.length * 15} requests/minute`);
 
+// FREE Self-Hosted API endpoint (Hugging Face Spaces)
+const FREE_API_URL = process.env.FREE_API_URL || null;
+if (FREE_API_URL) {
+    console.log(`🆓 FREE Self-Hosted API: ${FREE_API_URL} (UNLIMITED capacity!)`);
+}
+
 // Helper function to call Groq API with key rotation
 async function callGroqAPI(messages) {
     const apiKey = getNextGroqKey();
@@ -191,6 +197,26 @@ async function callOpenRouterAPI(messages) {
         }
     );
     return response.data?.choices?.[0]?.message?.content;
+}
+
+// Helper function to call FREE Self-Hosted API (Hugging Face Spaces)
+async function callFreeAPI(messages) {
+    if (!FREE_API_URL) throw new Error('FREE_API_URL not configured');
+    
+    const response = await axios.post(
+        `${FREE_API_URL}/ask`,
+        { messages },
+        {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000
+        }
+    );
+    
+    if (response.data?.success) {
+        return response.data.response;
+    } else {
+        throw new Error(response.data?.error || 'Free API failed');
+    }
 }
 
 // Helper function to call Hugging Face API
@@ -452,6 +478,11 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 name: 'HuggingFace',
                 enabled: !!process.env.HUGGINGFACE_API_KEY,
                 call: async () => await callHuggingFaceAPI(finalSystemPrompt, history, question)
+            },
+            {
+                name: 'FREE Self-Hosted',
+                enabled: !!FREE_API_URL,
+                call: async () => await callFreeAPI(messages)
             }
         ];
 
