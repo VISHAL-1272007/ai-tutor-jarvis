@@ -311,39 +311,9 @@ class VoiceCommit {
         content.innerHTML = html;
         this.responseArea.style.display = 'block';
         this.currentResponse = answer;
-    }
 
-            if (data.success) {
-                this.showResponse(data.response);
-                this.updateStatus('Response received', 'ready');
-            } else {
-                throw new Error(data.error || 'Failed to get response');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            this.updateStatus('Error: ' + error.message, 'error');
-            alert('Failed to get response. Please try again.');
-        } finally {
-            this.submitBtn.disabled = false;
-        }
-    }
-
-    showResponse(text) {
-        if (this.responseContent && this.responseArea) {
-            // Convert markdown-style formatting to HTML
-            let html = text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-                .replace(/`(.*?)`/g, '<code>$1</code>')
-                .replace(/\n/g, '<br>');
-
-            this.responseContent.innerHTML = html;
-            this.responseArea.style.display = 'block';
-            
-            // Scroll to response
-            this.responseArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
+        // Scroll to response
+        this.responseArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     closeResponse() {
