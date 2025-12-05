@@ -1,17 +1,16 @@
 # Hugging Face Space - FREE AI API
-# This runs completely free on Hugging Face infrastructure
+# Uses HF Inference API - no model download needed!
 
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install dependencies
+# Install minimal dependencies (no torch/transformers!)
 RUN pip install --no-cache-dir \
     flask==3.0.0 \
     flask-cors==4.0.0 \
-    transformers==4.36.0 \
-    torch==2.1.0 \
-    accelerate==0.25.0 \
+    requests==2.31.0
+
 # Copy application
 COPY app.py .
 

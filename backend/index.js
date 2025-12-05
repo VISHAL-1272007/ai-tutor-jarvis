@@ -258,6 +258,10 @@ const app = express();
 const BASE_PORT = parseInt(process.env.PORT, 10) || 5001;
 let activePort = BASE_PORT;
 
+// Trust proxy - Required for Render (and other proxy environments) to properly detect client IP
+// This allows express-rate-limit to correctly identify users via X-Forwarded-For header
+app.set('trust proxy', 1);
+
 // Session Middleware
 app.use(session({
     secret: process.env.SESSION_SECRET || 'jarvis_secret_key',
