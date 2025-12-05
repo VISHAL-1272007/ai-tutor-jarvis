@@ -15,7 +15,8 @@ CORS(app)
 # Use Hugging Face FREE Inference API - no model download needed!
 print("🚀 Using Hugging Face FREE Inference API...")
 # Using Microsoft's DialoGPT - works WITHOUT token!
-HF_API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"
+# Updated to new router URL (api-inference.huggingface.co is deprecated)
+HF_API_URL = "https://router.huggingface.co/models/microsoft/DialoGPT-medium"
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 model_name = "microsoft/DialoGPT-medium"
