@@ -104,7 +104,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 6rem auto 2rem;
             padding: 0 2rem;
             position: relative;
@@ -113,7 +113,7 @@
 
         .header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
         }
 
         .header h1 {
@@ -130,65 +130,46 @@
             opacity: 0.9;
         }
 
-        .tab-nav {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
+        .search-container {
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            position: relative;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
-            padding: 1rem;
-            border-radius: 15px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            flex-wrap: wrap;
-        }
-
-        .tab-btn {
-            flex: 1;
-            min-width: 200px;
-            padding: 1rem 2rem;
-            background: transparent;
-            border: 2px solid transparent;
-            border-radius: 10px;
+            border-radius: 50px;
             color: #fff;
             font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
+            outline: none;
             transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
         }
 
-        .tab-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
+        .search-box::placeholder {
+            color: rgba(255, 255, 255, 0.6);
         }
 
-        .tab-btn.active {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        .search-box:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
         }
 
-        .content-section {
-            display: none;
-        }
-
-        .content-section.active {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.6;
         }
 
         .course-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 2rem;
         }
 
@@ -196,10 +177,12 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 2rem;
+            padding: 1.5rem;
             border: 1px solid rgba(255, 255, 255, 0.2);
             transition: all 0.3s ease;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
         }
 
         .course-card:hover {
@@ -209,33 +192,35 @@
         }
 
         .course-icon {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             background: rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
         }
 
         .course-card h3 {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             margin-bottom: 0.5rem;
         }
 
         .course-card p {
             opacity: 0.8;
-            margin-bottom: 1rem;
-            line-height: 1.6;
+            margin-bottom: 0.75rem;
+            line-height: 1.5;
+            font-size: 0.9rem;
+            flex-grow: 1;
         }
 
         .course-meta {
             display: flex;
             gap: 1rem;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
             opacity: 0.7;
             flex-wrap: wrap;
         }
@@ -248,14 +233,16 @@
 
         .btn {
             display: inline-block;
-            padding: 0.75rem 1.5rem;
+            padding: 0.6rem 1.25rem;
             background: rgba(255, 255, 255, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 8px;
             color: #fff;
             text-decoration: none;
             font-weight: 600;
+            font-size: 0.9rem;
             transition: all 0.3s ease;
+            text-align: center;
         }
 
         .btn:hover {
@@ -321,12 +308,12 @@
 
         .platform-badge {
             display: inline-block;
-            padding: 0.3rem 0.8rem;
+            padding: 0.25rem 0.7rem;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         .khan { background: rgba(29, 219, 179, 0.3); }
@@ -345,14 +332,6 @@
 
             .course-grid {
                 grid-template-columns: 1fr;
-            }
-
-            .tab-nav {
-                flex-direction: column;
-            }
-
-            .tab-btn {
-                min-width: 100%;
             }
         }
     </style>
@@ -376,224 +355,430 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🎓 JARVIS Learning Hub</h1>
-            <p>Master Any Skill with World-Class Resources</p>
+            <h1>🎓 Complete Programming Library</h1>
+            <p>Every Programming Language & Technology - All in One Place</p>
         </div>
 
-        <!-- Tab Navigation -->
-        <div class="tab-nav">
-            <button class="tab-btn active" onclick="switchTab('khan')">
-                <i class="fas fa-university"></i>
-                Khan Academy
-            </button>
-            <button class="tab-btn" onclick="switchTab('youtube')">
-                <i class="fab fa-youtube"></i>
-                YouTube Courses
-            </button>
-            <button class="tab-btn" onclick="switchTab('freecodecamp')">
-                <i class="fas fa-code"></i>
-                FreeCodeCamp
-            </button>
-            <button class="tab-btn" onclick="switchTab('all')">
-                <i class="fas fa-th"></i>
-                All Courses
-            </button>
+        <!-- Search Box -->
+        <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="search-box" id="searchBox" placeholder="Search courses (Python, JavaScript, C++, React, Flutter...)">
         </div>
 
-        <!-- Khan Academy Section -->
-        <div id="khan-content" class="content-section active">
-            <div class="course-grid">
-                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/computing/computer-programming')">
-                    <span class="platform-badge khan">Khan Academy</span>
-                    <div class="course-icon">💻</div>
-                    <h3>Computer Programming</h3>
-                    <p>Learn JavaScript, HTML/CSS, SQL, and master algorithms</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> Self-paced</span>
-                        <span><i class="fas fa-signal"></i> Beginner</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning <i class="fas fa-arrow-right"></i></a>
+        <!-- All Courses Grid -->
+        <div class="course-grid" id="courseGrid">
+            <!-- Python -->
+            <div class="course-card" data-name="Python Programming" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLWKjhJtqVAbnqBxcdjVGgT3uVR10bzTEB')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🐍</div>
+                <h3>Python Programming</h3>
+                <p>Complete Python from basics to advanced - most popular language</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 10+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
                 </div>
-
-                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/math')">
-                    <span class="platform-badge khan">Khan Academy</span>
-                    <div class="course-icon">📐</div>
-                    <h3>Mathematics</h3>
-                    <p>From basic arithmetic to advanced calculus and linear algebra</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> Self-paced</span>
-                        <span><i class="fas fa-signal"></i> All Levels</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning <i class="fas fa-arrow-right"></i></a>
-                </div>
-
-                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/science')">
-                    <span class="platform-badge khan">Khan Academy</span>
-                    <div class="course-icon">🔬</div>
-                    <h3>Science & Engineering</h3>
-                    <p>Physics, Chemistry, Biology, and Engineering fundamentals</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> Self-paced</span>
-                        <span><i class="fas fa-signal"></i> All Levels</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning <i class="fas fa-arrow-right"></i></a>
-                </div>
-
-                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/computing')">
-                    <span class="platform-badge khan">Khan Academy</span>
-                    <div class="course-icon">🖥️</div>
-                    <h3>Computer Science</h3>
-                    <p>Algorithms, cryptography, information theory, and more</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> Self-paced</span>
-                        <span><i class="fas fa-signal"></i> Intermediate</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning <i class="fas fa-arrow-right"></i></a>
-                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
             </div>
-        </div>
 
-        <!-- YouTube Section -->
-        <div id="youtube-content" class="content-section">
-            <div class="course-grid">
-                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLWKjhJtqVAbnqBxcdjVGgT3uVR10bzTEB')">
-                    <span class="platform-badge youtube">YouTube</span>
-                    <div class="course-icon">🐍</div>
-                    <h3>Python Full Course</h3>
-                    <p>Complete Python programming from beginner to advanced</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 10+ hours</span>
-                        <span><i class="fas fa-signal"></i> Beginner</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Watch Now <i class="fas fa-play"></i></a>
+            <!-- JavaScript -->
+            <div class="course-card" data-name="JavaScript Full Course" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9haFPT7J25Q9GRB_ZkFrQAc')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🟨</div>
+                <h3>JavaScript Full Course</h3>
+                <p>Master JavaScript - the language of the web</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 8+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
                 </div>
-
-                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLoYCgNOIyGABj2GQSlDRjgvXtqfDxKm5b')">
-                    <span class="platform-badge youtube">YouTube</span>
-                    <div class="course-icon">🌐</div>
-                    <h3>Web Development</h3>
-                    <p>HTML, CSS, JavaScript, React - Full stack development</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 15+ hours</span>
-                        <span><i class="fas fa-signal"></i> Beginner</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Watch Now <i class="fas fa-play"></i></a>
-                </div>
-
-                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLZlA0Gpn_vH_NT5zPVp18nGe_W9q3elTw')">
-                    <span class="platform-badge youtube">YouTube</span>
-                    <div class="course-icon">🤖</div>
-                    <h3>Machine Learning</h3>
-                    <p>AI, Deep Learning, Neural Networks from scratch</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 20+ hours</span>
-                        <span><i class="fas fa-signal"></i> Advanced</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Watch Now <i class="fas fa-play"></i></a>
-                </div>
-
-                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLlasXeu85E9cQ32gLCvAvr9vNaUccPVNP')">
-                    <span class="platform-badge youtube">YouTube</span>
-                    <div class="course-icon">📊</div>
-                    <h3>Data Structures & Algorithms</h3>
-                    <p>Master DSA for coding interviews and competitive programming</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 25+ hours</span>
-                        <span><i class="fas fa-signal"></i> Intermediate</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Watch Now <i class="fas fa-play"></i></a>
-                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
             </div>
-        </div>
 
-        <!-- FreeCodeCamp Section -->
-        <div id="freecodecamp-content" class="content-section">
-            <div class="course-grid">
-                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/responsive-web-design/')">
-                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
-                    <div class="course-icon">📱</div>
-                    <h3>Responsive Web Design</h3>
-                    <p>Build responsive websites with HTML, CSS, and Flexbox</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 300 hours</span>
-                        <span><i class="fas fa-certificate"></i> Certificate</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Course <i class="fas fa-arrow-right"></i></a>
+            <!-- Java -->
+            <div class="course-card" data-name="Java Programming" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLsyeobzWxl7pe_IiTfNyr55kwJPWbgxB5')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">☕</div>
+                <h3>Java Programming</h3>
+                <p>Learn Java for enterprise applications and Android</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 12+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
                 </div>
-
-                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/javascript-algorithms-and-data-structures/')">
-                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
-                    <div class="course-icon">⚡</div>
-                    <h3>JavaScript Algorithms</h3>
-                    <p>Learn JavaScript fundamentals and solve 100+ challenges</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 300 hours</span>
-                        <span><i class="fas fa-certificate"></i> Certificate</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Course <i class="fas fa-arrow-right"></i></a>
-                </div>
-
-                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/front-end-development-libraries/')">
-                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
-                    <div class="course-icon">⚛️</div>
-                    <h3>Frontend Libraries</h3>
-                    <p>React, Redux, Bootstrap, jQuery, and Sass</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 300 hours</span>
-                        <span><i class="fas fa-certificate"></i> Certificate</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Course <i class="fas fa-arrow-right"></i></a>
-                </div>
-
-                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/machine-learning-with-python/')">
-                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
-                    <div class="course-icon">🧠</div>
-                    <h3>Machine Learning</h3>
-                    <p>TensorFlow, Neural Networks, and Deep Learning projects</p>
-                    <div class="course-meta">
-                        <span><i class="fas fa-clock"></i> 300 hours</span>
-                        <span><i class="fas fa-certificate"></i> Certificate</span>
-                    </div>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Course <i class="fas fa-arrow-right"></i></a>
-                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
             </div>
-        </div>
 
-        <!-- All Courses Section -->
-        <div id="all-content" class="content-section">
-            <h2 style="margin-bottom: 2rem; text-align: center;">🎯 Recommended Learning Path</h2>
-            <div class="course-grid">
-                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/computing/computer-programming')">
-                    <span class="platform-badge khan">Khan Academy</span>
-                    <div class="course-icon">💻</div>
-                    <h3>Start: Computer Programming</h3>
-                    <p>Begin your coding journey with JavaScript basics</p>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning <i class="fas fa-arrow-right"></i></a>
+            <!-- C++ -->
+            <div class="course-card" data-name="C++ Programming" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLBlnK6fEyqRh6isJ01MBnbNpV3ZsktSyS')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">⚡</div>
+                <h3>C++ Programming</h3>
+                <p>Master C++ for competitive programming and system development</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 15+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
                 </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
 
-                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLWKjhJtqVAbnqBxcdjVGgT3uVR10bzTEB')">
-                    <span class="platform-badge youtube">YouTube</span>
-                    <div class="course-icon">🐍</div>
-                    <h3>Then: Python Full Course</h3>
-                    <p>Master Python programming with hands-on projects</p>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Watch Now <i class="fas fa-play"></i></a>
+            <!-- C Programming -->
+            <div class="course-card" data-name="C Programming" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLBlnK6fEyqRggZZgYpPMUxdY1CYkZtARR')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🔷</div>
+                <h3>C Programming</h3>
+                <p>Learn C - the foundation of programming</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 10+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
                 </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
 
-                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/responsive-web-design/')">
-                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
-                    <div class="course-icon">📱</div>
-                    <h3>Build: Responsive Websites</h3>
-                    <p>Create professional websites and get certified</p>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Start Course <i class="fas fa-arrow-right"></i></a>
+            <!-- React JS -->
+            <div class="course-card" data-name="React JS" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLC3y8-rFHvwgg3vaYJgHGnModB54rxOk3')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">⚛️</div>
+                <h3>React JS</h3>
+                <p>Build modern web apps with React - most popular framework</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 12+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
                 </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
 
-                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLZlA0Gpn_vH_NT5zPVp18nGe_W9q3elTw')">
-                    <span class="platform-badge youtube">YouTube</span>
-                    <div class="course-icon">🤖</div>
-                    <h3>Master: Machine Learning</h3>
-                    <p>Advanced AI and deep learning techniques</p>
-                    <a href="#" class="btn" onclick="event.stopPropagation()">Watch Now <i class="fas fa-play"></i></a>
+            <!-- Node.js -->
+            <div class="course-card" data-name="Node.js Backend" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9jsz4LDYc6kv3ymONOKxwBU')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🟢</div>
+                <h3>Node.js Backend</h3>
+                <p>Build scalable backend APIs with Node.js and Express</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 10+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
                 </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- TypeScript -->
+            <div class="course-card" data-name="TypeScript" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9gUgr39Q_yD6v-bSyMwKPUI')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🔷</div>
+                <h3>TypeScript</h3>
+                <p>JavaScript with types - for large-scale applications</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 6+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Flutter -->
+            <div class="course-card" data-name="Flutter Mobile Development" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9jLYyp2Aoh6hcWuxFDX6PBJ')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">📱</div>
+                <h3>Flutter Mobile Dev</h3>
+                <p>Build beautiful iOS and Android apps with Flutter</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 15+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- React Native -->
+            <div class="course-card" data-name="React Native" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9ixPU-QkScoRBVxtPPzVjrQ')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">📲</div>
+                <h3>React Native</h3>
+                <p>Build native mobile apps with React Native</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 10+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Angular -->
+            <div class="course-card" data-name="Angular Framework" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9jqhk5RvBiEGlqgaZKOgIvs')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🅰️</div>
+                <h3>Angular Framework</h3>
+                <p>Enterprise web development with Angular</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 12+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Advanced</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Vue.js -->
+            <div class="course-card" data-name="Vue.js" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9gQcYgjhBoeQH7wiAyZNrYa')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🟩</div>
+                <h3>Vue.js</h3>
+                <p>Progressive JavaScript framework - easy to learn</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 8+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Go (Golang) -->
+            <div class="course-card" data-name="Go Programming" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9gC88BEo9czgyS72A3doDeM')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🔵</div>
+                <h3>Go (Golang)</h3>
+                <p>Modern programming language for cloud and systems</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 10+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Rust -->
+            <div class="course-card" data-name="Rust Programming" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLfllocyHVgsRwLkTAhG0E-2QxCf-ozBkk')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🦀</div>
+                <h3>Rust Programming</h3>
+                <p>Safe and fast systems programming language</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 12+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Advanced</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Swift -->
+            <div class="course-card" data-name="Swift iOS Development" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLuoeXyslFTuaZtX7xSYbWz3TR0Vpz39gK')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🍎</div>
+                <h3>Swift & iOS Dev</h3>
+                <p>Build native iOS apps with Swift</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 15+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Kotlin -->
+            <div class="course-card" data-name="Kotlin Android Development" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLQkwcJG4YTCSYM2kfP88PDGTnQv7zlUU-')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🤖</div>
+                <h3>Kotlin & Android</h3>
+                <p>Modern Android development with Kotlin</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 12+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- PHP -->
+            <div class="course-card" data-name="PHP Web Development" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL0eyrZgxdwhwBToawjm9faF1ixePexft-')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🐘</div>
+                <h3>PHP Web Development</h3>
+                <p>Server-side scripting with PHP</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 8+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Ruby on Rails -->
+            <div class="course-card" data-name="Ruby on Rails" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLm8ctt9NhMNV75T9WYIrA6m9I_uw7vS56')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">💎</div>
+                <h3>Ruby on Rails</h3>
+                <p>Full-stack web development with Rails</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 10+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Machine Learning -->
+            <div class="course-card" data-name="Machine Learning" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLZlA0Gpn_vH_NT5zPVp18nGe_W9q3elTw')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🤖</div>
+                <h3>Machine Learning</h3>
+                <p>AI, Deep Learning, Neural Networks from scratch</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 20+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Advanced</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Data Science -->
+            <div class="course-card" data-name="Data Science Python" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLeo1K3hjS3us_ELKYSj_Fth2tIEkdKXvV')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">📊</div>
+                <h3>Data Science</h3>
+                <p>Data analysis, visualization with Python</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 15+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- DSA -->
+            <div class="course-card" data-name="Data Structures Algorithms" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLlasXeu85E9cQ32gLCvAvr9vNaUccPVNP')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">📈</div>
+                <h3>DSA Complete</h3>
+                <p>Master DSA for coding interviews</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 25+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- SQL & Databases -->
+            <div class="course-card" data-name="SQL Databases" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL_c9BZzLwBRK0Pc28IdvPQizD2mJlgoID')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🗄️</div>
+                <h3>SQL & Databases</h3>
+                <p>Master SQL and database management</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 8+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- MongoDB -->
+            <div class="course-card" data-name="MongoDB NoSQL" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9h77dJ-QJlwGlZlTd4ecZOA')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🍃</div>
+                <h3>MongoDB</h3>
+                <p>NoSQL database for modern applications</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 6+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Docker -->
+            <div class="course-card" data-name="Docker Containers" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9hxjeEtdHFNYMtCpjNBm3h7')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🐳</div>
+                <h3>Docker</h3>
+                <p>Containerization and deployment</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 8+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Git & GitHub -->
+            <div class="course-card" data-name="Git GitHub" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PL4cUxeGkcC9goXbgTDQ0n_4TBzOO0ocPR')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🔀</div>
+                <h3>Git & GitHub</h3>
+                <p>Version control and collaboration</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 4+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- AWS Cloud -->
+            <div class="course-card" data-name="AWS Cloud Computing" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLEiEAq2VkUULlNtIFhEQHo8gacvme35rz')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">☁️</div>
+                <h3>AWS Cloud</h3>
+                <p>Amazon Web Services complete guide</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 12+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Cybersecurity -->
+            <div class="course-card" data-name="Cybersecurity" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLhfrWIlLOoKMe1Ue0IdeULQvEgCgQ3a1B')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">🔒</div>
+                <h3>Cybersecurity</h3>
+                <p>Ethical hacking and security fundamentals</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 15+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Advanced</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- Blockchain -->
+            <div class="course-card" data-name="Blockchain Development" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLxVihxZC42nF_MCG1eCJNNlYn2dWYGqzU')">
+                <span class="platform-badge youtube">YouTube</span>
+                <div class="course-icon">⛓️</div>
+                <h3>Blockchain & Web3</h3>
+                <p>Blockchain development and smart contracts</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 12+ hrs</span>
+                    <span><i class="fas fa-signal"></i> Advanced</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <!-- FreeCodeCamp Certifications -->
+            <div class="course-card" data-name="Responsive Web Design" onclick="openCourse('https://www.freecodecamp.org/learn/responsive-web-design/')">
+                <span class="platform-badge freecodecamp">FreeCodeCamp</span>
+                <div class="course-icon">📱</div>
+                <h3>Web Design Certificate</h3>
+                <p>HTML, CSS, Flexbox, Grid - Get certified</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 300 hrs</span>
+                    <span><i class="fas fa-certificate"></i> Certificate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Course</a>
+            </div>
+
+            <div class="course-card" data-name="JavaScript Algorithms" onclick="openCourse('https://www.freecodecamp.org/learn/javascript-algorithms-and-data-structures/')">
+                <span class="platform-badge freecodecamp">FreeCodeCamp</span>
+                <div class="course-icon">⚡</div>
+                <h3>JavaScript Certificate</h3>
+                <p>JavaScript fundamentals + 100+ challenges</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> 300 hrs</span>
+                    <span><i class="fas fa-certificate"></i> Certificate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Course</a>
+            </div>
+
+            <!-- Khan Academy -->
+            <div class="course-card" data-name="Computer Programming" onclick="openCourse('https://www.khanacademy.org/computing/computer-programming')">
+                <span class="platform-badge khan">Khan Academy</span>
+                <div class="course-icon">💻</div>
+                <h3>Computer Programming</h3>
+                <p>JavaScript, HTML/CSS, SQL fundamentals</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> Self-paced</span>
+                    <span><i class="fas fa-signal"></i> Beginner</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
+            </div>
+
+            <div class="course-card" data-name="Computer Science" onclick="openCourse('https://www.khanacademy.org/computing')">
+                <span class="platform-badge khan">Khan Academy</span>
+                <div class="course-icon">🖥️</div>
+                <h3>Computer Science</h3>
+                <p>Algorithms, cryptography, information theory</p>
+                <div class="course-meta">
+                    <span><i class="fas fa-clock"></i> Self-paced</span>
+                    <span><i class="fas fa-signal"></i> Intermediate</span>
+                </div>
+                <a href="#" class="btn" onclick="event.stopPropagation()">Start Learning</a>
             </div>
         </div>
     </div>
@@ -609,16 +794,25 @@
     </div>
 
     <script>
-        // Tab Switching
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.closest('.tab-btn').classList.add('active');
+        // Search Functionality
+        const searchBox = document.getElementById('searchBox');
+        const courseGrid = document.getElementById('courseGrid');
+        const courses = document.querySelectorAll('.course-card');
 
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
+        searchBox.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            courses.forEach(course => {
+                const courseName = course.getAttribute('data-name').toLowerCase();
+                const courseText = course.textContent.toLowerCase();
+                
+                if (courseName.includes(searchTerm) || courseText.includes(searchTerm)) {
+                    course.style.display = 'flex';
+                } else {
+                    course.style.display = 'none';
+                }
             });
-            document.getElementById(tab + '-content').classList.add('active');
-        }
+        });
 
         // Open Course in Modal
         function openCourse(url) {
