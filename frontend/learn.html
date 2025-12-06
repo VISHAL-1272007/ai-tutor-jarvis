@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Learning Hub</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background Grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+            pointer-events: none;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(50px, 50px, 0); }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 2rem;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .nav-brand i {
+            font-size: 2rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-links a.active {
+            background: rgba(255, 255, 255, 0.3);
+            font-weight: 600;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 6rem auto 2rem;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #fff, #a8d5ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 1rem 2rem;
+            background: transparent;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tab-btn.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Course Cards */
+        .course-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .course-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .course-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .course-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .course-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .course-card p {
+            opacity: 0.8;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .course-meta {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .course-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(5px);
+        }
+
+        /* Modal for iframes */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            width: 100%;
+            max-width: 1200px;
+            height: 90vh;
+            background: #fff;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+
+        .modal iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Platform Badges */
+        .platform-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .khan { background: rgba(29, 219, 179, 0.3); }
+        .youtube { background: rgba(255, 0, 0, 0.3); }
+        .freecodecamp { background: rgba(10, 132, 255, 0.3); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .course-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tab-nav {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-brand">
+            <i class="fas fa-robot"></i>
+            <span>JARVIS</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="learn.html" class="active"><i class="fas fa-graduation-cap"></i> Learn</a></li>
+            <li><a href="progress.html"><i class="fas fa-chart-line"></i> Progress</a></li>
+            <li><a href="ai-tools.html"><i class="fas fa-brain"></i> AI Tools</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎓 JARVIS Learning Hub</h1>
+            <p>Master Any Skill with World-Class Resources</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('khan')">
+                <i class="fas fa-university"></i>
+                Khan Academy
+            </button>
+            <button class="tab-btn" onclick="switchTab('youtube')">
+                <i class="fab fa-youtube"></i>
+                YouTube Courses
+            </button>
+            <button class="tab-btn" onclick="switchTab('freecodecamp')">
+                <i class="fas fa-code"></i>
+                FreeCodeCamp
+            </button>
+            <button class="tab-btn" onclick="switchTab('all')">
+                <i class="fas fa-th"></i>
+                All Courses
+            </button>
+        </div>
+
+        <!-- Khan Academy Section -->
+        <div id="khan-content" class="content-section active">
+            <div class="course-grid">
+                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/computing/computer-programming')">
+                    <span class="platform-badge khan">Khan Academy</span>
+                    <div class="course-icon">💻</div>
+                    <h3>Computer Programming</h3>
+                    <p>Learn JavaScript, HTML/CSS, SQL, and master algorithms</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> Self-paced</span>
+                        <span><i class="fas fa-signal"></i> Beginner</span>
+                    </div>
+                    <a href="#" class="btn">Start Learning <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/math')">
+                    <span class="platform-badge khan">Khan Academy</span>
+                    <div class="course-icon">📐</div>
+                    <h3>Mathematics</h3>
+                    <p>From basic arithmetic to advanced calculus and linear algebra</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> Self-paced</span>
+                        <span><i class="fas fa-signal"></i> All Levels</span>
+                    </div>
+                    <a href="#" class="btn">Start Learning <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/science')">
+                    <span class="platform-badge khan">Khan Academy</span>
+                    <div class="course-icon">🔬</div>
+                    <h3>Science & Engineering</h3>
+                    <p>Physics, Chemistry, Biology, and Engineering fundamentals</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> Self-paced</span>
+                        <span><i class="fas fa-signal"></i> All Levels</span>
+                    </div>
+                    <a href="#" class="btn">Start Learning <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/computing')">
+                    <span class="platform-badge khan">Khan Academy</span>
+                    <div class="course-icon">🖥️</div>
+                    <h3>Computer Science</h3>
+                    <p>Algorithms, cryptography, information theory, and more</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> Self-paced</span>
+                        <span><i class="fas fa-signal"></i> Intermediate</span>
+                    </div>
+                    <a href="#" class="btn">Start Learning <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- YouTube Section -->
+        <div id="youtube-content" class="content-section">
+            <div class="course-grid">
+                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLWKjhJtqVAbnqBxcdjVGgT3uVR10bzTEB')">
+                    <span class="platform-badge youtube">YouTube</span>
+                    <div class="course-icon">🐍</div>
+                    <h3>Python Full Course</h3>
+                    <p>Complete Python programming from beginner to advanced</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 10+ hours</span>
+                        <span><i class="fas fa-signal"></i> Beginner</span>
+                    </div>
+                    <a href="#" class="btn">Watch Now <i class="fas fa-play"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLoYCgNOIyGABj2GQSlDRjgvXtqfDxKm5b')">
+                    <span class="platform-badge youtube">YouTube</span>
+                    <div class="course-icon">🌐</div>
+                    <h3>Web Development</h3>
+                    <p>HTML, CSS, JavaScript, React - Full stack development</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 15+ hours</span>
+                        <span><i class="fas fa-signal"></i> Beginner</span>
+                    </div>
+                    <a href="#" class="btn">Watch Now <i class="fas fa-play"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLZlA0Gpn_vH_NT5zPVp18nGe_W9q3elTw')">
+                    <span class="platform-badge youtube">YouTube</span>
+                    <div class="course-icon">🤖</div>
+                    <h3>Machine Learning</h3>
+                    <p>AI, Deep Learning, Neural Networks from scratch</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 20+ hours</span>
+                        <span><i class="fas fa-signal"></i> Advanced</span>
+                    </div>
+                    <a href="#" class="btn">Watch Now <i class="fas fa-play"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLlasXeu85E9cQ32gLCvAvr9vNaUccPVNP')">
+                    <span class="platform-badge youtube">YouTube</span>
+                    <div class="course-icon">📊</div>
+                    <h3>Data Structures & Algorithms</h3>
+                    <p>Master DSA for coding interviews and competitive programming</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 25+ hours</span>
+                        <span><i class="fas fa-signal"></i> Intermediate</span>
+                    </div>
+                    <a href="#" class="btn">Watch Now <i class="fas fa-play"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- FreeCodeCamp Section -->
+        <div id="freecodecamp-content" class="content-section">
+            <div class="course-grid">
+                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/responsive-web-design/')">
+                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
+                    <div class="course-icon">📱</div>
+                    <h3>Responsive Web Design</h3>
+                    <p>Build responsive websites with HTML, CSS, and Flexbox</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 300 hours</span>
+                        <span><i class="fas fa-certificate"></i> Certificate</span>
+                    </div>
+                    <a href="#" class="btn">Start Course <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/javascript-algorithms-and-data-structures/')">
+                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
+                    <div class="course-icon">⚡</div>
+                    <h3>JavaScript Algorithms</h3>
+                    <p>Learn JavaScript fundamentals and solve 100+ challenges</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 300 hours</span>
+                        <span><i class="fas fa-certificate"></i> Certificate</span>
+                    </div>
+                    <a href="#" class="btn">Start Course <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/front-end-development-libraries/')">
+                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
+                    <div class="course-icon">⚛️</div>
+                    <h3>Frontend Libraries</h3>
+                    <p>React, Redux, Bootstrap, jQuery, and Sass</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 300 hours</span>
+                        <span><i class="fas fa-certificate"></i> Certificate</span>
+                    </div>
+                    <a href="#" class="btn">Start Course <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/machine-learning-with-python/')">
+                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
+                    <div class="course-icon">🧠</div>
+                    <h3>Machine Learning</h3>
+                    <p>TensorFlow, Neural Networks, and Deep Learning projects</p>
+                    <div class="course-meta">
+                        <span><i class="fas fa-clock"></i> 300 hours</span>
+                        <span><i class="fas fa-certificate"></i> Certificate</span>
+                    </div>
+                    <a href="#" class="btn">Start Course <i class="fas fa-arrow-right"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Courses Section -->
+        <div id="all-content" class="content-section">
+            <h2 style="margin-bottom: 2rem; text-align: center;">🎯 Recommended Learning Path</h2>
+            <div class="course-grid">
+                <!-- Mix of all platforms -->
+                <div class="course-card" onclick="openCourse('https://www.khanacademy.org/computing/computer-programming')">
+                    <span class="platform-badge khan">Khan Academy</span>
+                    <div class="course-icon">💻</div>
+                    <h3>Start: Computer Programming</h3>
+                    <p>Begin your coding journey with JavaScript basics</p>
+                    <a href="#" class="btn">Start Learning <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLWKjhJtqVAbnqBxcdjVGgT3uVR10bzTEB')">
+                    <span class="platform-badge youtube">YouTube</span>
+                    <div class="course-icon">🐍</div>
+                    <h3>Then: Python Full Course</h3>
+                    <p>Master Python programming with hands-on projects</p>
+                    <a href="#" class="btn">Watch Now <i class="fas fa-play"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.freecodecamp.org/learn/responsive-web-design/')">
+                    <span class="platform-badge freecodecamp">FreeCodeCamp</span>
+                    <div class="course-icon">📱</div>
+                    <h3>Build: Responsive Websites</h3>
+                    <p>Create professional websites and get certified</p>
+                    <a href="#" class="btn">Start Course <i class="fas fa-arrow-right"></i></a>
+                </div>
+
+                <div class="course-card" onclick="openCourse('https://www.youtube.com/embed/videoseries?list=PLZlA0Gpn_vH_NT5zPVp18nGe_W9q3elTw')">
+                    <span class="platform-badge youtube">YouTube</span>
+                    <div class="course-icon">🤖</div>
+                    <h3>Master: Machine Learning</h3>
+                    <p>Advanced AI and deep learning techniques</p>
+                    <a href="#" class="btn">Watch Now <i class="fas fa-play"></i></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Courses -->
+    <div class="modal" id="courseModal">
+        <button class="modal-close" onclick="closeModal()">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="modal-content">
+            <iframe id="courseFrame" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Tab Switching
+        function switchTab(tab) {
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.tab-btn').classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(tab + '-content').classList.add('active');
+        }
+
+        // Open Course in Modal
+        function openCourse(url) {
+            const modal = document.getElementById('courseModal');
+            const frame = document.getElementById('courseFrame');
+            frame.src = url;
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close Modal
+        function closeModal() {
+            const modal = document.getElementById('courseModal');
+            const frame = document.getElementById('courseFrame');
+            modal.classList.remove('active');
+            frame.src = '';
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Close on background click
+        document.getElementById('courseModal').addEventListener('click', (e) => {
+            if (e.target.id === 'courseModal') closeModal();
+        });
+    </script>
+</body>
+</html>
