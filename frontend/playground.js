@@ -288,6 +288,13 @@ async function runCode() {
     // Clear output
     outputArea.innerHTML = '';
 
+    // Check if language is supported for execution
+    const runnableLanguages = ['javascript', 'python', 'html'];
+    if (!runnableLanguages.includes(language)) {
+        displayOutput(`⚠️ Note: ${language.toUpperCase()} code execution is not yet supported in the browser.\n\n✅ Supported languages for execution:\n• JavaScript (runs in browser)\n• Python (via Skulpt)\n• HTML/CSS/JS (live preview)\n\n💡 You can still:\n• Write and edit code\n• Use AI Debug to check for errors\n• Use AI Optimize for improvements\n• Use AI Explain to understand the code\n• Download your code using Share button`, 'info');
+        return;
+    }
+
     showLoading('Running your code...');
 
     try {
@@ -361,6 +368,15 @@ function displayOutput(output, type = 'log') {
     } else {
         const line = document.createElement('div');
         line.className = `output-line output-${type}`;
+        line.style.whiteSpace = 'pre-wrap';
+        line.style.lineHeight = '1.8';
+        if (type === 'info') {
+            line.style.color = '#60a5fa';
+            line.style.background = 'rgba(59, 130, 246, 0.1)';
+            line.style.padding = '1rem';
+            line.style.borderRadius = '8px';
+            line.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+        }
         line.textContent = output;
         outputArea.appendChild(line);
     }
