@@ -1,4 +1,19 @@
 /* ===== MODERN PLAYGROUND INTERFACE ===== */
+
+/* Hide sidebar on playground page */
+.sidebar {
+    display: none !important;
+}
+
+.sidebar-overlay {
+    display: none !important;
+}
+
+.main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+
 .playground-unique-content {
     display: flex;
     flex-direction: column;

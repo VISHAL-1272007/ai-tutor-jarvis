@@ -70,6 +70,155 @@ def greet(name):
 print(greet("Developer"))
 print("Ready to code Python!")`;
             break;
+        case 'java':
+            mode = 'text/x-java';
+            template = `// Java Playground
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, JARVIS! ☕");
+        
+        int sum = add(5, 3);
+        System.out.println("Sum: " + sum);
+    }
+    
+    static int add(int a, int b) {
+        return a + b;
+    }
+}`;
+            break;
+        case 'cpp':
+            mode = 'text/x-c++src';
+            template = `// C++ Playground
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Hello, JARVIS! ⚡" << endl;
+    
+    int sum = 5 + 3;
+    cout << "Sum: " << sum << endl;
+    
+    return 0;
+}`;
+            break;
+        case 'c':
+            mode = 'text/x-csrc';
+            template = `// C Playground
+#include <stdio.h>
+
+int main() {
+    printf("Hello, JARVIS! 🔷\\n");
+    
+    int sum = 5 + 3;
+    printf("Sum: %d\\n", sum);
+    
+    return 0;
+}`;
+            break;
+        case 'csharp':
+            mode = 'text/x-csharp';
+            template = `// C# Playground
+using System;
+
+class Program {
+    static void Main() {
+        Console.WriteLine("Hello, JARVIS! 💎");
+        
+        int sum = Add(5, 3);
+        Console.WriteLine($"Sum: {sum}");
+    }
+    
+    static int Add(int a, int b) {
+        return a + b;
+    }
+}`;
+            break;
+        case 'php':
+            mode = 'text/x-php';
+            template = `<?php
+// PHP Playground
+echo "Hello, JARVIS! 🐘\\n";
+
+function add($a, $b) {
+    return $a + $b;
+}
+
+$sum = add(5, 3);
+echo "Sum: $sum\\n";
+?>`;
+            break;
+        case 'ruby':
+            mode = 'text/x-ruby';
+            template = `# Ruby Playground
+puts "Hello, JARVIS! 💎"
+
+def add(a, b)
+    a + b
+end
+
+sum = add(5, 3)
+puts "Sum: #{sum}"`;
+            break;
+        case 'go':
+            mode = 'text/x-go';
+            template = `// Go Playground
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, JARVIS! 🔵")
+    
+    sum := add(5, 3)
+    fmt.Printf("Sum: %d\\n", sum)
+}
+
+func add(a, b int) int {
+    return a + b
+}`;
+            break;
+        case 'rust':
+            mode = 'text/x-rustsrc';
+            template = `// Rust Playground
+fn main() {
+    println!("Hello, JARVIS! 🦀");
+    
+    let sum = add(5, 3);
+    println!("Sum: {}", sum);
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}`;
+            break;
+        case 'kotlin':
+            mode = 'text/x-kotlin';
+            template = `// Kotlin Playground
+fun main() {
+    println("Hello, JARVIS! 🤖")
+    
+    val sum = add(5, 3)
+    println("Sum: $sum")
+}
+
+fun add(a: Int, b: Int): Int {
+    return a + b
+}`;
+            break;
+        case 'swift':
+            mode = 'text/x-swift';
+            template = `// Swift Playground
+import Foundation
+
+print("Hello, JARVIS! 🍎")
+
+func add(_ a: Int, _ b: Int) -> Int {
+    return a + b
+}
+
+let sum = add(5, 3)
+print("Sum: \\(sum)")`;
+            break;
         case 'html':
             mode = 'htmlmixed';
             template = `<!DOCTYPE html>
@@ -111,14 +260,19 @@ print("Ready to code Python!")`;
         default:
             mode = 'javascript';
             template = `// JavaScript Playground
-
 console.log("Hello, JARVIS! 🚀");
 
+// Example: Calculate factorial
 const factorial = (n) => {
     return n <= 1 ? 1 : n * factorial(n - 1);
 };
 
-console.log("Factorial of 5:", factorial(5));`;
+console.log("Factorial of 5:", factorial(5));
+
+// Example: Array operations
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+console.log("Doubled:", doubled);`;
     }
 
     editor.setOption('mode', mode);
