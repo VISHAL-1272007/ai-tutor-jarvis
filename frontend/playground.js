@@ -490,12 +490,31 @@ function clearEditor() {
 
 // Show/Hide Loading
 function showLoading(text = 'Processing...') {
-    document.getElementById('loadingText').textContent = text;
-    document.getElementById('loadingOverlay').classList.remove('hidden');
+    // Create loading overlay if it doesn't exist
+    let loadingOverlay = document.getElementById('loadingOverlay');
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loadingOverlay';
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div class="loading-spinner">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <p id="loadingText">${text}</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
+    } else {
+        const loadingText = document.getElementById('loadingText');
+        if (loadingText) loadingText.textContent = text;
+        loadingOverlay.classList.remove('hidden');
+    }
 }
 
 function hideLoading() {
-    document.getElementById('loadingOverlay').classList.add('hidden');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+    }
 }
 
 // Event Listeners (with null checks)
@@ -505,8 +524,10 @@ const optimizeBtn = document.getElementById('optimizeBtn');
 const explainBtn = document.getElementById('explainBtn');
 const clearBtn = document.getElementById('clearBtn');
 const clearOutputBtn = document.getElementById('clearOutputBtn');
-const voiceBtn = document.getElementById('voiceBtn');
 const closeAiBtn = document.getElementById('closeAiBtn');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+const shareBtn = document.getElementById('shareBtn');
+const githubBtn = document.getElementById('githubBtn');
 
 if (runBtn) runBtn.addEventListener('click', runCode);
 if (debugBtn) debugBtn.addEventListener('click', debugCode);
@@ -514,8 +535,40 @@ if (optimizeBtn) optimizeBtn.addEventListener('click', optimizeCode);
 if (explainBtn) explainBtn.addEventListener('click', explainCode);
 if (clearBtn) clearBtn.addEventListener('click', clearEditor);
 if (clearOutputBtn) clearOutputBtn.addEventListener('click', clearOutput);
-if (voiceBtn) voiceBtn.addEventListener('click', toggleVoice);
 if (closeAiBtn) closeAiBtn.addEventListener('click', hideAIPanel);
+
+// Fullscreen Toggle
+if (fullscreenBtn) {
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+}
+
+// Share Code
+if (shareBtn) {
+    shareBtn.addEventListener('click', () => {
+        const code = editor.getValue();
+        const blob = new Blob([code], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `jarvis-code-${Date.now()}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showSimpleNotification('✅ Code downloaded successfully!', 'success');
+    });
+}
+
+// GitHub Integration - Simple placeholder
+if (githubBtn) {
+    githubBtn.addEventListener('click', () => {
+        showSimpleNotification('🚧 GitHub integration coming soon! Use copy/paste for now.', 'info');
+    });
+}
 
 // AI Suggestion Buttons
 document.querySelectorAll('.ai-suggest-btn').forEach(btn => {
@@ -556,178 +609,36 @@ async function generateProject() {
     }
 }
 
-// Fullscreen Toggle
-document.getElementById('fullscreenBtn').addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-    } else {
-        document.exitFullscreen();
-    }
-});
-
-// Share Code
-document.getElementById('shareBtn').addEventListener('click', () => {
-    const code = editor.getValue();
-    const blob = new Blob([code], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `jarvis-code-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-});
-
-// GitHub Integration
-const githubModal = document.getElementById('githubModal');
-const repoList = document.getElementById('repoList');
-const fileList = document.getElementById('fileList');
-const filesContainer = document.getElementById('filesContainer');
-let currentRepo = '';
-
-document.getElementById('githubBtn').addEventListener('click', showGithubModal);
-document.getElementById('closeGithubBtn').addEventListener('click', hideGithubModal);
-document.getElementById('backToReposBtn').addEventListener('click', showRepoList);
-
-function showGithubModal() {
-    githubModal.classList.remove('hidden');
-    fetchGithubRepos();
-}
-
-function hideGithubModal() {
-    githubModal.classList.add('hidden');
-    currentRepo = '';
-    showRepoList();
-}
-
-function showRepoList() {
-    repoList.classList.remove('hidden');
-    fileList.classList.add('hidden');
-}
-
-async function fetchGithubRepos() {
-    repoList.innerHTML = '<div class="loading-text">Loading repositories...</div>';
-
-    try {
-        const response = await fetch(`${API_URL}/api/github/repos`);
-        const data = await response.json();
-
-        if (data.success) {
-            displayRepos(data.repos);
-        } else {
-            repoList.innerHTML = `<div class="error-text">Error: ${data.message || 'Failed to load repos'}</div>`;
-        }
-    } catch (error) {
-        repoList.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
-    }
-}
-
-function displayRepos(repos) {
-    repoList.innerHTML = '';
-
-    if (repos.length === 0) {
-        repoList.innerHTML = '<div class="empty-text">No repositories found.</div>';
-        return;
-    }
-
-    repos.forEach(repo => {
-        const div = document.createElement('div');
-        div.className = 'repo-item';
-        div.innerHTML = `
-            <div class="repo-name"><i class="fas fa-book"></i> ${repo.name}</div>
-            <div class="repo-desc">${repo.description || 'No description'}</div>
-            <div class="repo-meta">
-                <span><i class="fas fa-star"></i> ${repo.stars}</span>
-                <span><i class="fas fa-code"></i> ${repo.language || 'Text'}</span>
-            </div>
-        `;
-        div.onclick = () => loadRepoFiles(repo.full_name);
-        repoList.appendChild(div);
-    });
-}
-
-async function loadRepoFiles(repoName, path = '') {
-    currentRepo = repoName;
-    repoList.classList.add('hidden');
-    fileList.classList.remove('hidden');
-    filesContainer.innerHTML = '<div class="loading-text">Loading files...</div>';
-
-    try {
-        // Use the content endpoint. If path is empty, it lists root files.
-        // Note: We need to handle the case where the backend endpoint expects a specific file for content,
-        // or if it can handle directory listing. 
-        // Looking at backend: axios.get(`https://api.github.com/repos/${repo}/contents/${path}`)
-        // This GitHub API returns an array for directories, and object for files.
-        // The backend implementation I saw earlier:
-        // if (response.data.content) { ... return content ... }
-        // This implies the backend might strictly expect a file. 
-        // Let's check the backend code again mentally.
-        // Backend: 
-        // const response = await axios.get(...)
-        // if (response.data.content) { ... } else { throw new Error('No content found') }
-        // This backend implementation is too simple for directory listing. It assumes it's fetching a file.
-        // I need to update the backend to handle directory listing (array response) vs file content.
-
-        // Let's assume for now I'll fix the backend.
-        const response = await fetch(`${API_URL}/api/github/content`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ repo: repoName, path: path })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // If it's a file content (string), load it into editor
-            if (typeof data.content === 'string') {
-                editor.setValue(data.content);
-                hideGithubModal();
-                showNotification(`Loaded ${path} from GitHub`, 'success');
-            } else if (Array.isArray(data.content)) {
-                // It's a directory listing
-                displayFiles(data.content, repoName);
-            }
-        } else {
-            // If backend failed because it's a directory and backend expects file, we might need to adjust.
-            filesContainer.innerHTML = `<div class="error-text">Error: ${data.message}</div>`;
-        }
-    } catch (error) {
-        filesContainer.innerHTML = `<div class="error-text">Error: ${error.message}</div>`;
-    }
-}
-
-function displayFiles(files, repoName) {
-    filesContainer.innerHTML = '';
-
-    // Sort: folders first, then files
-    files.sort((a, b) => {
-        if (a.type === b.type) return a.name.localeCompare(b.name);
-        return a.type === 'dir' ? -1 : 1;
-    });
-
-    files.forEach(file => {
-        const div = document.createElement('div');
-        div.className = 'file-item';
-        const icon = file.type === 'dir' ? 'fa-folder' : 'fa-file-code';
-        div.innerHTML = `<i class="fas ${icon}"></i> ${file.name}`;
-
-        div.onclick = () => {
-            if (file.type === 'dir') {
-                loadRepoFiles(repoName, file.path);
-            } else {
-                loadRepoFiles(repoName, file.path);
-            }
-        };
-        filesContainer.appendChild(div);
-    });
-}
-
-function showNotification(message, type) {
-    // Reuse existing notification logic or create simple one
+// Simple notification system
+function showSimpleNotification(message, type = 'info') {
     const notif = document.createElement('div');
-    notif.className = `notification ${type}`;
-    notif.textContent = message;
+    notif.className = `simple-notification ${type}`;
+    notif.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <span>${message}</span>
+    `;
+    notif.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+        animation: slideIn 0.3s ease;
+    `;
     document.body.appendChild(notif);
-    setTimeout(() => notif.remove(), 3000);
+    setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notif.remove(), 300);
+    }, 3000);
 }
 
 // Initialize Everything
