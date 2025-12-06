@@ -3,6 +3,9 @@
 // Backend API URL
 const API_URL = 'https://ai-tutor-jarvis.onrender.com';
 
+// Piston API for code execution (supports 50+ languages)
+const PISTON_API = 'https://emkc.org/api/v2/piston';
+
 // Code Editor Instance
 let editor;
 
@@ -288,13 +291,6 @@ async function runCode() {
     // Clear output
     outputArea.innerHTML = '';
 
-    // Check if language is supported for execution
-    const runnableLanguages = ['javascript', 'python', 'html'];
-    if (!runnableLanguages.includes(language)) {
-        displayOutput(`⚠️ Note: ${language.toUpperCase()} code execution is not yet supported in the browser.\n\n✅ Supported languages for execution:\n• JavaScript (runs in browser)\n• Python (via Skulpt)\n• HTML/CSS/JS (live preview)\n\n💡 You can still:\n• Write and edit code\n• Use AI Debug to check for errors\n• Use AI Optimize for improvements\n• Use AI Explain to understand the code\n• Download your code using Share button`, 'info');
-        return;
-    }
-
     showLoading('Running your code...');
 
     try {
@@ -306,15 +302,34 @@ async function runCode() {
             // Render HTML in iframe
             renderHTML(code);
         } else if (language === 'python') {
-            // Python execution via Skulpt
-            await executePython(code);
+            // Use Piston API for Python
+            await executePistonCode(code, 'python', '3.10.0');
+        } else {
+            // Use Piston API for other languages
+            const languageMap = {
+                'java': { lang: 'java', version: '15.0.2' },
+                'cpp': { lang: 'c++', version: '10.2.0' },
+                'c': { lang: 'c', version: '10.2.0' },
+                'csharp': { lang: 'csharp', version: '6.12.0' },
+                'php': { lang: 'php', version: '8.2.3' },
+                'ruby': { lang: 'ruby', version: '3.0.1' },
+                'go': { lang: 'go', version: '1.16.2' },
+                'rust': { lang: 'rust', version: '1.68.2' },
+                'kotlin': { lang: 'kotlin', version: '1.8.20' },
+                'swift': { lang: 'swift', version: '5.3.3' }
+            };
+
+            const langConfig = languageMap[language];
+            if (langConfig) {
+                await executePistonCode(code, langConfig.lang, langConfig.version);
+            } else {
+                displayOutput('❌ Language not supported for execution', 'error');
+            }
         }
 
         // Award XP for running code
         if (typeof window.addXP === 'function') {
             window.addXP(10, 'Ran code');
-
-            // Check for first code badge
             if (typeof window.unlockBadge === 'function') {
                 window.unlockBadge('first_code');
             }
@@ -403,8 +418,57 @@ function renderHTML(code) {
     doc.close();
 }
 
-// Execute Python using Skulpt
-async function executePython(code) {
+// Execute code using Piston API
+async function executePistonCode(code, language, version) {
+    try {
+        const response = await fetch(`${PISTON_API}/execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                language: language,
+                version: version,
+                files: [{
+                    content: code
+                }]
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.run) {
+            let output = '';
+            
+            if (result.run.stdout) {
+                output += result.run.stdout;
+            }
+            
+            if (result.run.stderr) {
+                output += '\n❌ Error:\n' + result.run.stderr;
+            }
+            
+            if (result.run.code !== 0) {
+                output += `\n\n⚠️ Exit code: ${result.run.code}`;
+            }
+            
+            if (!output.trim()) {
+                output = '✅ Code executed successfully (no output)';
+            }
+            
+            displayOutput(output, result.run.stderr ? 'error' : 'success');
+        } else if (result.message) {
+            displayOutput(`❌ ${result.message}`, 'error');
+        } else {
+            displayOutput('❌ Failed to execute code', 'error');
+        }
+    } catch (error) {
+        displayOutput(`❌ Execution error: ${error.message}`, 'error');
+    }
+}
+
+// Execute Python using Skulpt (keeping as backup)
+async function executePythonSkulpt(code) {
     // Load Skulpt if not already loaded
     if (typeof Sk === 'undefined') {
         await loadScript('https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js');
@@ -698,7 +762,6 @@ const closeAiBtn = document.getElementById('closeAiBtn');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
 const shareBtn = document.getElementById('shareBtn');
 const githubBtn = document.getElementById('githubBtn');
-
 if (runBtn) runBtn.addEventListener('click', runCode);
 if (debugBtn) debugBtn.addEventListener('click', debugCode);
 if (optimizeBtn) optimizeBtn.addEventListener('click', optimizeCode);
