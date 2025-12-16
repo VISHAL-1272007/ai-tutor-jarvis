@@ -318,39 +318,73 @@ body {
 }
 
 .theme-selector-container {
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    position: relative;
+    animation: themePulse 3s ease-in-out infinite;
+}
+
+@keyframes themePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0); }
+}
+
+.theme-selector-container::before {
+    content: '✨ RECOMMENDED';
+    position: absolute;
+    top: -8px;
+    right: 8px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
 }
 
 .theme-selector-container label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-tertiary);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--primary-400);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    display: block;
-    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.theme-selector-container label i {
+    font-size: 14px;
 }
 
 .theme-select {
     width: 100%;
-    padding: 8px 12px;
+    padding: 10px 14px;
     background: var(--bg-elevated);
-    border: 1px solid var(--border-default);
-    border-radius: 6px;
+    border: 2px solid var(--primary-500);
+    border-radius: 8px;
     color: var(--text-primary);
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
     transition: var(--transition-fast);
 }
 
 .theme-select:hover {
-    border-color: var(--border-strong);
+    border-color: var(--primary-400);
+    background: var(--bg-hover);
+    transform: translateY(-1px);
 }
 
 .theme-select:focus {
     outline: none;
     border-color: var(--primary-500);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
 .sidebar-account-btn {
@@ -1291,6 +1325,78 @@ textarea::placeholder {
     }
 }
 
+/* Theme Notification Popup */
+.theme-notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 320px;
+    animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.theme-notification-icon {
+    font-size: 24px;
+    animation: rotateIcon 2s ease-in-out infinite;
+}
+
+@keyframes rotateIcon {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(15deg); }
+}
+
+.theme-notification-content h4 {
+    margin: 0 0 4px 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.theme-notification-content p {
+    margin: 0;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.theme-notification-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    transition: all 0.2s;
+}
+
+.theme-notification-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     /* Performance optimizations */
@@ -1298,6 +1404,13 @@ textarea::placeholder {
         -webkit-overflow-scrolling: touch;
         transform: translateZ(0);
         -webkit-transform: translateZ(0);
+    }
+
+    .theme-notification {
+        top: 60px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
     }
 
     /* Sidebar */

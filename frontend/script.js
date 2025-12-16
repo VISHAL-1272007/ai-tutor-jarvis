@@ -1306,6 +1306,7 @@ function startNewChat() {
 function setTheme(themeName) {
     document.documentElement.setAttribute('data-theme', themeName);
     localStorage.setItem('theme', themeName);
+    localStorage.setItem('themeNotificationShown', 'true'); // Mark notification as seen
 }
 
 function loadTheme() {
@@ -1316,6 +1317,38 @@ function loadTheme() {
     if (themeSelect) {
         themeSelect.value = savedTheme;
     }
+
+    // Show theme recommendation notification for first-time users
+    showThemeNotification();
+}
+
+function showThemeNotification() {
+    const notificationShown = localStorage.getItem('themeNotificationShown');
+    
+    // Only show to first-time visitors
+    if (notificationShown) return;
+
+    setTimeout(() => {
+        const notification = document.createElement('div');
+        notification.className = 'theme-notification';
+        notification.innerHTML = `
+            <div class="theme-notification-icon">🎨</div>
+            <div class="theme-notification-content">
+                <h4>Personalize Your Experience!</h4>
+                <p>Try different themes in the sidebar → <i class="fas fa-palette"></i></p>
+            </div>
+            <button class="theme-notification-close" onclick="this.parentElement.remove()">×</button>
+        `;
+        document.body.appendChild(notification);
+
+        // Auto-dismiss after 8 seconds
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.style.animation = 'slideInRight 0.5s ease-out reverse';
+                setTimeout(() => notification.remove(), 500);
+            }
+        }, 8000);
+    }, 2000); // Show 2 seconds after page load
 }
 
 function loadVoicePreference() {
