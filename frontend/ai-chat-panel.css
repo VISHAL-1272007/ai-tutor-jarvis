@@ -3,14 +3,43 @@
    Modern, Minimal, Clean Design
    ============================================ */
 
+/* Navigation Button Styling */
+.nav-btn {
+    padding: 0.6rem 1.2rem !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    border-radius: 10px !important;
+    color: #e7e9ea !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+.nav-btn:hover {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    border-color: rgba(59, 130, 246, 0.5) !important;
+}
+
 .chat-container {
-    display: grid;
-    grid-template-columns: 1fr 350px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     gap: 20px;
     padding: 20px;
-    max-width: 1400px;
+    max-width: 1600px;
     margin: 0 auto;
     min-height: calc(100vh - 80px);
+}
+
+.ai-chat-panel {
+    flex: 1;
+    max-width: 900px;
 }
 
 /* ============================================

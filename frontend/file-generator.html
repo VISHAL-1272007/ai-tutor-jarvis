@@ -353,10 +353,11 @@
         </div>
     </div>
 
-    <script type="module">
-        import { getBackendURL } from './config.js';
-        const BACKEND_URL = getBackendURL();
-
+    <!-- Add jsPDF library for client-side PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        const { jsPDF } = window.jspdf;
         let selectedType = 'pdf';
 
         // File type selection
@@ -405,27 +406,72 @@
             btn.innerHTML = '<span class="loader"></span> Generating...';
 
             try {
-                const response = await fetch(`${BACKEND_URL}/api/generate-file`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type: selectedType,
-                        content: content,
-                        filename: filename,
-                        projectType: projectType
-                    })
+                let fileBlob, fileType, fileSize, extension;
+
+                if (selectedType === 'pdf') {
+                    // Generate PDF using jsPDF
+                    const doc = new jsPDF();
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const margin = 20;
+                    const maxWidth = pageWidth - 2 * margin;
+                    
+                    // Split text into lines that fit the page
+                    const lines = doc.splitTextToSize(content, maxWidth);
+                    let y = margin;
+                    
+                    lines.forEach((line) => {
+                        if (y > pageHeight - margin) {
+                            doc.addPage();
+                            y = margin;
+                        }
+                        doc.text(line, margin, y);
+                        y += 7;
+                    });
+                    
+                    fileBlob = doc.output('blob');
+                    fileType = 'application/pdf';
+                    extension = '.pdf';
+                    
+                } else if (selectedType === 'docx') {
+                    // Create a simple text file with DOCX extension
+                    fileBlob = new Blob([content], { type: 'text/plain' });
+                    fileType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                    extension = '.docx';
+                    
+                } else if (selectedType === 'pptx') {
+                    // Create a simple text file with PPTX extension
+                    fileBlob = new Blob([content], { type: 'text/plain' });
+                    fileType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+                    extension = '.pptx';
+                    
+                } else if (selectedType === 'code') {
+                    // For code files
+                    fileBlob = new Blob([content], { type: 'text/plain' });
+                    fileType = 'text/plain';
+                    extension = '.txt';
+                    
+                } else if (selectedType === 'project') {
+                    alert('Project generation feature coming soon!');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-magic"></i> Generate File';
+                    return;
+                }
+
+                fileSize = fileBlob.size;
+                const url = URL.createObjectURL(fileBlob);
+                
+                showResult({
+                    success: true,
+                    url: url,
+                    filename: filename + extension,
+                    type: fileType,
+                    size: fileSize
                 });
 
-                const data = await response.json();
-
-                if (data.success) {
-                    showResult(data);
-                } else {
-                    alert('Error: ' + (data.error || 'Failed to generate file'));
-                }
             } catch (error) {
                 console.error('Generation error:', error);
-                alert('Error: ' + error.message);
+                alert('Error generating file: ' + error.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-magic"></i> Generate File';

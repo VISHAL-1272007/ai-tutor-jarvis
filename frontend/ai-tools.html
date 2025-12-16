@@ -3,7 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>JARVIS AI - Professional AI Assistant</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
@@ -15,7 +17,7 @@
 
 <body>
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" style="display: none !important;">
         <div class="sidebar-header">
             <h2>
                 <i class="fas fa-robot"></i>
@@ -59,7 +61,7 @@
     </aside>
 
     <!-- Sidebar Overlay (Mobile) -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay" style="display: none !important;"></div>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -75,23 +77,23 @@
             </div>
 
             <nav class="header-actions">
-                <a href="index.html" class="header-link">
+                <a href="index.html" class="header-link header-btn">
                     <i class="fas fa-home"></i>
                     <span>Home</span>
                 </a>
-                <a href="courses.html" class="header-link">
+                <a href="courses.html" class="header-link header-btn">
                     <i class="fas fa-graduation-cap"></i>
                     <span>Learn</span>
                 </a>
-                <a href="playground.html" class="header-link">
+                <a href="playground.html" class="header-link header-btn">
                     <i class="fas fa-code"></i>
                     <span>Playground</span>
                 </a>
-                <a href="project-generator.html" class="header-link">
+                <a href="project-generator.html" class="header-link header-btn">
                     <i class="fas fa-rocket"></i>
                     <span>Projects</span>
                 </a>
-                <a href="ai-tools.html" class="header-link active">
+                <a href="ai-tools.html" class="header-link header-btn active">
                     <i class="fas fa-tools"></i>
                     <span>Tools</span>
                 </a>
@@ -103,11 +105,11 @@
 
         <!-- Mode Selector -->
         <div class="mode-selector" id="modeSelector">
-            <button class="mode-tab" data-mode="chat">
+            <button class="mode-tab" data-mode="chat" onclick="window.location.href='index.html'">
                 <i class="fas fa-comments"></i>
                 <span>Chat</span>
             </button>
-            <button class="mode-tab" data-mode="tutor">
+            <button class="mode-tab" data-mode="tutor" onclick="window.location.href='courses.html'">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Tutor</span>
             </button>
@@ -214,60 +216,6 @@
                             <div id="videoOutput" class="output-area"></div>
                         </div>
                     </section>
-
-                    <!-- AI Project Generator Section -->
-                    <section class="tool-card">
-                        <div class="tool-header">
-                            <h2>🚀 AI Project Generator</h2>
-                            <p>Generate complete project code with file structure</p>
-                        </div>
-                        <div class="tool-body">
-                            <div class="input-group">
-                                <textarea id="projectInput" rows="3" 
-                                    placeholder="Describe your project... (e.g., Todo app with React, Python Flask REST API, etc.)"></textarea>
-                                <div class="project-options">
-                                    <select id="projectLanguage" class="project-select">
-                                        <option value="">Auto-detect Language</option>
-                                        <option value="javascript">JavaScript</option>
-                                        <option value="python">Python</option>
-                                        <option value="java">Java</option>
-                                        <option value="cpp">C++</option>
-                                        <option value="csharp">C#</option>
-                                        <option value="php">PHP</option>
-                                        <option value="ruby">Ruby</option>
-                                        <option value="go">Go</option>
-                                        <option value="rust">Rust</option>
-                                        <option value="typescript">TypeScript</option>
-                                    </select>
-                                    <select id="projectType" class="project-select">
-                                        <option value="">Auto-detect Type</option>
-                                        <option value="web">Web App</option>
-                                        <option value="mobile">Mobile App</option>
-                                        <option value="desktop">Desktop App</option>
-                                        <option value="api">REST API</option>
-                                        <option value="cli">CLI Tool</option>
-                                        <option value="game">Game</option>
-                                        <option value="ml">Machine Learning</option>
-                                        <option value="blockchain">Blockchain</option>
-                                    </select>
-                                </div>
-                                <button id="projectBtn" class="btn btn-primary">
-                                    <span class="btn-text">🚀 Generate Project</span>
-                                    <span class="btn-loader hidden">
-                                        <span class="spinner"></span> Generating...
-                                    </span>
-                                </button>
-                            </div>
-                            <div id="projectOutput" class="output-area"></div>
-                        </div>
-                    </section>
-
-                    <!-- Back to Home Button -->
-                    <div class="back-home">
-                        <a href="index.html" class="btn btn-secondary">
-                            ← Back to Home
-                        </a>
-                    </div>
                 </main>
             </div>
         </div>

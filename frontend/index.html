@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>JARVIS AI - Professional AI Assistant</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
@@ -19,7 +22,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
 </head>
 
-<body>
+<body class="home-page">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -76,28 +79,30 @@
             </button>
 
             <div class="header-center">
-                <i class="fas fa-brain header-brain-icon"></i>
+                <button class="brain-btn" id="brainBtn" title="Voice Control (Ctrl+K)" aria-label="Activate voice control">
+                    <i class="fas fa-brain header-brain-icon"></i>
+                </button>
                 <h1></h1>
             </div>
 
             <nav class="header-actions">
-                <a href="courses.html" class="header-link">
+                <a href="courses.html" class="header-link header-btn">
                     <i class="fas fa-graduation-cap"></i>
                     <span>Learn</span>
                 </a>
-                <a href="playground.html" class="header-link playground-link">
+                <a href="playground.html" class="header-link header-btn playground-link">
                     <i class="fas fa-code"></i>
                     <span>Playground</span>
                 </a>
-                <a href="project-generator.html" class="header-link project-gen-link">
+                <a href="project-generator.html" class="header-link header-btn project-gen-link">
                     <i class="fas fa-rocket"></i>
                     <span>Projects</span>
                 </a>
-                <a href="ai-tools.html" class="header-link ai-tools-link">
+                <a href="ai-tools.html" class="header-link header-btn ai-tools-link">
                     <i class="fas fa-tools"></i>
                     <span>Tools</span>
                 </a>
-                <a href="assignments.html" class="header-link">
+                <a href="assignments.html" class="header-link header-btn">
                     <i class="fas fa-tasks"></i>
                     <span>Assignments</span>
                 </a>
@@ -215,11 +220,6 @@
                         <div class="quick-links" style="margin-top: 40px;">
                             <h3 style="text-align: center; color: #fff; margin-bottom: 25px; font-size: 24px;">🚀 All JARVIS Features</h3>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
-                                <a href="code-editor.html" class="quick-link-card glass" style="text-decoration: none; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease; border: 1px solid rgba(102, 126, 234, 0.3);">
-                                    <i class="fas fa-code" style="font-size: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px;"></i>
-                                    <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">Code Editor</h4>
-                                    <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.6);">Monaco-powered IDE with AI suggestions</p>
-                                </a>
                                 <a href="ai-chat-panel.html" class="quick-link-card glass" style="text-decoration: none; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease; border: 1px solid rgba(56, 239, 125, 0.3);">
                                     <i class="fas fa-comments" style="font-size: 48px; background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px;"></i>
                                     <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">AI Chat Panel</h4>

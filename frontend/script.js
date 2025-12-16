@@ -606,6 +606,32 @@ function speak(text) {
 
 // ===== Event Listeners =====
 function setupEventListeners() {
+    // Brain button for voice activation
+    const brainBtn = document.getElementById('brainBtn');
+    if (brainBtn) {
+        brainBtn.addEventListener('click', () => {
+            if (elements.micBtn) {
+                elements.micBtn.click();
+            } else if (isListening) {
+                recognition.stop();
+            } else {
+                startListening();
+            }
+        });
+    }
+
+    // Ctrl+K keyboard shortcut for voice
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'k') {
+            e.preventDefault();
+            if (brainBtn) {
+                brainBtn.click();
+            } else if (elements.micBtn) {
+                elements.micBtn.click();
+            }
+        }
+    });
+
     // Send message
     if (elements.sendBtn && elements.messageInput) {
         elements.sendBtn.addEventListener('click', sendMessage);
@@ -916,19 +942,28 @@ async function sendMessage() {
         // Remove typing indicator
         removeTypingIndicator();
 
-        // Add random emoji to response
-        const randomEmoji = responseEmojis[Math.floor(Math.random() * responseEmojis.length)];
-        const answerWithEmoji = data.answer + ' ' + randomEmoji;
+        // Check if image was generated
+        if (data.imageGenerated && data.imageUrl) {
+            // Display image message
+            const imageMessage = `🎨 **Image Generated!**\n\n<img src="${data.imageUrl}" alt="${data.prompt}" style="max-width: 100%; border-radius: 12px; margin: 10px 0;" />\n\n**Prompt:** ${data.prompt}\n\n*Generated using AI Image Model*`;
+            await addMessageWithTypingEffect(imageMessage, 'ai');
+            currentChatMessages.push({ role: 'assistant', content: imageMessage });
+        } else {
+            // Regular text response
+            // Add random emoji to response
+            const randomEmoji = responseEmojis[Math.floor(Math.random() * responseEmojis.length)];
+            const answerWithEmoji = data.answer + ' ' + randomEmoji;
 
-        // Add AI message to UI and context
-        await addMessageWithTypingEffect(answerWithEmoji, 'ai');
-        currentChatMessages.push({ role: 'assistant', content: answerWithEmoji });
+            // Add AI message to UI and context
+            await addMessageWithTypingEffect(answerWithEmoji, 'ai');
+            currentChatMessages.push({ role: 'assistant', content: answerWithEmoji });
+
+            // Speak the response
+            speak(data.answer);
+        }
 
         // Save updated chat history
         saveCurrentChat();
-
-        // Speak the response
-        speak(data.answer);
 
     } catch (error) {
         removeTypingIndicator();

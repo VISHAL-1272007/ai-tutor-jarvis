@@ -3,7 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>JARVIS AI - Professional Code Playground</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
@@ -81,11 +83,6 @@
                 <i class="fas fa-bars"></i>
             </button>
 
-            <div class="header-center">
-                <i class="fas fa-brain header-brain-icon"></i>
-                <h1>JARVIS AI</h1>
-            </div>
-
             <nav class="header-actions">
                 <a href="index.html" class="header-link">
                     <i class="fas fa-home"></i>
@@ -107,6 +104,9 @@
                     <i class="fas fa-tools"></i>
                     <span>Tools</span>
                 </a>
+                <button class="voice-btn" id="voiceBtn" title="Voice Control (Alt+V)" aria-label="Toggle voice control">
+                    <i class="fas fa-microphone"></i>
+                </button>
                 <button class="settings-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
                     <i class="fas fa-cog"></i>
                 </button>

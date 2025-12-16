@@ -3,7 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>JARVIS AI - Project Generator</title>
     <link rel="icon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E🤖%3C/text%3E%3C/svg%3E">
@@ -79,7 +81,7 @@
     </div>
 
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" style="display: none !important;">
         <div class="sidebar-header">
             <h2>
                 <i class="fas fa-robot"></i>
@@ -123,7 +125,7 @@
     </aside>
 
     <!-- Sidebar Overlay (Mobile) -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay" style="display: none !important;"></div>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -139,23 +141,23 @@
             </div>
 
             <nav class="header-actions">
-                <a href="index.html" class="header-link">
+                <a href="index.html" class="header-link header-btn">
                     <i class="fas fa-home"></i>
                     <span>Home</span>
                 </a>
-                <a href="courses.html" class="header-link">
+                <a href="courses.html" class="header-link header-btn">
                     <i class="fas fa-graduation-cap"></i>
                     <span>Learn</span>
                 </a>
-                <a href="playground.html" class="header-link">
+                <a href="playground.html" class="header-link header-btn">
                     <i class="fas fa-code"></i>
                     <span>Playground</span>
                 </a>
-                <a href="project-generator.html" class="header-link active">
+                <a href="project-generator.html" class="header-link header-btn active">
                     <i class="fas fa-rocket"></i>
                     <span>Projects</span>
                 </a>
-                <a href="ai-tools.html" class="header-link">
+                <a href="ai-tools.html" class="header-link header-btn">
                     <i class="fas fa-tools"></i>
                     <span>Tools</span>
                 </a>
@@ -167,11 +169,11 @@
 
         <!-- Mode Selector -->
         <div class="mode-selector" id="modeSelector">
-            <button class="mode-tab" data-mode="chat">
+            <button class="mode-tab" data-mode="chat" onclick="window.location.href='index.html'">
                 <i class="fas fa-comments"></i>
                 <span>Chat</span>
             </button>
-            <button class="mode-tab" data-mode="tutor">
+            <button class="mode-tab" data-mode="tutor" onclick="window.location.href='courses.html'">
                 <i class="fas fa-chalkboard-teacher"></i>
                 <span>Tutor</span>
             </button>
@@ -190,9 +192,6 @@
                         <h1 class="title">🚀 AI Project Generator</h1>
                         <p class="subtitle">Describe your idea, get a complete project with code!</p>
                         <div class="header-controls">
-                            <button class="icon-btn" id="theme-toggle" title="Toggle Theme">
-                                <i class="fas fa-moon"></i>
-                            </button>
                             <button class="icon-btn" id="templates-btn" title="Browse Templates">
                                 <i class="fas fa-th-large"></i> Templates
                             </button>
@@ -224,7 +223,7 @@
                                 <label for="project-idea">What do you want to build?</label>
                             </div>
                             <textarea id="project-idea"
-                                placeholder="Example: A todo app with React, Firebase authentication, and real-time updates (Press Ctrl+K for voice input)"
+                                placeholder="Example: A todo app with React, Firebase authentication, and real-time updates"
                                 rows="4"></textarea>
 
                             <div class="options-grid">
@@ -319,62 +318,10 @@
                             </div>
                         </div>
 
-                        <!-- Code Metrics -->
-                        <div class="metrics-section" id="metrics-section">
-                            <h3>📊 Code Metrics</h3>
-                            <div class="metrics-grid">
-                                <div class="metric-card">
-                                    <i class="fas fa-file-code"></i>
-                                    <div class="metric-value" id="file-count">0</div>
-                                    <div class="metric-label">Files</div>
-                                </div>
-                                <div class="metric-card">
-                                    <i class="fas fa-code"></i>
-                                    <div class="metric-value" id="line-count">0</div>
-                                    <div class="metric-label">Lines of Code</div>
-                                </div>
-                                <div class="metric-card">
-                                    <i class="fas fa-language"></i>
-                                    <div class="metric-value" id="language-count">0</div>
-                                    <div class="metric-label">Languages</div>
-                                </div>
-                                <div class="metric-card">
-                                    <i class="fas fa-star"></i>
-                                    <div class="metric-value" id="quality-score">0</div>
-                                    <div class="metric-label">Quality Score</div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Project Structure -->
                         <div class="structure-section">
                             <h3>📁 Project Structure</h3>
                             <div id="file-tree" class="file-tree"></div>
-                        </div>
-
-                        <!-- Live Preview Section -->
-                        <div class="preview-section" id="preview-section" style="display: none;">
-                            <div class="preview-header">
-                                <h3>🖥️ Live Preview</h3>
-                                <div class="preview-controls">
-                                    <button class="preview-btn" id="refresh-preview">
-                                        🔄 Refresh
-                                    </button>
-                                    <button class="preview-btn" id="fullscreen-preview">
-                                        ⛶ Fullscreen
-                                    </button>
-                                    <select id="device-selector" class="device-selector">
-                                        <option value="desktop">💻 Desktop</option>
-                                        <option value="tablet">📱 Tablet</option>
-                                        <option value="mobile">📱 Mobile</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="preview-container" id="preview-container">
-                                <div class="device-frame" id="device-frame">
-                                    <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Generated Files -->

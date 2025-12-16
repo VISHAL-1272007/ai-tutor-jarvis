@@ -43,7 +43,6 @@ const newProjectBtn = document.getElementById('new-project-btn');
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
-    setupTechStackButtons();
     loadProjectTemplates();
     loadProjectHistory();
     console.log('🤖 JARVIS Project Generator initialized');
@@ -57,31 +56,17 @@ function setupEventListeners() {
     newProjectBtn.addEventListener('click', resetGenerator);
 
     // New Feature Buttons
-    document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
     document.getElementById('templates-btn')?.addEventListener('click', openTemplatesModal);
     document.getElementById('history-btn')?.addEventListener('click', openHistoryModal);
-    document.getElementById('voice-input-btn')?.addEventListener('click', startVoiceInput);
     document.getElementById('explain-btn')?.addEventListener('click', explainCode);
     document.getElementById('optimize-btn')?.addEventListener('click', optimizeCode);
     document.getElementById('export-btn')?.addEventListener('click', openExportModal);
-    copyBtn.addEventListener('click', copyAllCode);
-    newProjectBtn.addEventListener('click', resetGenerator);
 
     // Enter key to generate
     projectIdea.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'Enter') {
             generateProject();
         }
-    });
-}
-
-// Setup Tech Stack Selection
-function setupTechStackButtons() {
-    const techButtons = document.querySelectorAll('.tech-btn');
-    techButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            btn.classList.toggle('selected');
-        });
     });
 }
 
@@ -102,9 +87,9 @@ async function generateProject() {
     showLoading(true);
 
     try {
-        // Get selected tech stack
-        const selectedTech = Array.from(document.querySelectorAll('.tech-btn.selected'))
-            .map(btn => btn.textContent.trim());
+        // Get selected tech stack from dropdown
+        const techStackSelect = document.getElementById('tech-stack');
+        const selectedTech = techStackSelect ? [techStackSelect.value] : ['auto'];
 
         // Get selected features
         const features = {
@@ -152,6 +137,8 @@ CRITICAL REQUIREMENTS:
 8. ✅ Make it visually appealing with professional styling
 9. ✅ Ensure cross-browser compatibility
 10. ✅ All code must be ready to run without modifications
+11. ✅ ALWAYS include JavaScript file (script.js or app.js) with COMPLETE working code - NEVER skip JavaScript
+12. ✅ For web projects: MUST include index.html, styles.css, AND script.js (all three files are MANDATORY)
 
 CODE QUALITY STANDARDS:
 - Use semantic HTML5 elements
@@ -286,6 +273,13 @@ SETUP_INSTRUCTIONS:
 5. [IF static HTML] Open index.html in browser or use Live Server
 6. The application is now running and fully functional
 
+⚠️ CRITICAL REMINDER:
+- For web projects: MUST provide index.html, styles.css, AND script.js (ALL THREE FILES)
+- JavaScript file is MANDATORY for interactive features
+- Every file must have COMPLETE, working code
+- NO placeholders, NO TODOs, NO incomplete functions
+- Code must run immediately without modifications
+
 REMEMBER: Every line of code must be COMPLETE and FUNCTIONAL. This code will be used immediately without any modifications. Make it PRODUCTION-READY!`
             })
         });
@@ -308,16 +302,6 @@ REMEMBER: Every line of code must be COMPLETE and FUNCTIONAL. This code will be 
         displayProject(currentProject);
 
         // Award XP for generating project
-        if (typeof window.addXP === 'function') {
-            window.addXP(50, 'Generated a project');
-
-            // Check for project starter badge
-            if (typeof window.unlockBadge === 'function') {
-                window.unlockBadge('project_starter');
-            }
-        }
-
-        showLoading(false);
         if (typeof window.addXP === 'function') {
             window.addXP(50, 'Generated a project');
 
@@ -477,20 +461,11 @@ function displayProject(project) {
     outputSection.style.display = 'block';
     outputSection.scrollIntoView({ behavior: 'smooth' });
 
-    // Calculate and display metrics
-    calculateMetrics(project);
-
     // Save to history
     saveToHistory(project);
 
     // Display file tree
     fileTree.innerHTML = `<pre>${escapeHtml(project.structure)}</pre>`;
-
-    // Check if project can be previewed
-    const canPreview = checkIfPreviewable(project.files);
-    if (canPreview) {
-        showLivePreview(project.files);
-    }
 
     // Display files - ALL EXPANDED BY DEFAULT
     filesSection.innerHTML = '<h3 style="margin-bottom: 20px;">💻 All Project Files (Click file name to collapse)</h3>';
@@ -527,6 +502,12 @@ function showLivePreview(files) {
     const deviceSelector = document.getElementById('device-selector');
     const refreshBtn = document.getElementById('refresh-preview');
     const fullscreenBtn = document.getElementById('fullscreen-preview');
+    
+    // Check if preview elements exist
+    if (!previewSection || !previewFrame) {
+        console.log('Preview section not available');
+        return;
+    }
     
     // Show preview section
     previewSection.style.display = 'block';
@@ -1030,10 +1011,16 @@ function calculateMetrics(project) {
     const languages = [...new Set(project.files.map(f => f.language))];
     const qualityScore = Math.min(100, Math.floor((fileCount * 10) + (totalLines / 100) + (languages.length * 5)));
 
-    document.getElementById('file-count').textContent = fileCount;
-    document.getElementById('line-count').textContent = totalLines.toLocaleString();
-    document.getElementById('language-count').textContent = languages.length;
-    document.getElementById('quality-score').textContent = qualityScore + '%';
+    // Only update if elements exist
+    const fileCountEl = document.getElementById('file-count');
+    const lineCountEl = document.getElementById('line-count');
+    const languageCountEl = document.getElementById('language-count');
+    const qualityScoreEl = document.getElementById('quality-score');
+    
+    if (fileCountEl) fileCountEl.textContent = fileCount;
+    if (lineCountEl) lineCountEl.textContent = totalLines.toLocaleString();
+    if (languageCountEl) languageCountEl.textContent = languages.length;
+    if (qualityScoreEl) qualityScoreEl.textContent = qualityScore + '%';
 }
 
 // Save to History

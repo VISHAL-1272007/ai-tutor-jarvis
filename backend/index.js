@@ -627,6 +627,43 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             });
         }
 
+        // Check if image generation is needed
+        const imageKeywords = [
+            'draw', 'create image', 'generate image', 'make image', 'show image',
+            'picture of', 'photo of', 'illustration of', 'diagram of', 'sketch',
+            'visualize', 'design', 'artwork', 'create a picture', 'generate a picture',
+            'make a drawing', 'show me a', 'create visual', 'generate visual'
+        ];
+        const needsImage = imageKeywords.some(keyword => lowerQuestion.includes(keyword));
+
+        // Generate image if requested
+        if (needsImage) {
+            console.log('🎨 Image generation requested...');
+            try {
+                // Extract the prompt (remove the command words)
+                let imagePrompt = question;
+                imageKeywords.forEach(keyword => {
+                    imagePrompt = imagePrompt.replace(new RegExp(keyword, 'gi'), '').trim();
+                });
+                
+                // Call image generation API
+                const encodedPrompt = encodeURIComponent(imagePrompt || question);
+                const seed = Date.now();
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux&seed=${seed}`;
+                
+                console.log('✅ Image generated successfully!');
+                return res.json({
+                    answer: `🎨 **Image Generated!**\n\n![${imagePrompt}](${imageUrl})\n\n**Prompt:** ${imagePrompt}\n\n*Generated using Pollinations AI (Flux Model)*`,
+                    imageUrl: imageUrl,
+                    imageGenerated: true,
+                    prompt: imagePrompt
+                });
+            } catch (imageError) {
+                console.error('❌ Image generation failed:', imageError.message);
+                // Continue to regular response if image fails
+            }
+        }
+
         // Check if web search is needed
         const searchKeywords = [
             'latest', 'current', 'today', 'now', 'recent', 'news', 'weather',
