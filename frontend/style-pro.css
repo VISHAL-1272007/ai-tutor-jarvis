@@ -2142,3 +2142,42 @@ textarea::placeholder {
         text-align: center;
     }
 }
+
+/* ===== LOAD MORE BUTTON (Pagination) ===== */
+.load-more-btn {
+    width: 100%;
+    padding: 12px 20px;
+    margin-top: 12px;
+    background: linear-gradient(135deg, var(--bg-elevated), var(--bg-tertiary));
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all var(--transition-fast);
+}
+
+.load-more-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary-500);
+    color: var(--primary-400);
+    transform: translateY(-1px);
+}
+
+.load-more-btn:active {
+    transform: translateY(0);
+}
+
+.load-more-btn i {
+    animation: bounceDown 1.5s infinite;
+}
+
+@keyframes bounceDown {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
+}

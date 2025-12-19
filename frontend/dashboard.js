@@ -1,7 +1,69 @@
 // ===== JARVIS SMART LEARNING DASHBOARD =====
 // Gamification system with XP, levels, badges, skill tree, and leaderboard
+// OPTIMIZED: Uses caching + pagination to save Firebase quota (30,000 users)
 
-import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, getDocs } from './firebase-config.js';
+import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, getDocs, startAfter } from './firebase-config.js';
+
+// ===== CACHE CONFIG (Optimized for 30,000 users) =====
+const CACHE_CONFIG = {
+    LEADERBOARD_KEY: 'jarvis_leaderboard_cache',
+    USER_DATA_KEY: 'jarvis_user_data_cache',
+    CACHE_DURATION: 5 * 60 * 1000, // 5 minutes cache
+};
+
+// ===== PAGINATION CONFIG =====
+const LEADERBOARD_PAGE_SIZE = 10;
+let lastLeaderboardDoc = null;
+let isLoadingMore = false;
+
+// ===== CACHE HELPER FUNCTIONS =====
+function getFromCache(key) {
+    try {
+        const cached = localStorage.getItem(key);
+        if (!cached) return null;
+        
+        const { data, timestamp } = JSON.parse(cached);
+        const isExpired = Date.now() - timestamp > CACHE_CONFIG.CACHE_DURATION;
+        
+        if (isExpired) {
+            localStorage.removeItem(key);
+            console.log(`🗑️ Cache expired: ${key}`);
+            return null;
+        }
+        
+        console.log(`⚡ Loading from cache: ${key}`);
+        return data;
+    } catch (error) {
+        console.error('Cache read error:', error);
+        return null;
+    }
+}
+
+function saveToCache(key, data) {
+    try {
+        const cacheObject = {
+            data: data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(key, JSON.stringify(cacheObject));
+        console.log(`💾 Saved to cache: ${key}`);
+    } catch (error) {
+        console.error('Cache write error:', error);
+        // If localStorage is full, clear old caches
+        if (error.name === 'QuotaExceededError') {
+            clearOldCaches();
+        }
+    }
+}
+
+function clearOldCaches() {
+    Object.values(CACHE_CONFIG).forEach(key => {
+        if (typeof key === 'string') {
+            localStorage.removeItem(key);
+        }
+    });
+    console.log('🧹 Cleared old caches');
+}
 
 let currentUser = null;
 let userData = null;
@@ -69,9 +131,22 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// Load User Data
-async function loadUserData() {
+// Load User Data (with Caching - Optimized for speed)
+async function loadUserData(forceRefresh = false) {
     try {
+        // --- STEP 1: CHECK CACHE FIRST ---
+        const cacheKey = `${CACHE_CONFIG.USER_DATA_KEY}_${currentUser.uid}`;
+        if (!forceRefresh) {
+            const cachedUserData = getFromCache(cacheKey);
+            if (cachedUserData) {
+                console.log('⚡ User data loaded from cache');
+                userData = cachedUserData;
+                return;
+            }
+        }
+
+        // --- STEP 2: FETCH FROM DATABASE ---
+        console.log('📡 Fetching user data from Firebase...');
         const docRef = doc(db, 'users', currentUser.uid);
         const docSnap = await getDoc(docRef);
 
@@ -95,6 +170,9 @@ async function loadUserData() {
             };
             await setDoc(docRef, userData);
         }
+
+        // --- STEP 3: SAVE TO CACHE ---
+        saveToCache(cacheKey, userData);
 
         // Update streak
         await updateStreak();
@@ -368,41 +446,114 @@ function renderActivityChart() {
     });
 }
 
-// Render Leaderboard
-async function renderLeaderboard() {
+// Render Leaderboard (with Caching + Pagination - Query Optimization)
+// Saves Firebase quota by caching results and limiting queries
+async function renderLeaderboard(loadMore = false, forceRefresh = false) {
     const leaderboard = document.getElementById('leaderboard');
-    leaderboard.innerHTML = '';
+    
+    // --- STEP 1: CHECK CACHE FIRST (if not loading more) ---
+    if (!loadMore && !forceRefresh) {
+        const cachedLeaderboard = getFromCache(CACHE_CONFIG.LEADERBOARD_KEY);
+        if (cachedLeaderboard) {
+            console.log('⚡ Leaderboard loaded from cache (saving Firebase quota)');
+            renderLeaderboardEntries(leaderboard, cachedLeaderboard, 1);
+            return;
+        }
+    }
+    
+    // Reset if not loading more
+    if (!loadMore) {
+        leaderboard.innerHTML = '';
+        lastLeaderboardDoc = null;
+    }
+
+    // Remove existing load more button
+    const existingBtn = document.getElementById('loadMoreBtn');
+    if (existingBtn) existingBtn.remove();
 
     try {
-        const q = query(collection(db, 'users'), orderBy('xp', 'desc'), limit(10));
+        // --- STEP 2: OPTIMIZED QUERY WITH LIMIT (saves Firebase quota) ---
+        console.log('📡 Fetching from Firebase Database...');
+        let q;
+        if (loadMore && lastLeaderboardDoc) {
+            // Pagination: Start after last document
+            q = query(
+                collection(db, 'users'), 
+                orderBy('xp', 'desc'), 
+                startAfter(lastLeaderboardDoc),
+                limit(LEADERBOARD_PAGE_SIZE)
+            );
+        } else {
+            // First page - only fetch 10 users (not all 30,000!)
+            q = query(
+                collection(db, 'users'), 
+                orderBy('xp', 'desc'), 
+                limit(LEADERBOARD_PAGE_SIZE)
+            );
+        }
+        
         const snapshot = await getDocs(q);
-        let rank = 1;
+        
+        // Track last document for pagination
+        const docs = snapshot.docs;
+        if (docs.length > 0) {
+            lastLeaderboardDoc = docs[docs.length - 1];
+        }
+        
+        // Convert to array for caching
+        const leaderboardData = docs.map(docSnap => ({
+            id: docSnap.id,
+            ...docSnap.data()
+        }));
+        
+        // --- STEP 3: SAVE TO CACHE (for instant load next time) ---
+        if (!loadMore) {
+            saveToCache(CACHE_CONFIG.LEADERBOARD_KEY, leaderboardData);
+        }
+        
+        // Calculate starting rank
+        const existingEntries = leaderboard.querySelectorAll('.leaderboard-entry').length;
+        renderLeaderboardEntries(leaderboard, leaderboardData, existingEntries + 1);
 
-        snapshot.forEach(docSnap => {
-            const user = docSnap.data();
-            const isCurrentUser = docSnap.id === currentUser.uid;
-
-            const entry = document.createElement('div');
-            entry.className = `leaderboard-entry ${rank <= 3 ? `top-${rank}` : ''}`;
-            entry.innerHTML = `
-                <div class="leaderboard-rank">${rank}</div>
-                <div class="leaderboard-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="leaderboard-info">
-                    <div class="leaderboard-name">${user.displayName || 'Anonymous'} ${isCurrentUser ? '(You)' : ''}</div>
-                    <div class="leaderboard-title">${LEVEL_CONFIG[user.level]?.title || 'Beginner'}</div>
-                </div>
-                <div class="leaderboard-xp">${user.xp} XP</div>
-            `;
-
-            leaderboard.appendChild(entry);
-            rank++;
-        });
+        // Add "Load More" button if there might be more data
+        if (docs.length === LEADERBOARD_PAGE_SIZE) {
+            const loadMoreBtn = document.createElement('button');
+            loadMoreBtn.id = 'loadMoreBtn';
+            loadMoreBtn.className = 'load-more-btn';
+            loadMoreBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Load More';
+            loadMoreBtn.onclick = () => renderLeaderboard(true);
+            leaderboard.appendChild(loadMoreBtn);
+        }
 
     } catch (error) {
         console.error('Error loading leaderboard:', error);
     }
+}
+
+// Helper function to render leaderboard entries
+function renderLeaderboardEntries(container, users, startRank) {
+    let rank = startRank;
+    
+    users.forEach(user => {
+        const isCurrentUser = currentUser && user.id === currentUser.uid;
+
+        const entry = document.createElement('div');
+        entry.className = `leaderboard-entry ${rank <= 3 ? `top-${rank}` : ''}`;
+        entry.innerHTML = `
+            <div class="leaderboard-rank">${rank}</div>
+            <div class="leaderboard-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="leaderboard-info">
+                <div class="leaderboard-name">${user.displayName || 'Anonymous'} ${isCurrentUser ? '(You)' : ''}</div>
+                <div class="leaderboard-title">${LEVEL_CONFIG[user.level]?.title || 'Beginner'}</div>
+            </div>
+            <div class="leaderboard-xp">${user.xp?.toLocaleString() || 0} XP</div>
+        `;
+
+        container.appendChild(entry);
+        rank++;
+    });
 }
 
 // Show Achievement Notification
