@@ -617,28 +617,40 @@ function speak(text) {
 
 // ===== Event Listeners =====
 function setupEventListeners() {
-    // Brain button for voice activation
+    // Brain button - Opens command/new chat (Ctrl+K functionality)
     const brainBtn = document.getElementById('brainBtn');
     if (brainBtn) {
         brainBtn.addEventListener('click', () => {
-            if (elements.micBtn) {
-                elements.micBtn.click();
-            } else if (isListening) {
-                recognition.stop();
-            } else {
-                startListening();
+            // Start new chat and focus on input
+            startNewChat();
+            
+            // Focus on message input with animation
+            if (elements.messageInput) {
+                elements.messageInput.focus();
+                elements.messageInput.placeholder = "✨ Ask JARVIS anything...";
+                
+                // Add pulse animation to input
+                elements.messageInput.style.animation = 'inputPulse 0.5s ease';
+                setTimeout(() => {
+                    elements.messageInput.style.animation = '';
+                }, 500);
             }
+            
+            // Show visual feedback on brain button
+            brainBtn.classList.add('active');
+            setTimeout(() => brainBtn.classList.remove('active'), 300);
         });
     }
 
-    // Ctrl+K keyboard shortcut for voice
+    // Ctrl+K keyboard shortcut - same as brain button
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'k') {
             e.preventDefault();
             if (brainBtn) {
                 brainBtn.click();
-            } else if (elements.micBtn) {
-                elements.micBtn.click();
+            } else {
+                startNewChat();
+                if (elements.messageInput) elements.messageInput.focus();
             }
         }
     });
