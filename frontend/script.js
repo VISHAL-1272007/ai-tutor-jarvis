@@ -617,23 +617,17 @@ function speak(text) {
 
 // ===== Event Listeners =====
 function setupEventListeners() {
-    // Brain button - Opens command/new chat (Ctrl+K functionality)
+    // Brain button - Triggers Voice Recognition (Ctrl+K)
     const brainBtn = document.getElementById('brainBtn');
     if (brainBtn) {
         brainBtn.addEventListener('click', () => {
-            // Start new chat and focus on input
-            startNewChat();
-            
-            // Focus on message input with animation
-            if (elements.messageInput) {
-                elements.messageInput.focus();
-                elements.messageInput.placeholder = "✨ Ask JARVIS anything...";
-                
-                // Add pulse animation to input
-                elements.messageInput.style.animation = 'inputPulse 0.5s ease';
-                setTimeout(() => {
-                    elements.messageInput.style.animation = '';
-                }, 500);
+            // Toggle voice recognition
+            if (isListening) {
+                // Stop listening
+                if (recognition) recognition.stop();
+            } else {
+                // Start listening
+                startListening();
             }
             
             // Show visual feedback on brain button
@@ -642,15 +636,21 @@ function setupEventListeners() {
         });
     }
 
-    // Ctrl+K keyboard shortcut - same as brain button
+    // Ctrl+K keyboard shortcut - Voice Recognition
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'k') {
             e.preventDefault();
-            if (brainBtn) {
-                brainBtn.click();
+            // Toggle voice recognition
+            if (isListening) {
+                if (recognition) recognition.stop();
             } else {
-                startNewChat();
-                if (elements.messageInput) elements.messageInput.focus();
+                startListening();
+            }
+            
+            // Trigger brain button animation
+            if (brainBtn) {
+                brainBtn.classList.add('active');
+                setTimeout(() => brainBtn.classList.remove('active'), 300);
             }
         }
     });
