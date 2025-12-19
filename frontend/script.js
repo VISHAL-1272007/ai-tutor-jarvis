@@ -1,5 +1,5 @@
 // ===== Firebase Integration =====
-import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signOut, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc } from './firebase-config.js';
+import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signOut, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, getDoc, setDoc, limit } from './firebase-config.js';
 import { getBackendURL } from './config.js';
 
 // ===== Configuration =====
@@ -9,6 +9,10 @@ const API_URL = `${BACKEND_BASE_URL}/ask`;
 const MAX_CHARS = 2000;
 let isBackendReady = false;
 let backendWakeupAttempts = 0;
+
+// ===== Chat History Cache Config =====
+const CHAT_CACHE_KEY = 'jarvis_chat_history_cache';
+const CHAT_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // ===== Firebase User State =====
 let currentUser = null;
@@ -109,7 +113,7 @@ function init() {
     wakeUpBackend();
 
     // Listen to Firebase Auth state (optional login)
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         // console.log('🔐 Auth state changed:', user ? 'Logged in' : 'Guest mode');
 
         const signinBtnModal = document.getElementById('signinBtnModal');
@@ -124,6 +128,9 @@ function init() {
             // console.log('✅ Logged in as:', user.displayName || user.email);
             updateGuestLimitUI(false);
             unlockChat(); // Unlock chat when user signs in
+
+            // 🔥 Load chat history from Firebase for this user
+            await loadChatHistoryFromFirebase();
 
             // Update sidebar account button
             if (accountBtnText) {
@@ -141,11 +148,15 @@ function init() {
             }
             if (signinLink) signinLink.style.display = 'none';
         } else {
-            // Guest mode
+            // Guest mode - use localStorage only
             // console.log('👤 Guest mode - You can use the app without signing in');
             currentUser = null;
             guestPromptCount = parseInt(localStorage.getItem('guestPromptCount')) || 0;
             updateGuestLimitUI(true);
+            
+            // Load chat history from localStorage for guests
+            chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            loadChatHistoryUI();
 
             // Update sidebar account button
             if (accountBtnText) {
@@ -1171,7 +1182,104 @@ function speakMessage(btn) {
     speak(text);
 }
 
-// ===== Chat History Management =====
+// ===== Chat History Management (Firebase + Local Storage) =====
+
+// Load chat history from Firebase (for logged-in users)
+async function loadChatHistoryFromFirebase() {
+    if (!currentUser) {
+        chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+        loadChatHistoryUI();
+        return;
+    }
+
+    try {
+        // Check cache first
+        const cacheKey = `${CHAT_CACHE_KEY}_${currentUser.uid}`;
+        const cached = localStorage.getItem(cacheKey);
+        
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (Date.now() - timestamp < CHAT_CACHE_DURATION) {
+                console.log('⚡ Chat history loaded from cache');
+                chatHistory = data;
+                loadChatHistoryUI();
+                return;
+            }
+        }
+
+        // Fetch from Firebase with limit (optimize query)
+        console.log('📡 Loading chat history from Firebase...');
+        const chatsRef = collection(db, 'users', currentUser.uid, 'chats');
+        const q = query(chatsRef, orderBy('timestamp', 'desc'), limit(20));
+        const snapshot = await getDocs(q);
+
+        chatHistory = [];
+        snapshot.forEach(doc => {
+            chatHistory.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Save to cache
+        localStorage.setItem(cacheKey, JSON.stringify({
+            data: chatHistory,
+            timestamp: Date.now()
+        }));
+
+        console.log(`✅ Loaded ${chatHistory.length} chats from Firebase`);
+        loadChatHistoryUI();
+
+    } catch (error) {
+        console.error('Error loading chat history from Firebase:', error);
+        // Fallback to localStorage
+        chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+        loadChatHistoryUI();
+    }
+}
+
+// Save chat to Firebase (for logged-in users)
+async function saveChatToFirebase(chatData) {
+    if (!currentUser) return;
+
+    try {
+        const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatData.id);
+        await setDoc(chatRef, {
+            title: chatData.title,
+            timestamp: chatData.timestamp,
+            messages: chatData.messages,
+            updatedAt: Date.now()
+        });
+
+        // Update cache
+        const cacheKey = `${CHAT_CACHE_KEY}_${currentUser.uid}`;
+        localStorage.setItem(cacheKey, JSON.stringify({
+            data: chatHistory,
+            timestamp: Date.now()
+        }));
+
+        console.log('💾 Chat saved to Firebase');
+    } catch (error) {
+        console.error('Error saving chat to Firebase:', error);
+    }
+}
+
+// Delete chat from Firebase
+async function deleteChatFromFirebase(chatId) {
+    if (!currentUser) return;
+
+    try {
+        const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatId);
+        await deleteDoc(chatRef);
+        
+        // Update cache
+        const cacheKey = `${CHAT_CACHE_KEY}_${currentUser.uid}`;
+        localStorage.removeItem(cacheKey);
+        
+        console.log('🗑️ Chat deleted from Firebase');
+    } catch (error) {
+        console.error('Error deleting chat from Firebase:', error);
+    }
+}
+
+// Save current chat (updated to use Firebase)
 function saveCurrentChat() {
     if (!currentChatId || currentChatMessages.length === 0) return;
 
@@ -1194,7 +1302,14 @@ function saveCurrentChat() {
     // Limit history size
     if (chatHistory.length > 20) chatHistory.pop();
 
+    // Save to localStorage (backup for guests)
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+    
+    // Save to Firebase (for logged-in users)
+    if (currentUser) {
+        saveChatToFirebase(chatData);
+    }
+    
     loadChatHistoryUI();
 }
 
@@ -1257,6 +1372,12 @@ function deleteChat(chatId, event) {
     if (confirm('Delete this chat?')) {
         chatHistory = chatHistory.filter(c => c.id !== chatId);
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+        
+        // Delete from Firebase (for logged-in users)
+        if (currentUser) {
+            deleteChatFromFirebase(chatId);
+        }
+        
         loadChatHistoryUI();
         if (currentChatId === chatId) {
             startNewChat();
