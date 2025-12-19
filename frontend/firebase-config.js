@@ -18,11 +18,18 @@ const firebaseConfig = {
 // 1. Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// 2. Initialize App Check with reCAPTCHA v3 (Security against bots & abuse)
-const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('6LeNzDAsAAAAADvtTT8tJds8ksN2Lqym-sYGi5UM'),
-  isTokenAutoRefreshEnabled: true
-});
+// 2. Initialize App Check with reCAPTCHA v3 (Optional - won't break app if fails)
+let appCheck = null;
+try {
+  appCheck = initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LeNzDAsAAAAADvtTT8tJds8ksN2Lqym-sYGi5UM'),
+    isTokenAutoRefreshEnabled: true
+  });
+  console.log('✅ App Check initialized');
+} catch (error) {
+  console.warn('⚠️ App Check initialization skipped:', error.message);
+  // App will continue to work without App Check
+}
 
 // 3. Initialize Firebase Services
 const auth = getAuth(app);
