@@ -930,11 +930,46 @@ async function sendMessage() {
             showBackendStatus('Waking up JARVIS... This may take 30-60 seconds on first use.', 'loading');
         }
 
-        // Add mode context to the request
+        // 🧠 JARVIS 5.2: Advanced Mode Context with Chain-of-Thought
         const modeContext = {
-            chat: 'You are JARVIS, a friendly and helpful AI assistant. Engage in natural conversation and provide helpful, clear answers.',
-            tutor: 'You are JARVIS, an expert tutor. Explain concepts clearly, break down complex topics, provide examples, and help users learn step by step.',
-            code: 'You are JARVIS, an expert programming assistant. Help with coding problems, provide code examples with explanations, debug errors, and suggest optimizations. Format code properly with syntax highlighting.'
+            chat: `You are JARVIS 5.2, an advanced AI assistant with superior reasoning capabilities.
+
+🎯 Your approach:
+1. Understand the user's intent deeply
+2. Think through the problem step by step
+3. Provide clear, actionable responses
+4. Be conversational yet professional
+
+💡 Style: Friendly, helpful, and comprehensive. Use markdown for better readability.`,
+
+            tutor: `You are JARVIS 5.2, an expert educational tutor with mastery across all subjects.
+
+🎓 Your teaching method:
+1. Assess the student's understanding level
+2. Break complex topics into digestible parts  
+3. Use analogies and real-world examples
+4. Provide practice problems when relevant
+5. Encourage and motivate the learner
+
+📚 Remember: Great teachers don't just give answers - they help students discover understanding.`,
+
+            code: `You are JARVIS 5.2, a senior software architect with 20+ years of experience.
+
+💻 Your expertise:
+- All programming languages and frameworks
+- System design and architecture
+- Best practices and design patterns
+- Debugging and optimization
+- Clean code principles
+
+📋 Response format:
+1. Understand the problem/requirement
+2. Explain your approach
+3. Provide well-commented code
+4. Include edge case handling
+5. Suggest improvements and alternatives
+
+🔥 Code quality matters: Always write production-ready, maintainable code.`
         };
 
         // Send only last 5 messages as context to keep requests small
@@ -980,6 +1015,11 @@ async function sendMessage() {
             // Add AI message to UI and context
             await addMessageWithTypingEffect(answerWithEmoji, 'ai');
             currentChatMessages.push({ role: 'assistant', content: answerWithEmoji });
+
+            // 🧠 JARVIS 5.2: Add smart follow-up suggestion buttons
+            if (data.followUpSuggestions && data.followUpSuggestions.length > 0) {
+                addFollowUpButtons(data.followUpSuggestions);
+            }
 
             // Speak the response
             speak(data.answer);
@@ -1141,11 +1181,15 @@ function showTypingIndicator() {
         <div class="message-header">
             <div class="avatar ai">🤖</div>
             <div class="message-info">
-                <div class="message-sender">JARVIS AI</div>
+                <div class="message-sender">
+                    JARVIS AI
+                    <span class="jarvis-badge">5.2</span>
+                </div>
             </div>
         </div>
         <div class="message-content">
             <div class="typing-indicator">
+                <span class="thinking-text">🧠 Thinking...</span>
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
@@ -1160,6 +1204,51 @@ function removeTypingIndicator() {
     const indicator = document.querySelector('.typing-message');
     if (indicator) indicator.remove();
 }
+
+// ===== 🧠 JARVIS 5.2: Smart Follow-up Suggestions =====
+function addFollowUpButtons(suggestions) {
+    // Remove any existing follow-up buttons
+    const existing = document.querySelector('.follow-up-container');
+    if (existing) existing.remove();
+    
+    const container = document.createElement('div');
+    container.className = 'follow-up-container';
+    container.innerHTML = `
+        <div class="follow-up-label">💡 Quick Follow-ups:</div>
+        <div class="follow-up-buttons">
+            ${suggestions.map(s => `
+                <button class="follow-up-btn" onclick="askFollowUp('${s.replace(/'/g, "\\'")}')">
+                    ${s}
+                </button>
+            `).join('')}
+        </div>
+    `;
+    
+    elements.messagesArea.appendChild(container);
+    scrollToBottom();
+    
+    // Auto-remove after 30 seconds
+    setTimeout(() => {
+        if (container && container.parentNode) {
+            container.style.opacity = '0';
+            setTimeout(() => container.remove(), 300);
+        }
+    }, 30000);
+}
+
+// Handle follow-up button click
+function askFollowUp(question) {
+    // Remove follow-up buttons
+    const container = document.querySelector('.follow-up-container');
+    if (container) container.remove();
+    
+    // Set the question and send
+    elements.messageInput.value = question;
+    sendMessage();
+}
+
+// Make askFollowUp available globally
+window.askFollowUp = askFollowUp;
 
 // ===== Copy & Speak Functions =====
 function copyMessage(btn) {

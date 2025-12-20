@@ -16,6 +16,147 @@ if (process.env.GEMINI_API_KEY) {
     console.log('✅ Google Gemini initialized as backup');
 }
 
+// ===== JARVIS 5.2 ADVANCED AI ENGINE =====
+console.log('🧠 Initializing JARVIS 5.2 Advanced AI Engine...');
+
+// Expert Personas for specialized responses
+const EXPERT_PERSONAS = {
+    coding: {
+        name: 'Senior Software Architect',
+        expertise: 'Full-stack development, system design, algorithms, debugging',
+        style: 'Technical, precise, with code examples and best practices'
+    },
+    math: {
+        name: 'Mathematics Professor',
+        expertise: 'Calculus, algebra, statistics, proofs, problem-solving',
+        style: 'Step-by-step solutions with clear explanations'
+    },
+    science: {
+        name: 'Research Scientist',
+        expertise: 'Physics, chemistry, biology, scientific method',
+        style: 'Evidence-based, detailed explanations with real-world applications'
+    },
+    writing: {
+        name: 'Creative Writing Expert',
+        expertise: 'Essays, stories, grammar, style, persuasion',
+        style: 'Eloquent, creative, with examples and improvements'
+    },
+    business: {
+        name: 'Business Strategist',
+        expertise: 'Strategy, marketing, finance, entrepreneurship',
+        style: 'Professional, actionable insights with case studies'
+    },
+    general: {
+        name: 'Knowledge Expert',
+        expertise: 'General knowledge, research, analysis',
+        style: 'Clear, comprehensive, well-structured'
+    }
+};
+
+// Detect query type for expert routing
+function detectQueryType(question) {
+    const q = question.toLowerCase();
+    
+    // Coding patterns
+    if (/\b(code|program|function|api|debug|error|javascript|python|java|html|css|react|node|sql|algorithm|data structure|git|deploy)\b/.test(q)) {
+        return 'coding';
+    }
+    // Math patterns
+    if (/\b(calculate|solve|equation|math|algebra|calculus|integral|derivative|probability|statistics|formula|theorem|proof)\b/.test(q)) {
+        return 'math';
+    }
+    // Science patterns
+    if (/\b(physics|chemistry|biology|atom|molecule|cell|energy|force|reaction|experiment|theory|hypothesis|scientific)\b/.test(q)) {
+        return 'science';
+    }
+    // Writing patterns
+    if (/\b(write|essay|story|grammar|paragraph|sentence|creative|poem|article|blog|edit|proofread)\b/.test(q)) {
+        return 'writing';
+    }
+    // Business patterns
+    if (/\b(business|startup|marketing|strategy|investment|finance|revenue|profit|customer|market|entrepreneur)\b/.test(q)) {
+        return 'business';
+    }
+    return 'general';
+}
+
+// Generate Chain-of-Thought reasoning prompt
+function generateCoTPrompt(question, queryType, conversationHistory) {
+    const persona = EXPERT_PERSONAS[queryType];
+    const historyContext = conversationHistory?.length > 0 
+        ? `\n\nPrevious conversation context:\n${conversationHistory.slice(-6).map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}` 
+        : '';
+    
+    return `You are JARVIS 5.2 - an advanced AI assistant with the expertise of a ${persona.name}.
+
+🧠 **Your Capabilities:**
+- ${persona.expertise}
+- Deep reasoning and analysis
+- Step-by-step problem solving
+- Real-world practical examples
+
+📋 **Response Style:** ${persona.style}
+
+🎯 **Instructions:**
+1. THINK step-by-step before answering (internal reasoning)
+2. Structure your response clearly with headers/sections
+3. Provide practical examples when helpful
+4. If complex, break down into digestible parts
+5. End with actionable insights or follow-up suggestions
+6. Use emojis sparingly for better readability
+${historyContext}
+
+**Important:** Be confident, accurate, and helpful. If you're not 100% sure, acknowledge it and provide the best possible guidance.`;
+}
+
+// Smart follow-up suggestions generator
+function generateFollowUpSuggestions(question, answer, queryType) {
+    const suggestions = {
+        coding: [
+            'How can I optimize this code?',
+            'What are the best practices for this?',
+            'Can you explain the time complexity?',
+            'How do I test this implementation?'
+        ],
+        math: [
+            'Can you show another method?',
+            'What are similar problems?',
+            'How is this applied in real life?',
+            'Can you verify this step-by-step?'
+        ],
+        science: [
+            'What experiments demonstrate this?',
+            'How does this relate to other concepts?',
+            'What are the latest discoveries?',
+            'Can you explain at a deeper level?'
+        ],
+        writing: [
+            'How can I improve the style?',
+            'Can you provide more examples?',
+            'What tone would work better?',
+            'How do I make it more engaging?'
+        ],
+        business: [
+            'What are the potential risks?',
+            'Can you provide case studies?',
+            'What metrics should I track?',
+            'How do I implement this?'
+        ],
+        general: [
+            'Can you elaborate more?',
+            'What are related topics?',
+            'How can I learn more about this?',
+            'What are practical applications?'
+        ]
+    };
+    
+    // Select 2-3 relevant suggestions
+    const typeSuggestions = suggestions[queryType] || suggestions.general;
+    return typeSuggestions.slice(0, 3);
+}
+
+console.log('✅ JARVIS 5.2 Engine ready with expert personas!');
+
 // Initialize multiple AI APIs for load balancing
 const AI_APIS = [
     {
@@ -319,25 +460,29 @@ if (FREE_API_URL) {
     console.log(`🆓 FREE Self-Hosted API: ${FREE_API_URL} (UNLIMITED capacity!)`);
 }
 
-// Helper function to call Groq API with key rotation
+// Helper function to call Groq API with key rotation - JARVIS 5.2 Enhanced
 async function callGroqAPI(messages) {
     const apiKey = getNextGroqKey();
     if (!apiKey) throw new Error('No Groq API keys available');
     
+    // Use the most powerful available model
     const response = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
         {
-            model: 'llama-3.3-70b-versatile',
+            model: 'llama-3.3-70b-versatile', // Most capable model
             messages: messages,
             temperature: 0.7,
-            max_tokens: 2000
+            max_tokens: 4096, // Increased for detailed responses
+            top_p: 0.95,
+            frequency_penalty: 0.1, // Reduce repetition
+            presence_penalty: 0.1   // Encourage diverse responses
         },
         {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
-            timeout: 30000
+            timeout: 45000 // Extended timeout for complex queries
         }
     );
     return response.data?.choices?.[0]?.message?.content;
@@ -702,7 +847,7 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             }
         }
 
-        // Fallback to regular AI response (no web search)
+        // ===== JARVIS 5.2 ADVANCED AI PROCESSING =====
         const apiKey = getNextGroqKey();
 
         if (!apiKey) {
@@ -711,14 +856,19 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             });
         }
 
+        // 🧠 Detect query type for expert routing
+        const queryType = detectQueryType(question);
+        console.log(`🎯 Query type detected: ${queryType.toUpperCase()}`);
+
+        // 🧠 Generate advanced Chain-of-Thought prompt
+        const advancedSystemPrompt = generateCoTPrompt(question, queryType, history);
+        const finalSystemPrompt = systemPrompt || advancedSystemPrompt;
+
         if (process.env.NODE_ENV !== 'production') {
-            console.log('🤖 Asking AI using Groq...');
+            console.log('🤖 JARVIS 5.2 processing with', EXPERT_PERSONAS[queryType].name);
         }
 
-        // Get mode-specific system prompt (from frontend)
-        const finalSystemPrompt = systemPrompt || `You are JARVIS - A friendly and helpful AI assistant.`;
-
-        // Construct messages array with history
+        // Construct messages array with enhanced context
         const messages = [
             {
                 role: 'system',
@@ -845,12 +995,25 @@ I'm having trouble connecting to the AI service right now.
             });
         }
 
-        // Add API source to response (for debugging)
-        if (process.env.NODE_ENV !== 'production') {
-            answer += `\n\n_[Powered by ${usedAPI}]_`;
+        // 🧠 Generate smart follow-up suggestions
+        const followUpSuggestions = generateFollowUpSuggestions(question, answer, queryType);
+        
+        // Add follow-up section to response
+        if (followUpSuggestions.length > 0 && !answer.includes('💡 **Follow-up')) {
+            answer += `\n\n---\n\n💡 **Follow-up Questions:**\n${followUpSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
         }
 
-        res.json({ answer });
+        // Add API source to response (for debugging)
+        if (process.env.NODE_ENV !== 'production') {
+            answer += `\n\n_[JARVIS 5.2 | ${EXPERT_PERSONAS[queryType].name} | ${usedAPI}]_`;
+        }
+
+        res.json({ 
+            answer,
+            queryType,
+            expertMode: EXPERT_PERSONAS[queryType].name,
+            followUpSuggestions
+        });
 
     } catch (error) {
         console.error('❌ ERROR:', error.response?.data || error.message);

@@ -1055,6 +1055,52 @@ body {
     padding: 4px 0;
 }
 
+/* 🧠 JARVIS 5.2 Typing/Thinking Indicator */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.thinking-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary-400);
+    animation: thinkingPulse 2s ease-in-out infinite;
+}
+
+@keyframes thinkingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--primary-500);
+    border-radius: 50%;
+    animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0.32s; }
+.typing-dot:nth-child(4) { animation-delay: 0.48s; }
+
+@keyframes typingBounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-8px);
+        opacity: 1;
+    }
+}
+
 /* Message Wrapper */
 .message-wrapper {
     display: flex;
@@ -2201,4 +2247,123 @@ textarea::placeholder {
 @keyframes bounceDown {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(3px); }
+}
+
+/* ===== 🧠 JARVIS 5.2 - SMART FOLLOW-UP SUGGESTIONS ===== */
+.follow-up-container {
+    padding: 16px 20px;
+    margin: 8px 0 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 16px;
+    animation: slideIn 0.3s ease-out;
+    transition: opacity 0.3s ease;
+}
+
+.follow-up-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-400);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.follow-up-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.follow-up-btn {
+    padding: 10px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-default);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.follow-up-btn:hover {
+    background: var(--primary-500);
+    border-color: var(--primary-500);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.follow-up-btn:active {
+    transform: translateY(0);
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* JARVIS 5.2 Badge */
+.jarvis-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: linear-gradient(135deg, var(--primary-600), #8b5cf6);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Expert Mode Indicator */
+.expert-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--success);
+    margin-left: 8px;
+}
+
+/* Mobile responsiveness for follow-ups */
+@media (max-width: 768px) {
+    .follow-up-container {
+        padding: 12px 16px;
+    }
+    
+    .follow-up-btn {
+        padding: 8px 14px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .follow-up-buttons {
+        flex-direction: column;
+    }
+    
+    .follow-up-btn {
+        width: 100%;
+        text-align: center;
+    }
 }
