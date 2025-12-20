@@ -847,6 +847,12 @@ function setupEventListeners() {
             }
         });
     }
+
+    // ===== MODEL SELECTOR (Gemini-style) =====
+    initModelSelector();
+
+    // ===== PHOTO/CAMERA BUTTONS =====
+    initMediaButtons();
 }
 
 // ===== Send Message =====
@@ -972,9 +978,28 @@ async function sendMessage() {
 🔥 Code quality matters: Always write production-ready, maintainable code.`
         };
 
+        // 🎯 Get model-specific prompt (combines with mode)
+        const modelPrompt = getModelSystemPrompt();
+        const finalPrompt = modelPrompt + '\n\n' + (modeContext[currentMode] || '');
+
         // Send only last 5 messages as context to keep requests small
         // This prevents API failures with long conversation histories
         const recentHistory = currentChatMessages.slice(0, -1).slice(-5); // Last 5 messages before current
+        
+        // Prepare request data
+        const requestData = {
+            question,
+            history: recentHistory,
+            mode: currentMode,
+            model: currentModel, // Send selected model
+            systemPrompt: finalPrompt
+        };
+
+        // Add image if uploaded
+        if (uploadedImage) {
+            requestData.image = uploadedImage;
+            requestData.question = `[Image: ${uploadedImage.name}]\n\n${question || 'Analyze this image'}`;
+        }
         
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for first request
@@ -982,14 +1007,14 @@ async function sendMessage() {
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                question,
-                history: recentHistory, // Send only last 5 messages as context
-                mode: currentMode,
-                systemPrompt: modeContext[currentMode]
-            }),
+            body: JSON.stringify(requestData),
             signal: controller.signal
         });
+
+        // Clear uploaded image after sending
+        if (uploadedImage) {
+            clearUploadedImage();
+        }
 
         clearTimeout(timeout);
         isBackendReady = true;
@@ -1175,6 +1200,21 @@ function copyCodeBlock(btn, codeBlock) {
 
 // ===== Typing Indicator =====
 function showTypingIndicator() {
+    const modelNames = {
+        normal: 'Normal',
+        jarvis52: 'JARVIS 5.2',
+        thinking: 'Thinking',
+        fast: 'Fast',
+        pro: 'Pro'
+    };
+    const modelIcons = {
+        normal: '⚡',
+        jarvis52: '🧠',
+        thinking: '💡',
+        fast: '🚀',
+        pro: '👑'
+    };
+    
     const indicator = document.createElement('div');
     indicator.className = 'message ai typing-message';
     indicator.innerHTML = `
@@ -1183,13 +1223,13 @@ function showTypingIndicator() {
             <div class="message-info">
                 <div class="message-sender">
                     JARVIS AI
-                    <span class="jarvis-badge">5.2</span>
+                    <span class="jarvis-badge">${modelIcons[currentModel] || '🧠'} ${modelNames[currentModel] || '5.2'}</span>
                 </div>
             </div>
         </div>
         <div class="message-content">
             <div class="typing-indicator">
-                <span class="thinking-text">🧠 Thinking...</span>
+                <span class="thinking-text">${currentModel === 'thinking' ? '🤔 Deep thinking...' : '🧠 Processing...'}</span>
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
@@ -1852,6 +1892,253 @@ function hideBackendStatus() {
         setTimeout(() => statusDiv.remove(), 300);
     }
 }
+
+// ===== MODEL SELECTOR (Gemini-style) =====
+let currentModel = 'jarvis52'; // Default model
+let uploadedImage = null; // Store uploaded image
+
+function initModelSelector() {
+    const modelBtns = document.querySelectorAll('.model-btn');
+    
+    modelBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active from all
+            modelBtns.forEach(b => b.classList.remove('active'));
+            // Add active to clicked
+            btn.classList.add('active');
+            // Update current model
+            currentModel = btn.dataset.model;
+            console.log(`🎯 Model switched to: ${currentModel}`);
+            
+            // Update placeholder based on model
+            updateInputPlaceholder();
+            
+            // Show toast notification
+            showModelToast(currentModel);
+        });
+    });
+}
+
+function updateInputPlaceholder() {
+    const input = document.getElementById('messageInput');
+    if (!input) return;
+    
+    const placeholders = {
+        normal: 'Ask anything...',
+        jarvis52: 'Message JARVIS 5.2 (Advanced AI)...',
+        thinking: 'Ask a complex question (Deep Thinking mode)...',
+        fast: 'Quick question? (Fast mode)...',
+        pro: 'Message JARVIS Pro (Maximum capabilities)...'
+    };
+    
+    input.placeholder = placeholders[currentModel] || 'Message JARVIS...';
+}
+
+function showModelToast(model) {
+    const toasts = {
+        normal: { icon: '⚡', name: 'Normal', desc: 'Standard AI responses' },
+        jarvis52: { icon: '🧠', name: 'JARVIS 5.2', desc: 'Advanced reasoning & expert personas' },
+        thinking: { icon: '💡', name: 'Thinking', desc: 'Deep chain-of-thought reasoning' },
+        fast: { icon: '🚀', name: 'Fast', desc: 'Quick, concise responses' },
+        pro: { icon: '👑', name: 'Pro', desc: 'Maximum AI capabilities' }
+    };
+    
+    const toast = toasts[model] || toasts.normal;
+    
+    // Remove existing toast
+    const existing = document.querySelector('.model-toast');
+    if (existing) existing.remove();
+    
+    const toastEl = document.createElement('div');
+    toastEl.className = 'model-toast';
+    toastEl.innerHTML = `
+        <span class="model-toast-icon">${toast.icon}</span>
+        <div class="model-toast-content">
+            <strong>${toast.name}</strong>
+            <span>${toast.desc}</span>
+        </div>
+    `;
+    toastEl.style.cssText = `
+        position: fixed;
+        bottom: 140px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 20px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(139, 92, 246, 0.95));
+        border-radius: 12px;
+        color: white;
+        font-size: 14px;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        z-index: 10000;
+        animation: toastSlideUp 0.3s ease;
+    `;
+    
+    document.body.appendChild(toastEl);
+    
+    setTimeout(() => {
+        toastEl.style.animation = 'toastSlideDown 0.3s ease forwards';
+        setTimeout(() => toastEl.remove(), 300);
+    }, 2000);
+}
+
+// ===== PHOTO/CAMERA BUTTONS =====
+function initMediaButtons() {
+    const photoUploadBtn = document.getElementById('photoUploadBtn');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const photoInput = document.getElementById('photoInput');
+    const cameraInput = document.getElementById('cameraInput');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const removeImageBtn = document.getElementById('removeImageBtn');
+    
+    // Photo upload button
+    if (photoUploadBtn && photoInput) {
+        photoUploadBtn.addEventListener('click', () => {
+            photoInput.click();
+        });
+        
+        photoInput.addEventListener('change', (e) => {
+            handleImageSelect(e.target.files[0]);
+        });
+    }
+    
+    // Camera button
+    if (cameraBtn && cameraInput) {
+        cameraBtn.addEventListener('click', () => {
+            cameraInput.click();
+        });
+        
+        cameraInput.addEventListener('change', (e) => {
+            handleImageSelect(e.target.files[0]);
+        });
+    }
+    
+    // Remove image button
+    if (removeImageBtn) {
+        removeImageBtn.addEventListener('click', () => {
+            clearUploadedImage();
+        });
+    }
+}
+
+function handleImageSelect(file) {
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        alert('Image size must be less than 10MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        uploadedImage = {
+            data: e.target.result,
+            name: file.name,
+            type: file.type
+        };
+        
+        // Show preview
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        
+        if (imagePreviewContainer && imagePreview) {
+            imagePreview.src = e.target.result;
+            imagePreviewContainer.style.display = 'block';
+        }
+        
+        console.log('📷 Image uploaded:', file.name);
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearUploadedImage() {
+    uploadedImage = null;
+    
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const photoInput = document.getElementById('photoInput');
+    const cameraInput = document.getElementById('cameraInput');
+    
+    if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
+    if (imagePreview) imagePreview.src = '';
+    if (photoInput) photoInput.value = '';
+    if (cameraInput) cameraInput.value = '';
+    
+    console.log('🗑️ Image removed');
+}
+
+// Get model-specific system prompt
+function getModelSystemPrompt() {
+    const prompts = {
+        normal: 'You are JARVIS, a helpful AI assistant. Provide clear, concise answers.',
+        
+        jarvis52: `You are JARVIS 5.2, an advanced AI assistant with superior reasoning capabilities.
+🎯 Your approach:
+1. Understand the user's intent deeply
+2. Think through the problem step by step
+3. Provide clear, actionable responses
+4. Be conversational yet professional
+Use markdown for better readability.`,
+
+        thinking: `You are JARVIS in Deep Thinking mode. For every question:
+1. 🤔 First, analyze what the user is really asking
+2. 📋 Break down the problem into components
+3. 💭 Think through each step carefully
+4. 🔍 Consider multiple perspectives
+5. ✅ Provide a well-reasoned, comprehensive answer
+
+Always show your reasoning process before giving the final answer.`,
+
+        fast: `You are JARVIS in Fast mode. Rules:
+- Be extremely concise
+- Direct answers only
+- No unnecessary explanations
+- Use bullet points when helpful
+- Get to the point immediately`,
+
+        pro: `You are JARVIS Pro - the most advanced AI assistant with maximum capabilities.
+
+🏆 PRO FEATURES ENABLED:
+- Expert-level knowledge across all domains
+- Advanced code generation and debugging
+- Deep analytical capabilities
+- Creative problem-solving
+- Detailed step-by-step guidance
+- Professional-grade outputs
+
+Provide the most comprehensive, accurate, and helpful response possible.`
+    };
+    
+    return prompts[currentModel] || prompts.jarvis52;
+}
+
+// Add CSS animations
+const toastStyles = document.createElement('style');
+toastStyles.textContent = `
+    @keyframes toastSlideUp {
+        from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes toastSlideDown {
+        from { opacity: 1; transform: translateX(-50%) translateY(0); }
+        to { opacity: 0; transform: translateX(-50%) translateY(20px); }
+    }
+    .model-toast-icon { font-size: 24px; }
+    .model-toast-content { display: flex; flex-direction: column; }
+    .model-toast-content strong { font-size: 14px; }
+    .model-toast-content span { font-size: 12px; opacity: 0.9; }
+`;
+document.head.appendChild(toastStyles);
 
 // ===== Initialize App =====
 // Wait for DOM to be fully loaded before initializing

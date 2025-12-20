@@ -1150,6 +1150,132 @@ body {
     border-top: 1px solid var(--border-subtle);
 }
 
+/* ===== MODEL SELECTOR (Gemini-style) ===== */
+.model-selector {
+    max-width: 768px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 25px;
+    border: 1px solid var(--border-subtle);
+}
+
+.model-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 20px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.model-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.model-btn.active {
+    background: linear-gradient(135deg, var(--primary-600), #8b5cf6);
+    color: white;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.model-btn i {
+    font-size: 14px;
+}
+
+.model-btn[data-model="thinking"] i { color: #f59e0b; }
+.model-btn[data-model="fast"] i { color: #10b981; }
+.model-btn[data-model="jarvis52"] i { color: #8b5cf6; }
+.model-btn[data-model="pro"] i { color: #ffd700; }
+.model-btn[data-model="normal"] i { color: #60a5fa; }
+
+.model-btn.active i { color: white; }
+
+/* ===== MEDIA BUTTONS (Photo/Camera) ===== */
+.media-buttons {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.media-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    color: var(--text-tertiary);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.media-btn:hover {
+    background: var(--bg-hover);
+    color: var(--primary-500);
+    border-color: var(--primary-500);
+}
+
+/* ===== IMAGE PREVIEW ===== */
+.image-preview-container {
+    max-width: 768px;
+    margin: 12px auto 0;
+    padding: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    border: 1px solid var(--border-default);
+}
+
+.image-preview-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.image-preview-wrapper img {
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--error);
+    border: 2px solid var(--bg-tertiary);
+    border-radius: 50%;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.remove-image-btn:hover {
+    transform: scale(1.1);
+    background: #dc2626;
+}
+
 .input-container {
     max-width: 768px;
     margin: 0 auto;
@@ -1667,6 +1793,47 @@ textarea::placeholder {
         padding: 6px 12px;
         font-size: 12px;
         white-space: nowrap;
+    }
+
+    /* Model Selector (Gemini-style) - Mobile */
+    .model-selector {
+        gap: 4px;
+        padding: 4px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        justify-content: flex-start;
+    }
+
+    .model-selector::-webkit-scrollbar {
+        display: none;
+    }
+
+    .model-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .model-btn span {
+        display: none;
+    }
+
+    .model-btn.active span {
+        display: inline;
+    }
+
+    .model-btn i {
+        font-size: 14px;
+    }
+
+    /* Media buttons - Mobile */
+    .media-buttons {
+        gap: 2px;
+    }
+
+    .media-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
     }
 
     /* Welcome Screen */

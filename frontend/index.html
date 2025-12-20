@@ -266,7 +266,43 @@
 
         <!-- Input Area -->
         <div class="input-area">
+            <!-- Model Selector (Gemini-style) -->
+            <div class="model-selector" id="modelSelector">
+                <button class="model-btn" data-model="normal" title="Normal mode">
+                    <i class="fas fa-bolt"></i>
+                    <span>Normal</span>
+                </button>
+                <button class="model-btn active" data-model="jarvis52" title="JARVIS 5.2 - Advanced AI">
+                    <i class="fas fa-brain"></i>
+                    <span>JARVIS 5.2</span>
+                </button>
+                <button class="model-btn" data-model="thinking" title="Deep Thinking mode">
+                    <i class="fas fa-lightbulb"></i>
+                    <span>Thinking</span>
+                </button>
+                <button class="model-btn" data-model="fast" title="Fast responses">
+                    <i class="fas fa-rocket"></i>
+                    <span>Fast</span>
+                </button>
+                <button class="model-btn" data-model="pro" title="Pro mode with maximum capabilities">
+                    <i class="fas fa-crown"></i>
+                    <span>Pro</span>
+                </button>
+            </div>
+            
             <div class="input-container">
+                <!-- Photo & Camera Buttons -->
+                <div class="media-buttons">
+                    <button class="media-btn" id="photoUploadBtn" title="Upload photo">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <button class="media-btn" id="cameraBtn" title="Take photo">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                </div>
+                <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+                
                 <button class="attach-btn" id="attachBtn" title="Attach file">
                     <i class="fas fa-paperclip"></i>
                 </button>
@@ -278,6 +314,17 @@
                     <i class="fas fa-arrow-up"></i>
                 </button>
             </div>
+            
+            <!-- Image Preview -->
+            <div class="image-preview-container" id="imagePreviewContainer" style="display: none;">
+                <div class="image-preview-wrapper">
+                    <img id="imagePreview" src="" alt="Preview">
+                    <button class="remove-image-btn" id="removeImageBtn" title="Remove image">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
             <div class="input-footer">
                 <span class="char-count" id="charCount">0 / 2000</span>
                 <span class="info-text">JARVIS can make mistakes. Verify important information.</span>
