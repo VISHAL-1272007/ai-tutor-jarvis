@@ -886,12 +886,17 @@ async function sendMessage() {
     console.log('✅ All checks passed, sending message...');
 
 
-    // Hide welcome screen
+    // Hide welcome screen and header actions when chatting
     if (elements.welcomeScreen) {
         elements.welcomeScreen.style.display = 'none';
     }
     if (elements.developerCredit) {
         elements.developerCredit.style.display = 'none';
+    }
+    // Hide header navigation buttons
+    const headerActions = document.querySelector('.header-actions');
+    if (headerActions) {
+        headerActions.style.display = 'none';
     }
 
     // Create new chat if needed
@@ -1538,6 +1543,11 @@ function loadChat(chatId) {
     elements.welcomeScreen.style.display = 'none';
     elements.developerCredit.style.display = 'none';
     elements.messagesArea.innerHTML = '';
+    // Hide header navigation buttons
+    const headerActions = document.querySelector('.header-actions');
+    if (headerActions) {
+        headerActions.style.display = 'none';
+    }
 
     // Render messages
     if (currentChatMessages.length > 0) {
@@ -1562,6 +1572,11 @@ function startNewChat() {
     elements.messageInput.value = '';
     elements.messageInput.focus();
     synthesis.cancel();
+    // Show header navigation buttons
+    const headerActions = document.querySelector('.header-actions');
+    if (headerActions) {
+        headerActions.style.display = 'flex';
+    }
 }
 
 // ===== Theme =====

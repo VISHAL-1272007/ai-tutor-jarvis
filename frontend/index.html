@@ -7,19 +7,17 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>VISH AI | JARVIS - Smart Student Assistant </title>
-<meta name="google-site-verification" content="dGshw6IZO8oy354J1poP6Z7xqafDJ96RlTsG-vtPOgE" />
-
-<meta name="description" content="JARVIS AI - Professional Student Assistant developed by VISHAL. Manage 30,000+ students with ease.">
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
-
-    <!-- Professional Styles -->
-    <link rel="stylesheet" href="style-pro.css?v=2">
+    <meta name="google-site-verification" content="dGshw6IZO8oy354J1poP6Z7xqafDJ96RlTsG-vtPOgE">
+    <meta name="description" content="JARVIS AI - Professional Student Assistant developed by VISHAL. Manage 30,000+ students with ease.">
+    <title>VISH AI | JARVIS - Smart Student Assistant</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style-pro.css?v=3">
+    <link rel="stylesheet" href="voice-commit.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
@@ -29,10 +27,7 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h2>
-                <i class="fas fa-robot"></i>
-                JARVIS AI
-            </h2>
+            <h2><i class="fas fa-robot"></i> JARVIS AI</h2>
             <span class="plan-badge" id="planBadge">FREE</span>
             <button class="sidebar-close-btn" id="sidebarCloseBtn" title="Close sidebar" aria-label="Close sidebar">
                 <i class="fas fa-times"></i>
@@ -85,30 +80,14 @@
                 <button class="brain-btn" id="brainBtn" title="Voice Control (Ctrl+K)" aria-label="Activate voice control">
                     <i class="fas fa-brain header-brain-icon"></i>
                 </button>
-                <h1></h1>
             </div>
 
             <nav class="header-actions">
-                <a href="courses.html" class="header-link header-btn">
-                    <i class="fas fa-graduation-cap"></i>
-                    <span>Learn</span>
-                </a>
-                <a href="playground.html" class="header-link header-btn playground-link">
-                    <i class="fas fa-code"></i>
-                    <span>Playground</span>
-                </a>
-                <a href="project-generator.html" class="header-link header-btn project-gen-link">
-                    <i class="fas fa-rocket"></i>
-                    <span>Projects</span>
-                </a>
-                <a href="ai-tools.html" class="header-link header-btn ai-tools-link">
-                    <i class="fas fa-tools"></i>
-                    <span>Tools</span>
-                </a>
-                <a href="assignments.html" class="header-link header-btn">
-                    <i class="fas fa-tasks"></i>
-                    <span>Assignments</span>
-                </a>
+                <a href="courses.html" class="header-link header-btn"><i class="fas fa-graduation-cap"></i><span>Learn</span></a>
+                <a href="playground.html" class="header-link header-btn"><i class="fas fa-code"></i><span>Playground</span></a>
+                <a href="project-generator.html" class="header-link header-btn"><i class="fas fa-rocket"></i><span>Projects</span></a>
+                <a href="ai-tools.html" class="header-link header-btn"><i class="fas fa-tools"></i><span>Tools</span></a>
+                <a href="assignments.html" class="header-link header-btn"><i class="fas fa-tasks"></i><span>Assignments</span></a>
                 <button class="settings-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
                     <i class="fas fa-cog"></i>
                 </button>
@@ -117,19 +96,9 @@
 
         <!-- Mode Selector -->
         <div class="mode-selector" id="modeSelector">
-            <button class="mode-tab active" data-mode="chat">
-                <i class="fas fa-comments"></i>
-                <span>Chat</span>
-            </button>
-            <button class="mode-tab" data-mode="tutor">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <span>Tutor</span>
-            </button>
-            
-            <button class="mode-tab" data-mode="code">
-                <i class="fas fa-laptop-code"></i>
-                <span>Code</span>
-            </button>
+            <button class="mode-tab active" data-mode="chat"><i class="fas fa-comments"></i><span>Chat</span></button>
+            <button class="mode-tab" data-mode="tutor"><i class="fas fa-chalkboard-teacher"></i><span>Tutor</span></button>
+            <button class="mode-tab" data-mode="code"><i class="fas fa-laptop-code"></i><span>Code</span></button>
         </div>
 
         <!-- Chat Container -->
@@ -150,9 +119,7 @@
                             <div class="particle"></div>
                         </div>
                         <div class="orb-core-3d">
-                            <div class="core-inner">
-                                <i class="fas fa-brain"></i>
-                            </div>
+                            <div class="core-inner"><i class="fas fa-brain"></i></div>
                             <div class="core-glow"></div>
                         </div>
                     </div>
@@ -169,31 +136,19 @@
                         <div class="tools-grid">
                             <a href="index.html" class="tool-card current">
                                 <div class="tool-icon">💬</div>
-                                <div class="tool-info">
-                                    <h4>AI Chat</h4>
-                                    <p>Natural conversations with advanced AI</p>
-                                </div>
+                                <div class="tool-info"><h4>AI Chat</h4><p>Natural conversations with advanced AI</p></div>
                             </a>
                             <a href="ai-tools.html" class="tool-card">
                                 <div class="tool-icon">🛠️</div>
-                                <div class="tool-info">
-                                    <h4>AI Tools</h4>
-                                    <p>Diagrams, videos, and visualizations</p>
-                                </div>
+                                <div class="tool-info"><h4>AI Tools</h4><p>Diagrams, videos, and visualizations</p></div>
                             </a>
                             <a href="course-generator.html" class="tool-card">
                                 <div class="tool-icon">🎓</div>
-                                <div class="tool-info">
-                                    <h4>Course Generator</h4>
-                                    <p>AI-powered curriculum creation</p>
-                                </div>
+                                <div class="tool-info"><h4>Course Generator</h4><p>AI-powered curriculum creation</p></div>
                             </a>
                             <a href="courses.html" class="tool-card">
                                 <div class="tool-icon">📚</div>
-                                <div class="tool-info">
-                                    <h4>Learning Hub</h4>
-                                    <p>Structured courses and lessons</p>
-                                </div>
+                                <div class="tool-info"><h4>Learning Hub</h4><p>Structured courses and lessons</p></div>
                             </a>
                         </div>
                     </div>
@@ -202,60 +157,43 @@
                     <div class="example-prompts">
                         <h3 id="promptsTitle">Try These Features</h3>
                         <div class="prompt-grid" id="promptGrid">
-                            <button class="prompt-card" data-prompt="Help me understand a complex coding concept">
-                                <i class="fas fa-code"></i>
-                                <span>Code Help</span>
-                            </button>
-                            <button class="prompt-card" data-prompt="Explain this topic in simple terms">
-                                <i class="fas fa-lightbulb"></i>
-                                <span>Learn</span>
-                            </button>
-                            <button class="prompt-card" data-prompt="Help me write professional content">
-                                <i class="fas fa-pen-fancy"></i>
-                                <span>Write</span>
-                            </button>
-                            <button class="prompt-card" data-prompt="Analyze and solve this problem">
-                                <i class="fas fa-brain"></i>
-                                <span>Analyze</span>
-                            </button>
+                            <button class="prompt-card" data-prompt="Help me understand a complex coding concept"><i class="fas fa-code"></i><span>Code Help</span></button>
+                            <button class="prompt-card" data-prompt="Explain this topic in simple terms"><i class="fas fa-lightbulb"></i><span>Learn</span></button>
+                            <button class="prompt-card" data-prompt="Help me write professional content"><i class="fas fa-pen-fancy"></i><span>Write</span></button>
+                            <button class="prompt-card" data-prompt="Analyze and solve this problem"><i class="fas fa-brain"></i><span>Analyze</span></button>
                         </div>
 
-                        <div class="quick-links" style="margin-top: 40px;">
-                            <h3 style="text-align: center; color: #fff; margin-bottom: 25px; font-size: 24px;">🚀 All JARVIS Features</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
-                                <a href="ai-chat-panel.html" class="quick-link-card glass" style="text-decoration: none; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease; border: 1px solid rgba(56, 239, 125, 0.3);">
-                                    <i class="fas fa-comments" style="font-size: 48px; background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px;"></i>
-                                    <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">AI Chat Panel</h4>
-                                    <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.6);">Smart conversations with streaming</p>
+                        <!-- Quick Links -->
+                        <div class="quick-links">
+                            <h3>🚀 All JARVIS Features</h3>
+                            <div class="quick-links-grid">
+                                <a href="ai-chat-panel.html" class="quick-link-card">
+                                    <i class="fas fa-comments"></i>
+                                    <h4>AI Chat Panel</h4>
+                                    <p>Smart conversations with streaming</p>
                                 </a>
-                                <a href="project-generator.html" class="quick-link-card glass" style="text-decoration: none; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease; border: 1px solid rgba(240, 147, 251, 0.3);">
-                                    <i class="fas fa-magic" style="font-size: 48px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px;"></i>
-                                    <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">Project Generator</h4>
-                                    <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.6);">AI-powered code generation</p>
+                                <a href="project-generator.html" class="quick-link-card">
+                                    <i class="fas fa-magic"></i>
+                                    <h4>Project Generator</h4>
+                                    <p>AI-powered code generation</p>
                                 </a>
-                                <a href="file-generator.html" class="quick-link-card glass" style="text-decoration: none; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease; border: 1px solid rgba(254, 225, 64, 0.3);">
-                                    <i class="fas fa-file-alt" style="font-size: 48px; background: linear-gradient(135deg, #fee140 0%, #fa709a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px;"></i>
-                                    <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">File Generator</h4>
-                                    <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.6);">Create PDF, DOCX, PPTX, Projects</p>
+                                <a href="file-generator.html" class="quick-link-card">
+                                    <i class="fas fa-file-alt"></i>
+                                    <h4>File Generator</h4>
+                                    <p>Create PDF, DOCX, PPTX, Projects</p>
                                 </a>
-                                <a href="playground.html" class="quick-link-card glass" style="text-decoration: none; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease; border: 1px solid rgba(66, 134, 244, 0.3);">
-                                    <i class="fas fa-play-circle" style="font-size: 48px; background: linear-gradient(135deg, #4286f4 0%, #373b44 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px;"></i>
-                                    <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">Code Playground</h4>
-                                    <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.6);">Live HTML/CSS/JS editor</p>
+                                <a href="playground.html" class="quick-link-card">
+                                    <i class="fas fa-play-circle"></i>
+                                    <h4>Code Playground</h4>
+                                    <p>Live HTML/CSS/JS editor</p>
                                 </a>
-                                <a href="courses.html" class="quick-link-card glass" style="text-decoration: none; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: all 0.3s ease; border: 1px solid rgba(255, 121, 63, 0.3);">
-                                    <i class="fas fa-graduation-cap" style="font-size: 48px; background: linear-gradient(135deg, #ff793f 0%, #f9d423 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px;"></i>
-                                    <h4 style="margin: 0 0 8px 0; font-size: 18px; color: #fff;">AI Courses</h4>
-                                    <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.6);">Interactive learning paths</p>
+                                <a href="courses.html" class="quick-link-card">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <h4>AI Courses</h4>
+                                    <p>Interactive learning paths</p>
                                 </a>
                             </div>
                         </div>
-                        <style>
-                            .quick-link-card:hover {
-                                transform: translateY(-5px);
-                                box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
-                            }
-                        </style>
                     </div>
                 </div>
             </div>
@@ -267,7 +205,7 @@
         <!-- Input Area -->
         <div class="input-area">
             <div class="input-container">
-                <!-- Gemini-style Model Dropdown -->
+                <!-- Model Dropdown -->
                 <div class="model-dropdown" id="modelDropdown">
                     <button class="model-dropdown-btn" id="modelDropdownBtn">
                         <span class="model-icon">🧠</span>
@@ -277,72 +215,51 @@
                     <div class="model-dropdown-menu" id="modelDropdownMenu">
                         <div class="model-option" data-model="jarvis52" data-icon="🧠">
                             <span class="option-icon">🧠</span>
-                            <div class="option-info">
-                                <span class="option-name">JARVIS 5.2</span>
-                                <span class="option-desc">Advanced reasoning</span>
-                            </div>
+                            <div class="option-info"><span class="option-name">JARVIS 5.2</span><span class="option-desc">Advanced reasoning</span></div>
                             <i class="fas fa-check"></i>
                         </div>
                         <div class="model-option" data-model="pro" data-icon="👑">
                             <span class="option-icon">👑</span>
-                            <div class="option-info">
-                                <span class="option-name">Pro</span>
-                                <span class="option-desc">Maximum capabilities</span>
-                            </div>
+                            <div class="option-info"><span class="option-name">Pro</span><span class="option-desc">Maximum capabilities</span></div>
+                            <i class="fas fa-check"></i>
                         </div>
                         <div class="model-option" data-model="thinking" data-icon="💡">
                             <span class="option-icon">💡</span>
-                            <div class="option-info">
-                                <span class="option-name">Thinking</span>
-                                <span class="option-desc">Deep analysis</span>
-                            </div>
+                            <div class="option-info"><span class="option-name">Thinking</span><span class="option-desc">Deep analysis</span></div>
+                            <i class="fas fa-check"></i>
                         </div>
                         <div class="model-option" data-model="fast" data-icon="⚡">
                             <span class="option-icon">⚡</span>
-                            <div class="option-info">
-                                <span class="option-name">Fast</span>
-                                <span class="option-desc">Quick responses</span>
-                            </div>
+                            <div class="option-info"><span class="option-name">Fast</span><span class="option-desc">Quick responses</span></div>
+                            <i class="fas fa-check"></i>
                         </div>
                         <div class="model-option" data-model="normal" data-icon="💬">
                             <span class="option-icon">💬</span>
-                            <div class="option-info">
-                                <span class="option-name">Normal</span>
-                                <span class="option-desc">Standard chat</span>
-                            </div>
+                            <div class="option-info"><span class="option-name">Normal</span><span class="option-desc">Standard chat</span></div>
+                            <i class="fas fa-check"></i>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Photo & Camera (Gemini-style) -->
-                <button class="input-icon-btn" id="photoUploadBtn" title="Upload image">
-                    <i class="fas fa-image"></i>
-                </button>
-                <button class="input-icon-btn" id="cameraBtn" title="Take photo">
-                    <i class="fas fa-camera"></i>
-                </button>
-                <input type="file" id="photoInput" accept="image/*" style="display: none;">
-                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+                <!-- Media Buttons -->
+                <button class="input-icon-btn" id="photoUploadBtn" title="Upload image"><i class="fas fa-image"></i></button>
+                <button class="input-icon-btn" id="cameraBtn" title="Take photo"><i class="fas fa-camera"></i></button>
+                <input type="file" id="photoInput" accept="image/*" hidden>
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
                 
                 <div class="input-divider"></div>
                 
                 <textarea id="messageInput" placeholder="Ask JARVIS anything..." rows="1" maxlength="2000"></textarea>
                 
-                <button class="input-icon-btn mic-btn" id="micBtn" title="Voice input">
-                    <i class="fas fa-microphone"></i>
-                </button>
-                <button class="send-btn" id="sendBtn" title="Send">
-                    <i class="fas fa-arrow-up"></i>
-                </button>
+                <button class="input-icon-btn mic-btn" id="micBtn" title="Voice input"><i class="fas fa-microphone"></i></button>
+                <button class="send-btn" id="sendBtn" title="Send"><i class="fas fa-arrow-up"></i></button>
             </div>
             
             <!-- Image Preview -->
             <div class="image-preview-container" id="imagePreviewContainer" style="display: none;">
                 <div class="image-preview-wrapper">
                     <img id="imagePreview" src="" alt="Preview">
-                    <button class="remove-image-btn" id="removeImageBtn" title="Remove image">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <button class="remove-image-btn" id="removeImageBtn" title="Remove"><i class="fas fa-times"></i></button>
                 </div>
             </div>
             
@@ -363,15 +280,12 @@
         <div class="settings-modal-content">
             <div class="settings-header">
                 <h2><i class="fas fa-cog"></i> Settings</h2>
-                <button class="close-settings" id="closeSettings" title="Close settings" aria-label="Close settings">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button class="close-settings" id="closeSettings" title="Close" aria-label="Close settings"><i class="fas fa-times"></i></button>
             </div>
             <div class="settings-body">
                 <div class="setting-item">
                     <label><i class="fas fa-language"></i> Language</label>
-                    <select class="language-selector" id="languageSelector" title="Select language"
-                        aria-label="Select language">
+                    <select class="language-selector" id="languageSelector" title="Select language">
                         <option value="en-US">🇬🇧 English</option>
                         <option value="ta-IN">🇮🇳 Tamil</option>
                         <option value="hi-IN">🇮🇳 Hindi</option>
@@ -379,28 +293,18 @@
                 </div>
                 <div class="setting-item">
                     <label><i class="fas fa-volume-up"></i> Voice Response</label>
-                    <button class="voice-toggle-btn" id="voiceToggleBtn">
-                        <i class="fas fa-volume-up"></i>
-                        <span>Voice ON</span>
-                    </button>
+                    <button class="voice-toggle-btn" id="voiceToggleBtn"><i class="fas fa-volume-up"></i><span>Voice ON</span></button>
                 </div>
                 <div class="setting-item">
                     <label><i class="fas fa-user"></i> Account</label>
                     <div class="auth-buttons">
-                        <button class="signin-btn-modal" id="signinBtnModal"
-                            onclick="window.location.href='login.html'">
-                            <i class="fab fa-google"></i> Sign In
-                        </button>
-                        <button class="signout-btn-modal" id="signoutBtnModal">
-                            <i class="fas fa-sign-out-alt"></i> Sign Out
-                        </button>
+                        <button class="signin-btn-modal" id="signinBtnModal" onclick="window.location.href='login.html'"><i class="fab fa-google"></i> Sign In</button>
+                        <button class="signout-btn-modal" id="signoutBtnModal"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
                     </div>
                 </div>
                 <div class="setting-item">
                     <label><i class="fas fa-circle"></i> Status</label>
-                    <span class="status-indicator">
-                        <i class="fas fa-circle"></i> Online
-                    </span>
+                    <span class="status-indicator"><i class="fas fa-circle"></i> Online</span>
                 </div>
             </div>
         </div>
@@ -410,122 +314,64 @@
     <div class="voice-commit-modal" id="voiceCommitModal">
         <div class="voice-commit-backdrop" id="voiceCommitBackdrop"></div>
         <div class="voice-commit-container">
-            <button class="voice-commit-close" id="voiceCommitClose" aria-label="Close">
-                <i class="fas fa-times"></i>
-            </button>
+            <button class="voice-commit-close" id="voiceCommitClose" aria-label="Close"><i class="fas fa-times"></i></button>
 
             <div class="voice-commit-header">
-                <div class="voice-commit-logo">
-                    <i class="fas fa-brain"></i>
-                </div>
+                <div class="voice-commit-logo"><i class="fas fa-brain"></i></div>
                 <h2>Ask JARVIS</h2>
                 <p>Type or speak your question</p>
             </div>
 
             <div class="voice-commit-modes">
-                <button class="voice-mode-btn active" data-voice-mode="all">
-                    <i class="fas fa-globe"></i>
-                    All
-                </button>
-                <button class="voice-mode-btn" data-voice-mode="academic">
-                    <i class="fas fa-graduation-cap"></i>
-                    Academic
-                </button>
-                <button class="voice-mode-btn" data-voice-mode="writing">
-                    <i class="fas fa-pen"></i>
-                    Writing
-                </button>
-                <button class="voice-mode-btn" data-voice-mode="video">
-                    <i class="fas fa-video"></i>
-                    Video
-                </button>
-                <button class="voice-mode-btn" data-voice-mode="code">
-                    <i class="fas fa-code"></i>
-                    Code
-                </button>
+                <button class="voice-mode-btn active" data-voice-mode="all"><i class="fas fa-globe"></i> All</button>
+                <button class="voice-mode-btn" data-voice-mode="academic"><i class="fas fa-graduation-cap"></i> Academic</button>
+                <button class="voice-mode-btn" data-voice-mode="writing"><i class="fas fa-pen"></i> Writing</button>
+                <button class="voice-mode-btn" data-voice-mode="video"><i class="fas fa-video"></i> Video</button>
+                <button class="voice-mode-btn" data-voice-mode="code"><i class="fas fa-code"></i> Code</button>
             </div>
 
             <div class="voice-orb-container" id="voiceOrb">
                 <div class="voice-orb-pulse"></div>
-                <div class="voice-orb-core">
-                    <i class="fas fa-microphone"></i>
-                </div>
-                <div class="voice-listening-wave">
-                    <span></span><span></span><span></span><span></span><span></span>
-                </div>
+                <div class="voice-orb-core"><i class="fas fa-microphone"></i></div>
+                <div class="voice-listening-wave"><span></span><span></span><span></span><span></span><span></span></div>
             </div>
 
             <div class="voice-input-wrapper">
-                <textarea 
-                    class="voice-commit-input" 
-                    id="voiceCommitInput" 
-                    placeholder="Ask anything..."
-                    rows="1"
-                ></textarea>
-                <button class="voice-submit-btn" id="voiceSubmitBtn">
-                    <i class="fas fa-arrow-right"></i>
-                </button>
+                <textarea class="voice-commit-input" id="voiceCommitInput" placeholder="Ask anything..." rows="1"></textarea>
+                <button class="voice-submit-btn" id="voiceSubmitBtn"><i class="fas fa-arrow-right"></i></button>
             </div>
 
             <div class="voice-status" id="voiceStatus">
                 <i class="fas fa-circle"></i>
                 <span id="voiceStatusText">Ready to listen</span>
-                <button class="voice-continuous-btn active" id="voiceContinuousBtn" title="Continuous conversation ON">
-                    <i class="fas fa-infinity"></i>
-                </button>
-                <button class="voice-speaker-btn" id="voiceSpeakerBtn" title="Toggle voice output">
-                    <i class="fas fa-volume-up"></i>
-                </button>
+                <button class="voice-continuous-btn active" id="voiceContinuousBtn" title="Continuous conversation"><i class="fas fa-infinity"></i></button>
+                <button class="voice-speaker-btn" id="voiceSpeakerBtn" title="Toggle voice output"><i class="fas fa-volume-up"></i></button>
             </div>
 
             <div class="voice-suggestions">
-                <button class="suggestion-chip" data-query="Explain quantum computing">
-                    <i class="fas fa-atom"></i>
-                    Explain quantum computing
-                </button>
-                <button class="suggestion-chip" data-query="Write a Python function">
-                    <i class="fas fa-code"></i>
-                    Write a Python function
-                </button>
-                <button class="suggestion-chip" data-query="Summarize machine learning">
-                    <i class="fas fa-brain"></i>
-                    Summarize machine learning
-                </button>
-                <button class="suggestion-chip" data-query="Debug my code">
-                    <i class="fas fa-bug"></i>
-                    Debug my code
-                </button>
+                <button class="suggestion-chip" data-query="Explain quantum computing"><i class="fas fa-atom"></i> Explain quantum computing</button>
+                <button class="suggestion-chip" data-query="Write a Python function"><i class="fas fa-code"></i> Write a Python function</button>
+                <button class="suggestion-chip" data-query="Summarize machine learning"><i class="fas fa-brain"></i> Summarize machine learning</button>
+                <button class="suggestion-chip" data-query="Debug my code"><i class="fas fa-bug"></i> Debug my code</button>
             </div>
 
             <div class="voice-commit-response" id="voiceCommitResponse" style="display: none;">
                 <div class="response-header">
-                    <h3>
-                        <i class="fas fa-check-circle"></i>
-                        Response
-                    </h3>
-                    <button class="response-close" id="responseClose">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <h3><i class="fas fa-check-circle"></i> Response</h3>
+                    <button class="response-close" id="responseClose"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="response-content" id="responseContent"></div>
                 <div class="response-actions">
-                    <button class="response-action-btn" id="copyResponseBtn">
-                        <i class="fas fa-copy"></i>
-                        Copy
-                    </button>
-                    <button class="response-action-btn" id="continueInChatBtn">
-                        <i class="fas fa-comments"></i>
-                        Continue in Chat
-                    </button>
+                    <button class="response-action-btn" id="copyResponseBtn"><i class="fas fa-copy"></i> Copy</button>
+                    <button class="response-action-btn" id="continueInChatBtn"><i class="fas fa-comments"></i> Continue in Chat</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Scripts -->
-    <link rel="stylesheet" href="voice-commit.css">
     <script type="module" src="firebase-config.js"></script>
-    <script type="module" src="script.js?v=4"></script>
+    <script type="module" src="script.js?v=5"></script>
     <script src="voice-commit.js"></script>
     <script src="3d-animations.js"></script>
 </body>
