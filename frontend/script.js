@@ -1893,30 +1893,70 @@ function hideBackendStatus() {
     }
 }
 
-// ===== MODEL SELECTOR (Gemini-style) =====
+// ===== MODEL SELECTOR (Gemini-style Dropdown) =====
 let currentModel = 'jarvis52'; // Default model
 let uploadedImage = null; // Store uploaded image
 
 function initModelSelector() {
-    const modelBtns = document.querySelectorAll('.model-btn');
+    const dropdownBtn = document.getElementById('modelDropdownBtn');
+    const dropdown = document.getElementById('modelDropdown');
+    const dropdownMenu = document.getElementById('modelDropdownMenu');
+    const options = document.querySelectorAll('.model-option');
     
-    modelBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove active from all
-            modelBtns.forEach(b => b.classList.remove('active'));
-            // Add active to clicked
-            btn.classList.add('active');
-            // Update current model
-            currentModel = btn.dataset.model;
-            console.log(`🎯 Model switched to: ${currentModel}`);
+    if (!dropdownBtn || !dropdown) return;
+    
+    // Toggle dropdown
+    dropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+    
+    // Handle option selection
+    options.forEach(option => {
+        option.addEventListener('click', () => {
+            const model = option.dataset.model;
+            const icon = option.dataset.icon;
+            const name = option.querySelector('.option-name').textContent;
             
-            // Update placeholder based on model
+            // Update current model
+            currentModel = model;
+            
+            // Update button display
+            dropdownBtn.querySelector('.model-icon').textContent = icon;
+            dropdownBtn.querySelector('.model-name').textContent = name;
+            
+            // Update selected state
+            options.forEach(opt => {
+                opt.classList.remove('selected');
+                opt.querySelector('.fa-check').style.opacity = '0';
+            });
+            option.classList.add('selected');
+            option.querySelector('.fa-check').style.opacity = '1';
+            
+            // Close dropdown
+            dropdown.classList.remove('open');
+            
+            // Update placeholder
             updateInputPlaceholder();
             
-            // Show toast notification
-            showModelToast(currentModel);
+            console.log(`🎯 Model switched to: ${currentModel}`);
         });
     });
+    
+    // Set initial selected state
+    const initialOption = document.querySelector(`[data-model="${currentModel}"]`);
+    if (initialOption) {
+        initialOption.classList.add('selected');
+        const check = initialOption.querySelector('.fa-check');
+        if (check) check.style.opacity = '1';
+    }
 }
 
 function updateInputPlaceholder() {
@@ -1925,63 +1965,13 @@ function updateInputPlaceholder() {
     
     const placeholders = {
         normal: 'Ask anything...',
-        jarvis52: 'Message JARVIS 5.2 (Advanced AI)...',
-        thinking: 'Ask a complex question (Deep Thinking mode)...',
-        fast: 'Quick question? (Fast mode)...',
-        pro: 'Message JARVIS Pro (Maximum capabilities)...'
+        jarvis52: 'Ask JARVIS anything...',
+        thinking: 'Ask a complex question...',
+        fast: 'Quick question?',
+        pro: 'Ask JARVIS Pro anything...'
     };
     
-    input.placeholder = placeholders[currentModel] || 'Message JARVIS...';
-}
-
-function showModelToast(model) {
-    const toasts = {
-        normal: { icon: '⚡', name: 'Normal', desc: 'Standard AI responses' },
-        jarvis52: { icon: '🧠', name: 'JARVIS 5.2', desc: 'Advanced reasoning & expert personas' },
-        thinking: { icon: '💡', name: 'Thinking', desc: 'Deep chain-of-thought reasoning' },
-        fast: { icon: '🚀', name: 'Fast', desc: 'Quick, concise responses' },
-        pro: { icon: '👑', name: 'Pro', desc: 'Maximum AI capabilities' }
-    };
-    
-    const toast = toasts[model] || toasts.normal;
-    
-    // Remove existing toast
-    const existing = document.querySelector('.model-toast');
-    if (existing) existing.remove();
-    
-    const toastEl = document.createElement('div');
-    toastEl.className = 'model-toast';
-    toastEl.innerHTML = `
-        <span class="model-toast-icon">${toast.icon}</span>
-        <div class="model-toast-content">
-            <strong>${toast.name}</strong>
-            <span>${toast.desc}</span>
-        </div>
-    `;
-    toastEl.style.cssText = `
-        position: fixed;
-        bottom: 140px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 20px;
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(139, 92, 246, 0.95));
-        border-radius: 12px;
-        color: white;
-        font-size: 14px;
-        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
-        z-index: 10000;
-        animation: toastSlideUp 0.3s ease;
-    `;
-    
-    document.body.appendChild(toastEl);
-    
-    setTimeout(() => {
-        toastEl.style.animation = 'toastSlideDown 0.3s ease forwards';
-        setTimeout(() => toastEl.remove(), 300);
-    }, 2000);
+    input.placeholder = placeholders[currentModel] || 'Ask JARVIS anything...';
 }
 
 // ===== PHOTO/CAMERA BUTTONS =====

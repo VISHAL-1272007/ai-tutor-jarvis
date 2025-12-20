@@ -266,51 +266,72 @@
 
         <!-- Input Area -->
         <div class="input-area">
-            <!-- Model Selector (Gemini-style) -->
-            <div class="model-selector" id="modelSelector">
-                <button class="model-btn" data-model="normal" title="Normal mode">
-                    <i class="fas fa-bolt"></i>
-                    <span>Normal</span>
-                </button>
-                <button class="model-btn active" data-model="jarvis52" title="JARVIS 5.2 - Advanced AI">
-                    <i class="fas fa-brain"></i>
-                    <span>JARVIS 5.2</span>
-                </button>
-                <button class="model-btn" data-model="thinking" title="Deep Thinking mode">
-                    <i class="fas fa-lightbulb"></i>
-                    <span>Thinking</span>
-                </button>
-                <button class="model-btn" data-model="fast" title="Fast responses">
-                    <i class="fas fa-rocket"></i>
-                    <span>Fast</span>
-                </button>
-                <button class="model-btn" data-model="pro" title="Pro mode with maximum capabilities">
-                    <i class="fas fa-crown"></i>
-                    <span>Pro</span>
-                </button>
-            </div>
-            
             <div class="input-container">
-                <!-- Photo & Camera Buttons -->
-                <div class="media-buttons">
-                    <button class="media-btn" id="photoUploadBtn" title="Upload photo">
-                        <i class="fas fa-image"></i>
+                <!-- Gemini-style Model Dropdown -->
+                <div class="model-dropdown" id="modelDropdown">
+                    <button class="model-dropdown-btn" id="modelDropdownBtn">
+                        <span class="model-icon">🧠</span>
+                        <span class="model-name">JARVIS 5.2</span>
+                        <i class="fas fa-chevron-down"></i>
                     </button>
-                    <button class="media-btn" id="cameraBtn" title="Take photo">
-                        <i class="fas fa-camera"></i>
-                    </button>
+                    <div class="model-dropdown-menu" id="modelDropdownMenu">
+                        <div class="model-option" data-model="jarvis52" data-icon="🧠">
+                            <span class="option-icon">🧠</span>
+                            <div class="option-info">
+                                <span class="option-name">JARVIS 5.2</span>
+                                <span class="option-desc">Advanced reasoning</span>
+                            </div>
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="model-option" data-model="pro" data-icon="👑">
+                            <span class="option-icon">👑</span>
+                            <div class="option-info">
+                                <span class="option-name">Pro</span>
+                                <span class="option-desc">Maximum capabilities</span>
+                            </div>
+                        </div>
+                        <div class="model-option" data-model="thinking" data-icon="💡">
+                            <span class="option-icon">💡</span>
+                            <div class="option-info">
+                                <span class="option-name">Thinking</span>
+                                <span class="option-desc">Deep analysis</span>
+                            </div>
+                        </div>
+                        <div class="model-option" data-model="fast" data-icon="⚡">
+                            <span class="option-icon">⚡</span>
+                            <div class="option-info">
+                                <span class="option-name">Fast</span>
+                                <span class="option-desc">Quick responses</span>
+                            </div>
+                        </div>
+                        <div class="model-option" data-model="normal" data-icon="💬">
+                            <span class="option-icon">💬</span>
+                            <div class="option-info">
+                                <span class="option-name">Normal</span>
+                                <span class="option-desc">Standard chat</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
+                <!-- Photo & Camera (Gemini-style) -->
+                <button class="input-icon-btn" id="photoUploadBtn" title="Upload image">
+                    <i class="fas fa-image"></i>
+                </button>
+                <button class="input-icon-btn" id="cameraBtn" title="Take photo">
+                    <i class="fas fa-camera"></i>
+                </button>
                 <input type="file" id="photoInput" accept="image/*" style="display: none;">
                 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
                 
-                <button class="attach-btn" id="attachBtn" title="Attach file">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-                <textarea id="messageInput" placeholder="Message JARVIS..." rows="1" maxlength="2000"></textarea>
-                <button class="mic-btn" id="micBtn" title="Voice input (Ctrl+M)">
+                <div class="input-divider"></div>
+                
+                <textarea id="messageInput" placeholder="Ask JARVIS anything..." rows="1" maxlength="2000"></textarea>
+                
+                <button class="input-icon-btn mic-btn" id="micBtn" title="Voice input">
                     <i class="fas fa-microphone"></i>
                 </button>
-                <button class="send-btn" id="sendBtn" title="Send message">
+                <button class="send-btn" id="sendBtn" title="Send">
                     <i class="fas fa-arrow-up"></i>
                 </button>
             </div>
