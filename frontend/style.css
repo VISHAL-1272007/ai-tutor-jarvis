@@ -2259,3 +2259,10 @@ body.plan-business .business-only {
 .current-plan-indicator i {
     color: #ffd700;
 }
+/* JARVIS Orb States */
+.jarvis-orb-3d.listening .core-inner { background: linear-gradient(135deg, #00ff88 0%, #00aa55 100%); box-shadow: 0 0 30px rgba(0, 255, 136, 0.6); animation: orbListening 1.5s ease-in-out infinite; }
+.jarvis-orb-3d.thinking .core-inner { background: linear-gradient(135deg, #ffcc00 0%, #ff9900 100%); box-shadow: 0 0 30px rgba(255, 204, 0, 0.6); animation: orbThinking 1s linear infinite; }
+.jarvis-orb-3d.speaking .core-inner { background: linear-gradient(135deg, #00d4ff 0%, #0066ff 100%); box-shadow: 0 0 40px rgba(0, 212, 255, 0.8); animation: orbSpeaking 0.5s ease-in-out infinite alternate; }
+@keyframes orbListening { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
+@keyframes orbThinking { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes orbSpeaking { 0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); } 100% { transform: scale(1.2); box-shadow: 0 0 50px rgba(0, 212, 255, 0.9); } }

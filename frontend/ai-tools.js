@@ -81,6 +81,11 @@ const videoInput = document.getElementById('videoInput');
 const videoBtn = document.getElementById('videoBtn');
 const videoOutput = document.getElementById('videoOutput');
 
+// Daily Training Center
+const trainingInput = document.getElementById('trainingInput');
+const trainBtn = document.getElementById('trainBtn');
+const trainingOutput = document.getElementById('trainingOutput');
+
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -248,10 +253,10 @@ async function handleImageGenerator() {
 
     try {
         const seed = Date.now();
-        
+
         // Use backend API to generate image with Hugging Face
         const backendUrl = getBackendURL();
-        
+
         const response = await fetch(`${backendUrl}/generate-simple-image`, {
             method: 'POST',
             headers: {
@@ -264,7 +269,7 @@ async function handleImageGenerator() {
 
         if (data.success && data.imageUrl) {
             console.log('✅ Image generated successfully');
-            
+
             imageOutput.innerHTML = `
                 <div class="image-container">
                     <img src="${data.imageUrl}" 
@@ -548,6 +553,55 @@ async function handleVideoGenerator() {
     }
 }
 
+/**
+ * Handles Daily Training requests
+ * Sends information to backend to update Jarvis's knowledge
+ */
+async function handleDailyTraining() {
+    const content = trainingInput.value.trim();
+
+    if (!content) {
+        showError(trainingOutput, 'Please enter some information to train JARVIS.');
+        return;
+    }
+
+    showButtonLoading(trainBtn);
+    trainingOutput.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>🧠 Training JARVIS with new information...</p></div>';
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/update-knowledge`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ content: content })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            trainingOutput.innerHTML = `
+                <div class="success-message">
+                    <p>✅ <strong>Success!</strong> JARVIS has been trained with the new information.</p>
+                    <p class="info-text">You can now ask JARVIS about this in the chat.</p>
+                </div>
+            `;
+            trainingInput.value = '';
+        } else {
+            throw new Error(data.error || 'Failed to update knowledge');
+        }
+    } catch (error) {
+        console.error('Training error:', error);
+        showError(trainingOutput, `Failed to train JARVIS. ${error.message}`);
+    } finally {
+        hideButtonLoading(trainBtn);
+    }
+}
+
 // ============================================================================
 // UTILITY FUNCTIONS FOR NEW FEATURES
 // ============================================================================
@@ -631,7 +685,7 @@ async function handleProjectGenerator() {
 
     try {
         const backendUrl = getBackendURL();
-        
+
         // Build prompt with options
         let prompt = `Create a complete project for: ${description}\n\n`;
         if (language) prompt += `Programming Language: ${language}\n`;
@@ -657,7 +711,7 @@ FILE: another-file.ext
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 message: prompt,
                 systemPrompt: 'You are an expert software developer. Generate complete, production-ready code with proper file structure, comments, and best practices.'
             })
@@ -687,14 +741,14 @@ FILE: another-file.ext
  */
 function displayProjectOutput(response, description, language, type) {
     const projectOutput = document.getElementById('projectOutput');
-    
+
     console.log('📦 Raw AI Response:', response);
-    
+
     // Parse files from response
     const files = parseProjectFiles(response);
-    
+
     console.log('📁 Parsed Files:', files);
-    
+
     if (files.length === 0) {
         // If parsing failed, show the raw response with basic formatting
         projectOutput.innerHTML = `
@@ -779,7 +833,7 @@ function displayProjectOutput(response, description, language, type) {
         const fileExt = file.name.split('.').pop();
         const icon = getFileIcon(fileExt);
         const lineCount = file.content.split('\n').length;
-        
+
         html += `
             <div class="file-item">
                 <div class="file-header" onclick="toggleFileContent(${index})">
@@ -834,10 +888,10 @@ function displayProjectOutput(response, description, language, type) {
     `;
 
     projectOutput.innerHTML = html;
-    
+
     // Store files globally for download
     window.generatedFiles = files;
-    
+
     // Auto-expand setup instructions after a short delay
     setTimeout(() => {
         const setupContent = document.getElementById('setup-content');
@@ -854,11 +908,11 @@ function displayProjectOutput(response, description, language, type) {
  */
 function parseProjectFiles(response) {
     const files = [];
-    
+
     // Method 1: Match FILE: filename pattern followed by code block
     const filePattern1 = /FILE:\s*([^\n]+)\n```(\w+)?\n([\s\S]*?)```/gi;
     let match;
-    
+
     while ((match = filePattern1.exec(response)) !== null) {
         files.push({
             name: match[1].trim(),
@@ -866,7 +920,7 @@ function parseProjectFiles(response) {
             content: match[3].trim()
         });
     }
-    
+
     // Method 2: Match ### filename or ## filename followed by code block
     if (files.length === 0) {
         const filePattern2 = /###?\s+(?:File:|Filename:|File name:)?\s*([^\n]+)\n```(\w+)?\n([\s\S]*?)```/gi;
@@ -878,7 +932,7 @@ function parseProjectFiles(response) {
             });
         }
     }
-    
+
     // Method 3: Match any heading followed by code block
     if (files.length === 0) {
         const filePattern3 = /(?:^|\n)(?:###?|>)\s*([^\n]+)\n```(\w+)?\n([\s\S]*?)```/gi;
@@ -893,7 +947,7 @@ function parseProjectFiles(response) {
             }
         }
     }
-    
+
     // Method 4: Just extract all code blocks
     if (files.length === 0) {
         const codePattern = /```(\w+)?\n([\s\S]*?)```/g;
@@ -909,7 +963,7 @@ function parseProjectFiles(response) {
             codeBlockNum++;
         }
     }
-    
+
     console.log(`✅ Parsed ${files.length} files`);
     return files;
 }
@@ -1095,10 +1149,10 @@ function getFileIcon(ext) {
 /**
  * Toggle file content visibility
  */
-window.toggleFileContent = function(index) {
+window.toggleFileContent = function (index) {
     const content = document.getElementById(`file-${index}`);
     const icon = document.getElementById(`icon-${index}`);
-    
+
     if (content.classList.contains('expanded')) {
         content.classList.remove('expanded');
         icon.className = 'fas fa-chevron-down file-toggle-icon';
@@ -1111,10 +1165,10 @@ window.toggleFileContent = function(index) {
 /**
  * Toggle setup instructions
  */
-window.toggleSetupInstructions = function() {
+window.toggleSetupInstructions = function () {
     const content = document.getElementById('setup-content');
     const icon = document.getElementById('setup-icon');
-    
+
     if (content.classList.contains('expanded')) {
         content.classList.remove('expanded');
         icon.className = 'fas fa-chevron-down';
@@ -1127,10 +1181,10 @@ window.toggleSetupInstructions = function() {
 /**
  * Toggle full code output
  */
-window.toggleFullCode = function() {
+window.toggleFullCode = function () {
     const content = document.getElementById('fullcode-content');
     const icon = document.getElementById('fullcode-icon');
-    
+
     if (content.classList.contains('expanded')) {
         content.classList.remove('expanded');
         icon.className = 'fas fa-chevron-down';
@@ -1143,7 +1197,7 @@ window.toggleFullCode = function() {
 /**
  * Expand all files
  */
-window.expandAllFiles = function() {
+window.expandAllFiles = function () {
     document.querySelectorAll('.file-content').forEach(content => {
         content.classList.add('expanded');
     });
@@ -1155,7 +1209,7 @@ window.expandAllFiles = function() {
 /**
  * Collapse all files
  */
-window.collapseAllFiles = function() {
+window.collapseAllFiles = function () {
     document.querySelectorAll('.file-content').forEach(content => {
         content.classList.remove('expanded');
     });
@@ -1167,24 +1221,24 @@ window.collapseAllFiles = function() {
 /**
  * Copy all code to clipboard
  */
-window.copyAllCode = function() {
+window.copyAllCode = function () {
     if (!window.generatedFiles || window.generatedFiles.length === 0) {
         alert('No code to copy');
         return;
     }
-    
+
     let allCode = '';
     window.generatedFiles.forEach(file => {
         allCode += `// ========== ${file.name} ==========\n\n`;
         allCode += file.content + '\n\n';
     });
-    
+
     navigator.clipboard.writeText(allCode).then(() => {
         const btn = event.target.closest('.copy-all-btn');
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check"></i> Copied All!';
         btn.style.background = 'var(--success)';
-        
+
         setTimeout(() => {
             btn.innerHTML = originalHtml;
             btn.style.background = '';
@@ -1198,14 +1252,14 @@ window.copyAllCode = function() {
 /**
  * Copy file code to clipboard
  */
-window.copyFileCode = function(index, button) {
+window.copyFileCode = function (index, button) {
     const code = document.getElementById(`code-${index}`).textContent;
-    
+
     navigator.clipboard.writeText(code).then(() => {
         const originalHtml = button.innerHTML;
         button.innerHTML = '<i class="fas fa-check"></i> Copied!';
         button.classList.add('copied');
-        
+
         setTimeout(() => {
             button.innerHTML = originalHtml;
             button.classList.remove('copied');
@@ -1219,24 +1273,24 @@ window.copyFileCode = function(index, button) {
 /**
  * Download all files as ZIP
  */
-window.downloadAllFiles = async function() {
+window.downloadAllFiles = async function () {
     if (!window.generatedFiles || window.generatedFiles.length === 0) {
         alert('No files to download');
         return;
     }
-    
+
     // Create a simple text file with all code
     let content = '='.repeat(80) + '\n';
     content += 'GENERATED PROJECT FILES\n';
     content += '='.repeat(80) + '\n\n';
-    
+
     window.generatedFiles.forEach(file => {
         content += `\n${'='.repeat(80)}\n`;
         content += `FILE: ${file.name}\n`;
         content += `${'='.repeat(80)}\n\n`;
         content += file.content + '\n\n';
     });
-    
+
     const blob = new Blob([content], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1246,7 +1300,7 @@ window.downloadAllFiles = async function() {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-    
+
     console.log('✅ Project files downloaded');
 };
 
@@ -1330,6 +1384,20 @@ function initializeEventListeners() {
         console.log('✅ AI Project Generator initialized');
     } else {
         console.warn('⚠️ AI Project Generator elements not found');
+    }
+
+    // Daily Training Center
+    if (trainBtn && trainingInput) {
+        trainBtn.addEventListener('click', handleDailyTraining);
+        trainingInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                handleDailyTraining();
+            }
+        });
+        console.log('✅ Daily Training Center initialized');
+    } else {
+        console.warn('⚠️ Daily Training Center elements not found');
     }
 }
 

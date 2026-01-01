@@ -439,23 +439,23 @@ async function executePistonCode(code, language, version) {
 
         if (result.run) {
             let output = '';
-            
+
             if (result.run.stdout) {
                 output += result.run.stdout;
             }
-            
+
             if (result.run.stderr) {
                 output += '\n❌ Error:\n' + result.run.stderr;
             }
-            
+
             if (result.run.code !== 0) {
                 output += `\n\n⚠️ Exit code: ${result.run.code}`;
             }
-            
+
             if (!output.trim()) {
                 output = '✅ Code executed successfully (no output)';
             }
-            
+
             displayOutput(output, result.run.stderr ? 'error' : 'success');
         } else if (result.message) {
             displayOutput(`❌ ${result.message}`, 'error');
@@ -769,6 +769,85 @@ if (explainBtn) explainBtn.addEventListener('click', explainCode);
 if (clearBtn) clearBtn.addEventListener('click', clearEditor);
 if (clearOutputBtn) clearOutputBtn.addEventListener('click', clearOutput);
 if (closeAiBtn) closeAiBtn.addEventListener('click', hideAIPanel);
+
+// Vision-to-Code functionality
+const visionBtn = document.getElementById('visionBtn');
+const visionInput = document.getElementById('visionInput');
+
+if (visionBtn && visionInput) {
+    visionBtn.addEventListener('click', () => visionInput.click());
+    visionInput.addEventListener('change', handleVisionUpload);
+}
+
+async function handleVisionUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Show loading
+    showLoading('JARVIS is analyzing your design...');
+    showAIPanel();
+
+    try {
+        // Convert image to base64
+        const base64Image = await convertToBase64(file);
+
+        // Call Vision API
+        const response = await fetch(`${API_URL}/api/vision`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image: base64Image,
+                prompt: "Analyze this UI design and generate the complete HTML, CSS, and JavaScript code to recreate it. Use modern, responsive design principles. Return ONLY the code in a single HTML file structure."
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = 'Vision analysis failed';
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.details || errorData.error || errorMessage;
+            } catch (e) {
+                console.error('Raw error response:', errorText);
+            }
+            throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+
+        // Set code to editor
+        if (data.answer) {
+            // Switch to HTML mode first
+            document.getElementById('languageSelect').value = 'html';
+            editor.setOption('mode', 'htmlmixed');
+            editor.setValue(data.answer);
+
+            displayAIResponse("✅ **Design Analyzed!** I've generated the code for you. You can now run it to see the preview.", '👁️ AI Vision');
+
+            // Auto-run if it's HTML
+            runCode();
+        } else {
+            throw new Error('No code generated');
+        }
+
+    } catch (error) {
+        console.error('Vision error:', error);
+        displayAIResponse(`❌ **Vision Error:** ${error.message}`, '👁️ AI Vision');
+    } finally {
+        hideLoading();
+        // Reset input
+        visionInput.value = '';
+    }
+}
+
+function convertToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
 
 // Fullscreen Toggle
 if (fullscreenBtn) {

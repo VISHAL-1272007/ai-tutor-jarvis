@@ -216,6 +216,28 @@
                             <div id="videoOutput" class="output-area"></div>
                         </div>
                     </section>
+
+                    <!-- Daily Training Center Section -->
+                    <section class="tool-card">
+                        <div class="tool-header">
+                            <h2>🧠 Daily Training Center</h2>
+                            <p>Train JARVIS with daily information and updates</p>
+                        </div>
+                        <div class="tool-body">
+                            <div class="input-group">
+                                <textarea id="trainingInput"
+                                    placeholder="Enter daily updates, news, or facts to train JARVIS... (e.g., Today's special event is...)"
+                                    rows="4"></textarea>
+                                <button id="trainBtn" class="btn btn-primary">
+                                    <span class="btn-text">Train JARVIS</span>
+                                    <span class="btn-loader hidden">
+                                        <span class="spinner"></span> Training...
+                                    </span>
+                                </button>
+                            </div>
+                            <div id="trainingOutput" class="output-area"></div>
+                        </div>
+                    </section>
                 </main>
             </div>
         </div>
@@ -227,6 +249,29 @@
         <footer class="developer-credit">
             <p>Developed by <strong>VISHAL</strong> • Built for 30,000+ Students</p>
         </footer>
+        <!-- Mobile Bottom Navigation -->
+        <nav class="mobile-bottom-nav">
+            <a href="index.html" class="nav-item">
+                <i class="fas fa-comment-dots"></i>
+                <span>Chat</span>
+            </a>
+            <a href="courses.html" class="nav-item">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Learn</span>
+            </a>
+            <a href="project-generator.html" class="nav-item">
+                <i class="fas fa-rocket"></i>
+                <span>Projects</span>
+            </a>
+            <a href="ai-tools.html" class="nav-item active">
+                <i class="fas fa-tools"></i>
+                <span>Tools</span>
+            </a>
+            <button class="nav-item" id="mobileSettingsBtn">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+        </nav>
     </main>
 
     <!-- Settings Modal -->

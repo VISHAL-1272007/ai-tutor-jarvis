@@ -1,0 +1,50 @@
+{
+    "name": "JARVIS AI | Smart Student Assistant",
+    "short_name": "JARVIS",
+    "description": "Professional Student Assistant developed by VISHAL. Manage 30,000+ students with ease.",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#0f1419",
+    "theme_color": "#3b82f6",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "education",
+        "productivity"
+    ],
+    "shortcuts": [
+        {
+            "name": "Courses",
+            "url": "/courses.html",
+            "icons": [
+                {
+                    "src": "https://cdn-icons-png.flaticon.com/512/2436/2436874.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Playground",
+            "url": "/playground.html",
+            "icons": [
+                {
+                    "src": "https://cdn-icons-png.flaticon.com/512/1005/1005141.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ]
+}

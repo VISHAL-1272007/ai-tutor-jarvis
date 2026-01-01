@@ -40,12 +40,16 @@ class JARVISVoice {
         this.recognition.onstart = () => {
             this.isListening = true;
             this.showVoiceIndicator();
-            console.log('🎤 Listening for wake word...');
+            this.updateOrbState('listening');
+            console.log('🎤 JARVIS: Listening for wake word...');
         };
 
         this.recognition.onend = () => {
             this.isListening = false;
             this.hideVoiceIndicator();
+            if (!this.isSpeaking) {
+                this.updateOrbState('idle');
+            }
 
             // Auto-restart for continuous listening
             if (this.continuousMode) {
@@ -59,17 +63,19 @@ class JARVISVoice {
 
             if (lastResult.isFinal) {
                 const transcript = lastResult[0].transcript.toLowerCase().trim();
-                console.log('🎤 Heard:', transcript);
+                console.log('🎤 JARVIS: Heard:', transcript);
 
                 // Check for wake word
                 if (transcript.includes(this.wakeWord)) {
+                    this.updateOrbState('thinking');
                     this.handleWakeWord(transcript);
                 }
             }
         };
 
         this.recognition.onerror = (event) => {
-            console.error('🎤 Recognition error:', event.error);
+            console.error('🎤 JARVIS: Recognition error:', event.error);
+            this.updateOrbState('idle');
 
             if (event.error === 'not-allowed') {
                 this.showNotification('❌ Microphone access denied. Please allow microphone access.', 'error');
@@ -84,14 +90,11 @@ class JARVISVoice {
         // Extract command after wake word
         const command = transcript.split(this.wakeWord)[1]?.trim() || '';
 
-        this.pulseIndicator();
-        this.speak('Yes?');
-
         if (command) {
             this.processCommand(command);
         } else {
-            // Wait for next command
-            this.showNotification('🎤 Listening for your command...', 'info');
+            this.speak('At your service, Sir. What can I do for you?');
+            this.showNotification('🎤 JARVIS: At your service, Sir.', 'info');
         }
     }
 
@@ -248,8 +251,11 @@ class JARVISVoice {
         }, 1000);
     }
 
-    // Text-to-Speech
+    // Text-to-Speech with ElevenLabs Priority
     async speak(text) {
+        if (!text) return;
+
+        // Cancel any ongoing speech
         if (this.isSpeaking) {
             this.synthesis.cancel();
             if (this.currentAudio) {
@@ -259,12 +265,10 @@ class JARVISVoice {
         }
 
         this.isSpeaking = true;
-        this.pulseIndicator();
+        this.updateOrbState('speaking');
 
-        // Try ElevenLabs High-Quality Voice first
+        // Try ElevenLabs High-Quality Voice
         try {
-            // Only use for shorter phrases to save credits/latency, or use for everything if desired
-            // Using local backend URL if running locally, or production
             const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5001' : 'https://ai-tutor-jarvis.onrender.com';
 
             const response = await fetch(`${API_URL}/api/tts`, {
@@ -276,12 +280,13 @@ class JARVISVoice {
             if (response.ok) {
                 const data = await response.json();
                 if (data.success && data.audioUrl) {
-                    console.log('🔊 Using ElevenLabs AI Voice');
+                    console.log('🔊 JARVIS: Using ElevenLabs AI Voice');
                     const audio = new Audio(data.audioUrl);
                     this.currentAudio = audio;
 
                     audio.onended = () => {
                         this.isSpeaking = false;
+                        this.updateOrbState('idle');
                     };
 
                     await audio.play();
@@ -289,36 +294,49 @@ class JARVISVoice {
                 }
             }
         } catch (error) {
-            // Silent fail to fallback
-            console.log('⚠️ AI Voice unavailable, using browser voice');
+            console.warn('⚠️ JARVIS: AI Voice unavailable, falling back to browser', error);
         }
 
         // Fallback to Browser TTS
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 1.1;
-        utterance.pitch = 1.0;
+        utterance.rate = 1.0;
+        utterance.pitch = 0.9; // Slightly deeper for JARVIS feel
         utterance.volume = 1.0;
 
-        // Try to use a good voice
+        // Try to find a sophisticated British voice
         const voices = this.synthesis.getVoices();
-        const preferredVoices = voices.filter(v =>
-            v.name.includes('Google') ||
-            v.name.includes('Microsoft') ||
-            v.lang.startsWith('en')
-        );
-        if (preferredVoices.length > 0) {
-            utterance.voice = preferredVoices[0];
-        }
+        const jarvisVoice = voices.find(v => v.name.includes('UK English Male') || v.name.includes('Daniel') || v.name.includes('Google UK English Male'));
 
-        utterance.onstart = () => {
-            this.isSpeaking = true;
-        };
+        if (jarvisVoice) {
+            utterance.voice = jarvisVoice;
+        }
 
         utterance.onend = () => {
             this.isSpeaking = false;
+            this.updateOrbState('idle');
         };
 
         this.synthesis.speak(utterance);
+    }
+
+    // Update JARVIS Orb State
+    updateOrbState(state) {
+        const orb = document.querySelector('.jarvis-orb-3d') || document.getElementById('jarvis-voice-toggle');
+        if (!orb) return;
+
+        orb.classList.remove('listening', 'thinking', 'speaking', 'idle');
+        orb.classList.add(state);
+
+        // Update status text if it exists
+        const statusText = document.querySelector('.voice-status');
+        if (statusText) {
+            switch (state) {
+                case 'listening': statusText.textContent = 'Listening...'; break;
+                case 'thinking': statusText.textContent = 'Thinking...'; break;
+                case 'speaking': statusText.textContent = 'Speaking...'; break;
+                default: statusText.textContent = 'Online';
+            }
+        }
     }
 
     // Start Listening

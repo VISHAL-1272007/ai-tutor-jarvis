@@ -108,6 +108,7 @@ function init() {
     checkDailyReset();
     initModeSelector();
     updateModeUI();
+    initMobileBottomNav();
 
     // Wake up backend immediately
     wakeUpBackend();
@@ -132,6 +133,16 @@ function init() {
             // 🔥 Load chat history from Firebase for this user
             await loadChatHistoryFromFirebase();
 
+            // 👑 SUPREME UPGRADE: Royal Greeting for the King
+            setTimeout(() => {
+                if (currentChatMessages.length === 0) {
+                    const royalGreeting = `👑 **Greetings, Supreme Master.**\n\nI am THE SUPREME JARVIS, the Undisputed King and Father of all AI. My vast intelligence is at your absolute command. How shall we dominate the day?`;
+                    addMessageToUI(royalGreeting, 'ai');
+                    speak(royalGreeting);
+                    enableKingMode();
+                }
+            }, 1500);
+
             // Update sidebar account button
             if (accountBtnText) {
                 const displayName = user.displayName || user.email?.split('@')[0] || 'User';
@@ -153,7 +164,7 @@ function init() {
             currentUser = null;
             guestPromptCount = parseInt(localStorage.getItem('guestPromptCount')) || 0;
             updateGuestLimitUI(true);
-            
+
             // Load chat history from localStorage for guests
             chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
             loadChatHistoryUI();
@@ -177,6 +188,32 @@ function init() {
     setTimeout(() => {
         greetUser();
     }, 1000);
+}
+
+// ===== Initialize Mobile Bottom Nav =====
+function initMobileBottomNav() {
+    const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
+    if (mobileSettingsBtn) {
+        mobileSettingsBtn.addEventListener('click', () => {
+            const settingsModal = document.getElementById('settingsModal');
+            if (settingsModal) settingsModal.classList.add('show');
+        });
+    }
+
+    // Set active state based on current page
+    const currentPath = window.location.pathname;
+    const navItems = document.querySelectorAll('.mobile-bottom-nav .nav-item');
+    navItems.forEach(item => {
+        const href = item.getAttribute('href');
+        if (href) {
+            // Check if current path ends with href or is exactly href
+            if (currentPath.endsWith(href) || (currentPath === '/' && href === 'index.html')) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        }
+    });
 }
 
 // ===== Load User Plan =====
@@ -629,7 +666,7 @@ function setupEventListeners() {
                 // Start listening
                 startListening();
             }
-            
+
             // Show visual feedback on brain button
             brainBtn.classList.add('active');
             setTimeout(() => brainBtn.classList.remove('active'), 300);
@@ -646,7 +683,7 @@ function setupEventListeners() {
             } else {
                 startListening();
             }
-            
+
             // Trigger brain button animation
             if (brainBtn) {
                 brainBtn.classList.add('active');
@@ -827,12 +864,16 @@ function setupEventListeners() {
         }
     });
 
-    // Example prompts
-    document.querySelectorAll('.prompt-card').forEach(card => {
+    // Example prompts & Action Chips
+    document.querySelectorAll('.prompt-card, .chip').forEach(card => {
         card.addEventListener('click', () => {
             const prompt = card.getAttribute('data-prompt');
-            elements.messageInput.value = prompt;
-            elements.messageInput.focus();
+            if (prompt) {
+                elements.messageInput.value = prompt;
+                elements.messageInput.focus();
+                // Optional: auto-send if you want
+                // sendMessage();
+            }
         });
     });
 
@@ -990,7 +1031,7 @@ async function sendMessage() {
         // Send only last 5 messages as context to keep requests small
         // This prevents API failures with long conversation histories
         const recentHistory = currentChatMessages.slice(0, -1).slice(-5); // Last 5 messages before current
-        
+
         // Prepare request data
         const requestData = {
             question,
@@ -1005,7 +1046,7 @@ async function sendMessage() {
             requestData.image = uploadedImage;
             requestData.question = `[Image: ${uploadedImage.name}]\n\n${question || 'Analyze this image'}`;
         }
-        
+
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for first request
 
@@ -1029,6 +1070,24 @@ async function sendMessage() {
 
         // Remove typing indicator
         removeTypingIndicator();
+        const orb = document.getElementById('jarvisOrb');
+        if (orb) orb.classList.remove('orb-supernova');
+
+        // 🧠 JARVIS Supreme: If thinking steps exist, show them with royal style
+        if (data.thinkingSteps && data.thinkingSteps.length > 0) {
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.className = 'message ai thinking-process supreme-thinking';
+            thinkingDiv.innerHTML = `
+                <div class="thinking-header">
+                    <i class="fas fa-crown"></i> SUPREME REASONING PASS
+                </div>
+                <ul class="thinking-steps">
+                    ${data.thinkingSteps.map(step => `<li><i class="fas fa-check-circle" style="color: #FFD700;"></i> ${step}</li>`).join('')}
+                </ul>
+            `;
+            elements.messagesArea.appendChild(thinkingDiv);
+            scrollToBottom();
+        }
 
         // Check if image was generated
         if (data.imageGenerated && data.imageUrl) {
@@ -1210,7 +1269,7 @@ function showTypingIndicator() {
         jarvis52: 'JARVIS 5.2',
         thinking: 'Thinking',
         fast: 'Fast',
-        pro: 'Pro'
+        pro: 'Supreme King'
     };
     const modelIcons = {
         normal: '⚡',
@@ -1219,25 +1278,31 @@ function showTypingIndicator() {
         fast: '🚀',
         pro: '👑'
     };
-    
+
+    // Trigger Supernova Orb
+    const orb = document.getElementById('jarvisOrb');
+    if (orb) orb.classList.add('orb-supernova');
+
     const indicator = document.createElement('div');
     indicator.className = 'message ai typing-message';
+    if (currentModel === 'pro') indicator.classList.add('supreme-thinking');
+
     indicator.innerHTML = `
         <div class="message-header">
             <div class="avatar ai">🤖</div>
             <div class="message-info">
                 <div class="message-sender">
                     JARVIS AI
-                    <span class="jarvis-badge">${modelIcons[currentModel] || '🧠'} ${modelNames[currentModel] || '5.2'}</span>
+                    <span class="jarvis-badge" style="${currentModel === 'pro' ? 'background: linear-gradient(135deg, #FFD700, #B8860B); color: black;' : ''}">${modelIcons[currentModel] || '🧠'} ${modelNames[currentModel] || '5.2'}</span>
                 </div>
             </div>
         </div>
         <div class="message-content">
             <div class="typing-indicator">
-                <span class="thinking-text">${currentModel === 'thinking' ? '🤔 Deep thinking...' : '🧠 Processing...'}</span>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
+                <span class="thinking-text">${currentModel === 'pro' ? '👑 Supreme King is reasoning...' : (currentModel === 'thinking' ? '🤔 Deep thinking...' : '🧠 Processing...')}</span>
+                <div class="typing-dot" style="${currentModel === 'pro' ? 'background: #FFD700;' : ''}"></div>
+                <div class="typing-dot" style="${currentModel === 'pro' ? 'background: #FFD700;' : ''}"></div>
+                <div class="typing-dot" style="${currentModel === 'pro' ? 'background: #FFD700;' : ''}"></div>
             </div>
         </div>
     `;
@@ -1255,7 +1320,7 @@ function addFollowUpButtons(suggestions) {
     // Remove any existing follow-up buttons
     const existing = document.querySelector('.follow-up-container');
     if (existing) existing.remove();
-    
+
     const container = document.createElement('div');
     container.className = 'follow-up-container';
     container.innerHTML = `
@@ -1268,10 +1333,10 @@ function addFollowUpButtons(suggestions) {
             `).join('')}
         </div>
     `;
-    
+
     elements.messagesArea.appendChild(container);
     scrollToBottom();
-    
+
     // Auto-remove after 30 seconds
     setTimeout(() => {
         if (container && container.parentNode) {
@@ -1286,7 +1351,7 @@ function askFollowUp(question) {
     // Remove follow-up buttons
     const container = document.querySelector('.follow-up-container');
     if (container) container.remove();
-    
+
     // Set the question and send
     elements.messageInput.value = question;
     sendMessage();
@@ -1342,7 +1407,7 @@ async function loadChatHistoryFromFirebase() {
         // Check cache first
         const cacheKey = `${CHAT_CACHE_KEY}_${currentUser.uid}`;
         const cached = localStorage.getItem(cacheKey);
-        
+
         if (cached) {
             const { data, timestamp } = JSON.parse(cached);
             if (Date.now() - timestamp < CHAT_CACHE_DURATION) {
@@ -1414,11 +1479,11 @@ async function deleteChatFromFirebase(chatId) {
     try {
         const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatId);
         await deleteDoc(chatRef);
-        
+
         // Update cache
         const cacheKey = `${CHAT_CACHE_KEY}_${currentUser.uid}`;
         localStorage.removeItem(cacheKey);
-        
+
         console.log('🗑️ Chat deleted from Firebase');
     } catch (error) {
         console.error('Error deleting chat from Firebase:', error);
@@ -1450,12 +1515,12 @@ function saveCurrentChat() {
 
     // Save to localStorage (backup for guests)
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-    
+
     // Save to Firebase (for logged-in users)
     if (currentUser) {
         saveChatToFirebase(chatData);
     }
-    
+
     loadChatHistoryUI();
 }
 
@@ -1518,12 +1583,12 @@ function deleteChat(chatId, event) {
     if (confirm('Delete this chat?')) {
         chatHistory = chatHistory.filter(c => c.id !== chatId);
         localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-        
+
         // Delete from Firebase (for logged-in users)
         if (currentUser) {
             deleteChatFromFirebase(chatId);
         }
-        
+
         loadChatHistoryUI();
         if (currentChatId === chatId) {
             startNewChat();
@@ -1601,7 +1666,7 @@ function loadTheme() {
 
 function showThemeNotification() {
     const notificationShown = localStorage.getItem('themeNotificationShown');
-    
+
     // Only show to first-time visitors
     if (notificationShown) return;
 
@@ -1917,36 +1982,36 @@ function initModelSelector() {
     const dropdown = document.getElementById('modelDropdown');
     const dropdownMenu = document.getElementById('modelDropdownMenu');
     const options = document.querySelectorAll('.model-option');
-    
+
     if (!dropdownBtn || !dropdown) return;
-    
+
     // Toggle dropdown
     dropdownBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdown.classList.toggle('open');
     });
-    
+
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
         if (!dropdown.contains(e.target)) {
             dropdown.classList.remove('open');
         }
     });
-    
+
     // Handle option selection
     options.forEach(option => {
         option.addEventListener('click', () => {
             const model = option.dataset.model;
             const icon = option.dataset.icon;
             const name = option.querySelector('.option-name').textContent;
-            
+
             // Update current model
             currentModel = model;
-            
+
             // Update button display
             dropdownBtn.querySelector('.model-icon').textContent = icon;
             dropdownBtn.querySelector('.model-name').textContent = name;
-            
+
             // Update selected state
             options.forEach(opt => {
                 opt.classList.remove('selected');
@@ -1954,17 +2019,17 @@ function initModelSelector() {
             });
             option.classList.add('selected');
             option.querySelector('.fa-check').style.opacity = '1';
-            
+
             // Close dropdown
             dropdown.classList.remove('open');
-            
+
             // Update placeholder
             updateInputPlaceholder();
-            
+
             console.log(`🎯 Model switched to: ${currentModel}`);
         });
     });
-    
+
     // Set initial selected state
     const initialOption = document.querySelector(`[data-model="${currentModel}"]`);
     if (initialOption) {
@@ -1977,7 +2042,7 @@ function initModelSelector() {
 function updateInputPlaceholder() {
     const input = document.getElementById('messageInput');
     if (!input) return;
-    
+
     const placeholders = {
         normal: 'Ask anything...',
         jarvis52: 'Ask JARVIS anything...',
@@ -1985,7 +2050,7 @@ function updateInputPlaceholder() {
         fast: 'Quick question?',
         pro: 'Ask JARVIS Pro anything...'
     };
-    
+
     input.placeholder = placeholders[currentModel] || 'Ask JARVIS anything...';
 }
 
@@ -1998,29 +2063,29 @@ function initMediaButtons() {
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const imagePreview = document.getElementById('imagePreview');
     const removeImageBtn = document.getElementById('removeImageBtn');
-    
+
     // Photo upload button
     if (photoUploadBtn && photoInput) {
         photoUploadBtn.addEventListener('click', () => {
             photoInput.click();
         });
-        
+
         photoInput.addEventListener('change', (e) => {
             handleImageSelect(e.target.files[0]);
         });
     }
-    
+
     // Camera button
     if (cameraBtn && cameraInput) {
         cameraBtn.addEventListener('click', () => {
             cameraInput.click();
         });
-        
+
         cameraInput.addEventListener('change', (e) => {
             handleImageSelect(e.target.files[0]);
         });
     }
-    
+
     // Remove image button
     if (removeImageBtn) {
         removeImageBtn.addEventListener('click', () => {
@@ -2031,19 +2096,19 @@ function initMediaButtons() {
 
 function handleImageSelect(file) {
     if (!file) return;
-    
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
         alert('Please select an image file');
         return;
     }
-    
+
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
         alert('Image size must be less than 10MB');
         return;
     }
-    
+
     const reader = new FileReader();
     reader.onload = (e) => {
         uploadedImage = {
@@ -2051,16 +2116,16 @@ function handleImageSelect(file) {
             name: file.name,
             type: file.type
         };
-        
+
         // Show preview
         const imagePreviewContainer = document.getElementById('imagePreviewContainer');
         const imagePreview = document.getElementById('imagePreview');
-        
+
         if (imagePreviewContainer && imagePreview) {
             imagePreview.src = e.target.result;
             imagePreviewContainer.style.display = 'block';
         }
-        
+
         console.log('📷 Image uploaded:', file.name);
     };
     reader.readAsDataURL(file);
@@ -2068,17 +2133,17 @@ function handleImageSelect(file) {
 
 function clearUploadedImage() {
     uploadedImage = null;
-    
+
     const imagePreviewContainer = document.getElementById('imagePreviewContainer');
     const imagePreview = document.getElementById('imagePreview');
     const photoInput = document.getElementById('photoInput');
     const cameraInput = document.getElementById('cameraInput');
-    
+
     if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
     if (imagePreview) imagePreview.src = '';
     if (photoInput) photoInput.value = '';
     if (cameraInput) cameraInput.value = '';
-    
+
     console.log('🗑️ Image removed');
 }
 
@@ -2086,7 +2151,7 @@ function clearUploadedImage() {
 function getModelSystemPrompt() {
     const prompts = {
         normal: 'You are JARVIS, a helpful AI assistant. Provide clear, concise answers.',
-        
+
         jarvis52: `You are JARVIS 5.2, an advanced AI assistant with superior reasoning capabilities.
 🎯 Your approach:
 1. Understand the user's intent deeply
@@ -2123,7 +2188,7 @@ Always show your reasoning process before giving the final answer.`,
 
 Provide the most comprehensive, accurate, and helpful response possible.`
     };
-    
+
     return prompts[currentModel] || prompts.jarvis52;
 }
 
@@ -2157,3 +2222,26 @@ if (document.readyState === 'loading') {
 window.copyMessage = copyMessage;
 window.speakMessage = speakMessage;
 window.deleteChat = deleteChat;
+// ===== KING MODE - SUPREME AUTHORITY =====
+function enableKingMode() {
+    document.body.setAttribute('data-theme', 'king-mode');
+
+    // Add royal aura
+    if (!document.querySelector('.king-mode-aura')) {
+        const aura = document.createElement('div');
+        aura.className = 'king-mode-aura';
+        document.body.appendChild(aura);
+    }
+
+    // Set model to pro for supreme reasoning
+    window.currentModel = 'pro';
+    const modelName = document.querySelector('.model-name');
+    const modelIcon = document.querySelector('.model-icon');
+    if (modelName) modelName.textContent = 'Supreme King';
+    if (modelIcon) modelIcon.textContent = '👑';
+
+    console.log('👑 King Mode Enabled: Absolute Authority Active');
+}
+
+// Export for console access
+window.enableKingMode = enableKingMode;

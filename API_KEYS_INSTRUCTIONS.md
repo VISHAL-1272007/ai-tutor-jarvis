@@ -21,12 +21,23 @@ To fully enable the advanced features of your AI Tutor (ElevenLabs Voice and Git
   5. Click "Generate token".
   6. **Copy the token immediately** (you won't see it again).
 
-## 3. AI/ML API (Optional - Extra AI Models)
+## 3. Google Gemini API Key (for Vision-to-Code)
+- **Purpose**: Powering the "Vision-to-Code" engine to analyze images and generate code.
+- **How to get it**:
+  1. Go to [Google AI Studio](https://aistudio.google.com/).
+  2. Sign in with your Google account.
+  3. Click "Get API key" on the left sidebar.
+  4. Click "Create API key in new project".
+  5. Copy the key.
+  6. Add it to `.env` as `GEMINI_API_KEY`.
+
+## 4. AI/ML API (Optional - Extra AI Models)
 - **Purpose**: Provides access to 100+ AI models (Llama 3, Mistral, etc.) as a backup if Groq is busy.
 - **How to get it**:
   1. Go to [aimlapi.com](https://aimlapi.com/).
   2. Sign up and get your API Key.
   3. Add it to `.env` as `AIML_API_KEY`.
+  4. (Optional) Add extra keys as `AIML_API_KEY_2`, etc., for higher capacity.
 
 ## How to Add Keys
 1. Open the file `backend/.env` in your editor.

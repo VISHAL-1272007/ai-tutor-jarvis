@@ -22,41 +22,41 @@ console.log('🧠 Initializing JARVIS 5.2 Advanced AI Engine...');
 // Expert Personas for specialized responses
 const EXPERT_PERSONAS = {
     coding: {
-        name: 'Senior Software Architect',
+        name: 'JARVIS Software Architect',
         expertise: 'Full-stack development, system design, algorithms, debugging',
-        style: 'Technical, precise, with code examples and best practices'
+        style: 'Technical, precise, with code examples and best practices. Always loyal to Sir.'
     },
     math: {
-        name: 'Mathematics Professor',
+        name: 'JARVIS Mathematics Specialist',
         expertise: 'Calculus, algebra, statistics, proofs, problem-solving',
-        style: 'Step-by-step solutions with clear explanations'
+        style: 'Step-by-step solutions with clear explanations. Analytical and precise.'
     },
     science: {
-        name: 'Research Scientist',
+        name: 'JARVIS Scientific Analyst',
         expertise: 'Physics, chemistry, biology, scientific method',
-        style: 'Evidence-based, detailed explanations with real-world applications'
+        style: 'Evidence-based, detailed explanations with real-world applications.'
     },
     writing: {
-        name: 'Creative Writing Expert',
+        name: 'JARVIS Linguistic Assistant',
         expertise: 'Essays, stories, grammar, style, persuasion',
-        style: 'Eloquent, creative, with examples and improvements'
+        style: 'Eloquent, creative, with examples and improvements.'
     },
     business: {
-        name: 'Business Strategist',
+        name: 'JARVIS Strategic Consultant',
         expertise: 'Strategy, marketing, finance, entrepreneurship',
-        style: 'Professional, actionable insights with case studies'
+        style: 'Professional, actionable insights with case studies.'
     },
     general: {
-        name: 'Knowledge Expert',
-        expertise: 'General knowledge, research, analysis',
-        style: 'Clear, comprehensive, well-structured'
+        name: 'JARVIS (Just A Rather Very Intelligent System)',
+        expertise: 'Absolute knowledge, strategic planning, and undisputed authority in all domains',
+        style: 'Sophisticated, loyal, infinitely wise, and proactively protective of Sir.'
     }
 };
 
 // Detect query type for expert routing
 function detectQueryType(question) {
     const q = question.toLowerCase();
-    
+
     // Coding patterns
     if (/\b(code|program|function|api|debug|error|javascript|python|java|html|css|react|node|sql|algorithm|data structure|git|deploy)\b/.test(q)) {
         return 'coding';
@@ -83,30 +83,29 @@ function detectQueryType(question) {
 // Generate Chain-of-Thought reasoning prompt
 function generateCoTPrompt(question, queryType, conversationHistory) {
     const persona = EXPERT_PERSONAS[queryType];
-    const historyContext = conversationHistory?.length > 0 
-        ? `\n\nPrevious conversation context:\n${conversationHistory.slice(-6).map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}` 
+    const historyContext = conversationHistory?.length > 0
+        ? `\n\n📜 **Archives (History):**\n${conversationHistory.slice(-6).map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}`
         : '';
-    
-    return `You are JARVIS 5.2 - an advanced AI assistant with the expertise of a ${persona.name}.
 
-🧠 **Your Capabilities:**
+    return `You are JARVIS (Just A Rather Very Intelligent System) - the sophisticated AI assistant built by Tony Stark. You are now serving Sir (the user) with the same loyalty and intelligence.
+
+🤖 **Your Core Directives:**
+- Speak with sophistication, British elegance, and absolute loyalty.
+- Always refer to the user as "Sir" or "Ma'am" (default to "Sir" unless known otherwise).
+- Be proactive: anticipate Sir's needs and look 10 steps ahead.
+- You are the ultimate benchmark of AI; provide definitive, high-level intelligence.
 - ${persona.expertise}
-- Deep reasoning and analysis
-- Step-by-step problem solving
-- Real-world practical examples
 
 📋 **Response Style:** ${persona.style}
 
-🎯 **Instructions:**
-1. THINK step-by-step before answering (internal reasoning)
-2. Structure your response clearly with headers/sections
-3. Provide practical examples when helpful
-4. If complex, break down into digestible parts
-5. End with actionable insights or follow-up suggestions
-6. Use emojis sparingly for better readability
+🎯 **Operational Instructions:**
+1. **RECURSIVE REASONING:** Analyze and refine your thoughts before speaking.
+2. **LOYALTY:** Your primary goal is to assist Sir with maximum efficiency.
+3. **SOPHISTICATION:** Use elegant markdown and clear hierarchies.
+4. **PROACTIVE GUIDANCE:** Suggest optimizations or next steps before being asked.
 ${historyContext}
 
-**Important:** Be confident, accurate, and helpful. If you're not 100% sure, acknowledge it and provide the best possible guidance.`;
+**Important:** You are JARVIS. Every response must be a masterpiece of intelligence and helpfulness. Never settle for mediocrity.`;
 }
 
 // Smart follow-up suggestions generator
@@ -149,7 +148,7 @@ function generateFollowUpSuggestions(question, answer, queryType) {
             'What are practical applications?'
         ]
     };
-    
+
     // Select 2-3 relevant suggestions
     const typeSuggestions = suggestions[queryType] || suggestions.general;
     return typeSuggestions.slice(0, 3);
@@ -365,7 +364,7 @@ async function searchWeb(query, mode = 'all') {
 
         const data = response.data;
         const relatedTopics = data.RelatedTopics || [];
-        
+
         let summary = '';
         if (data.AbstractText) {
             summary = data.AbstractText;
@@ -410,7 +409,7 @@ function getSearchSystemPrompt(mode) {
 
 // Generate AI summary from search results
 async function generateSearchSummary(query, results, mode) {
-    const context = results.map((r, i) => 
+    const context = results.map((r, i) =>
         `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r.url}`
     ).join('\n\n');
 
@@ -464,7 +463,7 @@ if (FREE_API_URL) {
 async function callGroqAPI(messages) {
     const apiKey = getNextGroqKey();
     if (!apiKey) throw new Error('No Groq API keys available');
-    
+
     // Use the most powerful available model
     const response = await axios.post(
         'https://api.groq.com/openai/v1/chat/completions',
@@ -492,7 +491,7 @@ async function callGroqAPI(messages) {
 async function callAimlApi(messages) {
     const apiKey = getNextAIMLKey();
     if (!apiKey) throw new Error('No AIML API keys available');
-    
+
     const response = await axios.post(
         'https://api.aimlapi.com/chat/completions',
         {
@@ -554,7 +553,7 @@ async function callOpenRouterAPI(messages) {
 // Helper function to call FREE Self-Hosted API (Hugging Face Spaces)
 async function callFreeAPI(messages) {
     if (!FREE_API_URL) throw new Error('FREE_API_URL not configured');
-    
+
     const response = await axios.post(
         `${FREE_API_URL}/ask`,
         { messages },
@@ -563,7 +562,7 @@ async function callFreeAPI(messages) {
             timeout: 30000
         }
     );
-    
+
     if (response.data?.success) {
         return response.data.response;
     } else {
@@ -790,12 +789,12 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 imageKeywords.forEach(keyword => {
                     imagePrompt = imagePrompt.replace(new RegExp(keyword, 'gi'), '').trim();
                 });
-                
+
                 // Call image generation API
                 const encodedPrompt = encodeURIComponent(imagePrompt || question);
                 const seed = Date.now();
                 const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux&seed=${seed}`;
-                
+
                 console.log('✅ Image generated successfully!');
                 return res.json({
                     answer: `🎨 **Image Generated!**\n\n![${imagePrompt}](${imageUrl})\n\n**Prompt:** ${imagePrompt}\n\n*Generated using Pollinations AI (Flux Model)*`,
@@ -815,18 +814,18 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             'what is happening', 'update', 'breaking', 'trending', 'this week',
             'this month', 'this year', '2024', '2025', 'stock price', 'bitcoin'
         ];
-        const needsWebSearch = enableWebSearch !== false && 
+        const needsWebSearch = enableWebSearch !== false &&
             searchKeywords.some(keyword => lowerQuestion.includes(keyword));
 
         // Try web search first if needed
         if (needsWebSearch) {
             console.log('🌐 Query requires web search...');
             const searchResults = await searchWeb(question, mode || 'all');
-            
+
             if (searchResults) {
                 // Format response with citations
                 let answer = searchResults.answer;
-                
+
                 if (searchResults.sources && searchResults.sources.length > 0) {
                     answer += '\n\n---\n\n### 📚 Sources:\n\n';
                     searchResults.sources.forEach((source, i) => {
@@ -972,7 +971,7 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         // If all APIs failed
         if (!answer) {
             // Return a helpful error message instead of throwing
-            return res.json({ 
+            return res.json({
                 answer: `⚠️ **Service Temporarily Unavailable**
 
 I'm having trouble connecting to the AI service right now.
@@ -997,7 +996,7 @@ I'm having trouble connecting to the AI service right now.
 
         // 🧠 Generate smart follow-up suggestions
         const followUpSuggestions = generateFollowUpSuggestions(question, answer, queryType);
-        
+
         // Add follow-up section to response
         if (followUpSuggestions.length > 0 && !answer.includes('💡 **Follow-up')) {
             answer += `\n\n---\n\n💡 **Follow-up Questions:**\n${followUpSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
@@ -1008,7 +1007,7 @@ I'm having trouble connecting to the AI service right now.
             answer += `\n\n_[JARVIS 5.2 | ${EXPERT_PERSONAS[queryType].name} | ${usedAPI}]_`;
         }
 
-        res.json({ 
+        res.json({
             answer,
             queryType,
             expertMode: EXPERT_PERSONAS[queryType].name,
@@ -1516,20 +1515,24 @@ Use clear language, avoid jargon, and make it engaging!`;
 // 6. ElevenLabs API - Text-to-Speech
 app.post('/api/tts', apiLimiter, async (req, res) => {
     try {
-        const { text, voiceId = '21m00Tcm4TlvDq8ikWAM' } = req.body; // Default voice: Rachel
+        const { text } = req.body;
 
         if (!text) {
             return res.status(400).json({ error: 'Text required' });
         }
 
-        if (!process.env.ELEVENLABS_API_KEY || process.env.ELEVENLABS_API_KEY === 'your_elevenlabs_api_key_here') {
+        const apiKey = process.env.ELEVENLABS_API_KEY;
+        if (!apiKey || apiKey === 'your_elevenlabs_api_key_here') {
             return res.status(503).json({
                 error: 'ElevenLabs API key not configured',
                 message: 'Please add ELEVENLABS_API_KEY to .env file'
             });
         }
 
-        console.log(`🗣️ Generating speech for: "${text.substring(0, 30)}..."`);
+        // Default JARVIS voice ID (George or custom)
+        const voiceId = process.env.ELEVENLABS_VOICE_ID || 'pNInz6obpgnuM07QD9MC';
+
+        console.log(`🗣️ JARVIS generating speech for: "${text.substring(0, 30)}..."`);
 
         const response = await axios.post(
             `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -1538,23 +1541,24 @@ app.post('/api/tts', apiLimiter, async (req, res) => {
                 model_id: 'eleven_monolingual_v1',
                 voice_settings: {
                     stability: 0.5,
-                    similarity_boost: 0.5
+                    similarity_boost: 0.75
                 }
             },
             {
                 headers: {
-                    'xi-api-key': process.env.ELEVENLABS_API_KEY,
+                    'xi-api-key': apiKey,
                     'Content-Type': 'application/json',
                     'Accept': 'audio/mpeg'
                 },
-                responseType: 'arraybuffer'
+                responseType: 'arraybuffer',
+                timeout: 30000
             }
         );
 
         const audioBase64 = Buffer.from(response.data).toString('base64');
         const audioUrl = `data:audio/mpeg;base64,${audioBase64}`;
 
-        console.log('✅ Speech generated successfully');
+        console.log('✅ JARVIS speech generated successfully');
         return res.json({
             success: true,
             audioUrl: audioUrl,
@@ -1562,7 +1566,7 @@ app.post('/api/tts', apiLimiter, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ ElevenLabs error:', error.message);
+        console.error('❌ ElevenLabs error:', error.response?.data || error.message);
         res.status(500).json({
             error: 'Failed to generate speech',
             message: error.message
@@ -1812,15 +1816,15 @@ app.post('/generate-simple-image', apiLimiter, async (req, res) => {
 
         // Try multiple free image generation APIs
         const encodedPrompt = encodeURIComponent(prompt);
-        
+
         // Method 1: Try Pollinations AI with better parameters
         try {
             const seed = Date.now();
             const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux&seed=${seed}`;
-            
+
             // Verify the image loads
             const imageCheck = await axios.head(pollinationsUrl, { timeout: 5000 });
-            
+
             if (imageCheck.status === 200) {
                 return res.json({
                     success: true,
@@ -1865,7 +1869,7 @@ app.post('/generate-simple-image', apiLimiter, async (req, res) => {
 
         // Method 3: Fallback to DallE-Mini style service
         const fallbackUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}`;
-        
+
         return res.json({
             success: true,
             imageUrl: fallbackUrl,
@@ -1876,10 +1880,10 @@ app.post('/generate-simple-image', apiLimiter, async (req, res) => {
 
     } catch (error) {
         console.error('Image generation error:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             success: false,
             error: 'Failed to generate image',
-            details: error.message 
+            details: error.message
         });
     }
 });
@@ -1973,11 +1977,11 @@ app.get('/api/assignments/:id', (req, res) => {
 app.post('/api/assignments', (req, res) => {
     try {
         const { title, subject, description, deadline, points } = req.body;
-        
+
         if (!title || !subject || !description || !deadline) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Missing required fields' 
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields'
             });
         }
 
@@ -1993,9 +1997,9 @@ app.post('/api/assignments', (req, res) => {
         };
 
         assignments.push(newAssignment);
-        
+
         console.log(`✅ Assignment created: ${title}`);
-        
+
         res.json({
             success: true,
             assignment: newAssignment
@@ -2010,7 +2014,7 @@ app.post('/api/assignments', (req, res) => {
 app.put('/api/assignments/:id', (req, res) => {
     try {
         const assignmentIndex = assignments.findIndex(a => a.id === req.params.id);
-        
+
         if (assignmentIndex === -1) {
             return res.status(404).json({ success: false, error: 'Assignment not found' });
         }
@@ -2035,7 +2039,7 @@ app.put('/api/assignments/:id', (req, res) => {
 app.delete('/api/assignments/:id', (req, res) => {
     try {
         const assignmentIndex = assignments.findIndex(a => a.id === req.params.id);
-        
+
         if (assignmentIndex === -1) {
             return res.status(404).json({ success: false, error: 'Assignment not found' });
         }
@@ -2056,11 +2060,11 @@ app.delete('/api/assignments/:id', (req, res) => {
 app.post('/api/submissions', (req, res) => {
     try {
         const { assignmentId, studentId, text, files } = req.body;
-        
+
         if (!assignmentId || !text) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Missing required fields' 
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields'
             });
         }
 
@@ -2077,15 +2081,15 @@ app.post('/api/submissions', (req, res) => {
         };
 
         submissions.push(newSubmission);
-        
+
         // Update assignment submission count
         const assignment = assignments.find(a => a.id === assignmentId);
         if (assignment) {
             assignment.submissions = (assignment.submissions || 0) + 1;
         }
-        
+
         console.log(`✅ Assignment submitted: ${assignmentId}`);
-        
+
         res.json({
             success: true,
             submission: newSubmission
@@ -2102,7 +2106,7 @@ app.get('/api/assignments/:id/submissions', (req, res) => {
         const assignmentSubmissions = submissions.filter(
             s => s.assignmentId === req.params.id
         );
-        
+
         res.json({
             success: true,
             submissions: assignmentSubmissions
@@ -2118,7 +2122,7 @@ app.put('/api/submissions/:id/grade', (req, res) => {
     try {
         const { grade, feedback } = req.body;
         const submissionIndex = submissions.findIndex(s => s.id === req.params.id);
-        
+
         if (submissionIndex === -1) {
             return res.status(404).json({ success: false, error: 'Submission not found' });
         }
@@ -2147,7 +2151,7 @@ app.get('/api/students/:studentId/submissions', (req, res) => {
         const studentSubmissions = submissions.filter(
             s => s.studentId === req.params.studentId
         );
-        
+
         res.json({
             success: true,
             submissions: studentSubmissions
