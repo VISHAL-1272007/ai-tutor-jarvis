@@ -1642,7 +1642,7 @@ function setTheme(themeName) {
 }
 
 function loadTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'default';
+    const savedTheme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
 
     const themeSelect = document.getElementById('themeSelect');
