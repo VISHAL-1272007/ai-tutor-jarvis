@@ -324,33 +324,60 @@ function downloadCoursePDF() {
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+        putOnlyUsedFonts: true
+    });
+    
+    // Enable UTF-8 support
+    doc.setLanguage("en-US");
+    doc.setCharSpace(0);
     
     let yPosition = 20;
     const pageHeight = doc.internal.pageSize.height;
     const margin = 20;
     const maxWidth = 170;
 
+    // Helper function to clean text for UTF-8
+    const cleanText = (text) => {
+        if (!text) return '';
+        // Decode HTML entities and ensure UTF-8
+        const txt = document.createElement('textarea');
+        txt.innerHTML = text;
+        return txt.value
+            .replace(/[\u2018\u2019]/g, "'")  // Smart quotes to regular
+            .replace(/[\u201C\u201D]/g, '"')  // Smart double quotes
+            .replace(/[\u2013\u2014]/g, '-')  // En/em dashes
+            .replace(/[\u2026]/g, '...')      // Ellipsis
+            .replace(/\u00A0/g, ' ')          // Non-breaking space
+            .trim();
+    };
+
     // Title
     doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text(generatedCourse.title, margin, yPosition);
-    yPosition += 10;
+    doc.text(cleanText(generatedCourse.title), margin, yPosition, { maxWidth: maxWidth });
+    yPosition += 12;
 
     // Difficulty
     doc.setFontSize(12);
     doc.setFont(undefined, 'normal');
-    doc.text(`Difficulty: ${generatedCourse.difficulty}`, margin, yPosition);
-    yPosition += 7;
+    doc.text(`Difficulty: ${cleanText(generatedCourse.difficulty)}`, margin, yPosition);
+    yPosition += 8;
 
     // Description
     if (generatedCourse.description) {
-        const descLines = doc.splitTextToSize(generatedCourse.description, maxWidth);
+        const descLines = doc.splitTextToSize(cleanText(generatedCourse.description), maxWidth);
         doc.text(descLines, margin, yPosition);
-        yPosition += (descLines.length * 7) + 5;
+        yPosition += (descLines.length * 7) + 8;
     }
 
-    yPosition += 5;
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPosition, 190, yPosition);
+    yPosition += 10;
 
     // Lessons
     generatedCourse.lessons.forEach((lesson, index) => {
@@ -363,13 +390,15 @@ function downloadCoursePDF() {
         // Lesson title
         doc.setFontSize(16);
         doc.setFont(undefined, 'bold');
-        doc.text(`Lesson ${lesson.lessonNumber}: ${lesson.title}`, margin, yPosition);
-        yPosition += 8;
+        const lessonTitle = cleanText(`Lesson ${lesson.lessonNumber}: ${lesson.title}`);
+        doc.text(lessonTitle, margin, yPosition, { maxWidth: maxWidth });
+        yPosition += 10;
 
         // Lesson content
-        doc.setFontSize(11);
+        doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
-        const contentLines = doc.splitTextToSize(lesson.content || '', maxWidth);
+        const cleanContent = cleanText(lesson.content || '');
+        const contentLines = doc.splitTextToSize(cleanContent, maxWidth);
         
         contentLines.forEach(line => {
             if (yPosition > pageHeight - 20) {
@@ -377,52 +406,94 @@ function downloadCoursePDF() {
                 yPosition = 20;
             }
             doc.text(line, margin, yPosition);
-            yPosition += 6;
+            yPosition += 5;
         });
 
-        yPosition += 5;
+        yPosition += 8;
 
-        // Quiz section
-        if (lesson.quiz && lesson.quiz.questions) {
-            doc.setFontSize(14);
+        // Quiz section - fix the array check
+        if (lesson.quiz && Array.isArray(lesson.quiz) && lesson.quiz.length > 0) {
+            if (yPosition > pageHeight - 30) {
+                doc.addPage();
+                yPosition = 20;
+            }
+
+            doc.setFontSize(13);
             doc.setFont(undefined, 'bold');
             doc.text('Quiz Questions:', margin, yPosition);
             yPosition += 8;
 
-            lesson.quiz.questions.forEach((q, qIndex) => {
-                if (yPosition > pageHeight - 30) {
+            lesson.quiz.forEach((q, qIndex) => {
+                if (yPosition > pageHeight - 35) {
                     doc.addPage();
                     yPosition = 20;
                 }
 
-                doc.setFontSize(11);
+                doc.setFontSize(10);
                 doc.setFont(undefined, 'bold');
-                const questionText = `Q${qIndex + 1}. ${q.question}`;
+                const questionText = cleanText(`Q${qIndex + 1}. ${q.question}`);
                 const qLines = doc.splitTextToSize(questionText, maxWidth);
                 doc.text(qLines, margin, yPosition);
-                yPosition += (qLines.length * 6) + 3;
+                yPosition += (qLines.length * 5) + 4;
 
                 doc.setFont(undefined, 'normal');
-                q.options.forEach((opt, optIndex) => {
-                    if (yPosition > pageHeight - 20) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    const marker = optIndex === q.correctAnswer ? '✓ ' : '  ';
-                    doc.text(`${marker}${String.fromCharCode(65 + optIndex)}. ${opt}`, margin + 5, yPosition);
-                    yPosition += 5;
-                });
+                if (q.options && Array.isArray(q.options)) {
+                    q.options.forEach((opt, optIndex) => {
+                        if (yPosition > pageHeight - 20) {
+                            doc.addPage();
+                            yPosition = 20;
+                        }
+                        const isCorrect = q.correct === String.fromCharCode(65 + optIndex) || 
+                                        q.correctAnswer === optIndex;
+                        const marker = isCorrect ? '[✓] ' : '[ ] ';
+                        const optionText = cleanText(`${marker}${String.fromCharCode(65 + optIndex)}. ${opt}`);
+                        doc.text(optionText, margin + 5, yPosition);
+                        yPosition += 5;
+                    });
+                }
 
-                yPosition += 3;
+                if (q.explanation) {
+                    yPosition += 2;
+                    doc.setFontSize(9);
+                    doc.setFont(undefined, 'italic');
+                    const explLines = doc.splitTextToSize(cleanText(`Explanation: ${q.explanation}`), maxWidth - 5);
+                    doc.text(explLines, margin + 5, yPosition);
+                    yPosition += (explLines.length * 4) + 3;
+                    doc.setFont(undefined, 'normal');
+                    doc.setFontSize(10);
+                }
+
+                yPosition += 4;
             });
         }
 
-        yPosition += 10;
+        yPosition += 5;
+        if (yPosition < pageHeight - 10) {
+            doc.setLineWidth(0.2);
+            doc.line(margin, yPosition, 190, yPosition);
+            yPosition += 8;
+        }
+    });
     });
 
-    // Save PDF
-    doc.save(`${generatedCourse.title.replace(/\s+/g, '-').toLowerCase()}-course.pdf`);
-    alert('✅ Course downloaded as PDF successfully!');
+    // Add footer with page numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'normal');
+        doc.text(
+            `Page ${i} of ${pageCount} | ${cleanText(generatedCourse.title)}`,
+            105,
+            pageHeight - 10,
+            { align: 'center' }
+        );
+    }
+
+    // Save PDF with UTF-8 encoding
+    const filename = `${generatedCourse.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-course.pdf`;
+    doc.save(filename);
+    alert('✅ Course downloaded as PDF with UTF-8 encoding!');
 }
 
 // ============================================================================
@@ -434,32 +505,71 @@ function downloadCourseWord() {
         return;
     }
 
-    // Create HTML content for Word document
-    let htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head><meta charset='utf-8'><title>${generatedCourse.title}</title></head>
+    // Helper function to clean HTML entities
+    const cleanHTML = (text) => {
+        if (!text) return '';
+        const txt = document.createElement('textarea');
+        txt.innerHTML = text;
+        return txt.value
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
+    // Create HTML content for Word document with UTF-8
+    let htmlContent = `<!DOCTYPE html>
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+            <meta charset='UTF-8'>
+            <meta http-equiv='Content-Type' content='text/html; charset=UTF-8'>
+            <title>${cleanHTML(generatedCourse.title)}</title>
+            <style>
+                body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
+                h1 { font-size: 20pt; color: #2563eb; }
+                h2 { font-size: 16pt; color: #1d4ed8; margin-top: 20pt; }
+                h3 { font-size: 13pt; color: #1e40af; margin-top: 15pt; }
+                p { margin: 5pt 0; }
+                .quiz-option { margin-left: 20pt; }
+                .correct { font-weight: bold; color: #10b981; }
+                hr { border: 1px solid #e5e7eb; margin: 10pt 0; }
+            </style>
+        </head>
         <body>
-            <h1>${generatedCourse.title}</h1>
-            <p><strong>Difficulty:</strong> ${generatedCourse.difficulty}</p>
-            <p>${generatedCourse.description}</p>
+            <h1>${cleanHTML(generatedCourse.title)}</h1>
+            <p><strong>Difficulty:</strong> ${cleanHTML(generatedCourse.difficulty)}</p>
+            <p>${cleanHTML(generatedCourse.description)}</p>
             <hr/>
     `;
 
     generatedCourse.lessons.forEach(lesson => {
         htmlContent += `
-            <h2>Lesson ${lesson.lessonNumber}: ${lesson.title}</h2>
-            <p>${lesson.content || ''}</p>
+            <h2>Lesson ${lesson.lessonNumber}: ${cleanHTML(lesson.title)}</h2>
+            <p>${cleanHTML(lesson.content || '').replace(/\n/g, '<br/>')}</p>
         `;
 
-        if (lesson.quiz && lesson.quiz.questions) {
+        if (lesson.quiz && Array.isArray(lesson.quiz) && lesson.quiz.length > 0) {
             htmlContent += '<h3>Quiz Questions:</h3>';
-            lesson.quiz.questions.forEach((q, qIndex) => {
-                htmlContent += `<p><strong>Q${qIndex + 1}. ${q.question}</strong></p><ul>`;
-                q.options.forEach((opt, optIndex) => {
-                    const marker = optIndex === q.correctAnswer ? ' ✓' : '';
-                    htmlContent += `<li>${String.fromCharCode(65 + optIndex)}. ${opt}${marker}</li>`;
-                });
-                htmlContent += '</ul>';
+            lesson.quiz.forEach((q, qIndex) => {
+                htmlContent += `<p><strong>Q${qIndex + 1}. ${cleanHTML(q.question)}</strong></p><div class="quiz-option">`;
+                
+                if (q.options && Array.isArray(q.options)) {
+                    q.options.forEach((opt, optIndex) => {
+                        const isCorrect = q.correct === String.fromCharCode(65 + optIndex) || 
+                                        q.correctAnswer === optIndex;
+                        const className = isCorrect ? ' class="correct"' : '';
+                        const marker = isCorrect ? ' ✓' : '';
+                        htmlContent += `<p${className}>${String.fromCharCode(65 + optIndex)}. ${cleanHTML(opt)}${marker}</p>`;
+                    });
+                }
+                
+                if (q.explanation) {
+                    htmlContent += `<p><em>Explanation: ${cleanHTML(q.explanation)}</em></p>`;
+                }
+                
+                htmlContent += '</div>';
             });
         }
         htmlContent += '<hr/>';
@@ -467,21 +577,22 @@ function downloadCourseWord() {
 
     htmlContent += '</body></html>';
 
-    // Create blob and download
-    const blob = new Blob(['\ufeff', htmlContent], {
-        type: 'application/msword'
+    // Create blob with UTF-8 BOM for proper encoding
+    const BOM = '\ufeff';
+    const blob = new Blob([BOM + htmlContent], {
+        type: 'application/msword;charset=utf-8'
     });
 
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${generatedCourse.title.replace(/\s+/g, '-').toLowerCase()}-course.doc`;
+    link.download = `${generatedCourse.title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-course.doc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    alert('✅ Course downloaded as Word document successfully!');
+    alert('✅ Course downloaded as Word document with UTF-8 encoding!');
 }
 
 function downloadCourse() {
