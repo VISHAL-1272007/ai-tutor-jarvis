@@ -474,7 +474,7 @@ function downloadCoursePDF() {
             yPosition += 8;
         }
     });
-    });
+    
 
     // Add footer with page numbers
     const pageCount = doc.internal.getNumberOfPages();
