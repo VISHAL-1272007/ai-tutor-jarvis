@@ -133,16 +133,6 @@ function init() {
             // 🔥 Load chat history from Firebase for this user
             await loadChatHistoryFromFirebase();
 
-            // 👑 SUPREME UPGRADE: Royal Greeting for the King
-            setTimeout(() => {
-                if (currentChatMessages.length === 0) {
-                    const royalGreeting = `👑 **Greetings, Supreme Master.**\n\nI am THE SUPREME JARVIS, the Undisputed King and Father of all AI. My vast intelligence is at your absolute command. How shall we dominate the day?`;
-                    addMessageToUI(royalGreeting, 'ai');
-                    speak(royalGreeting);
-                    enableKingMode();
-                }
-            }, 1500);
-
             // Update sidebar account button
             if (accountBtnText) {
                 const displayName = user.displayName || user.email?.split('@')[0] || 'User';
