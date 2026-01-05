@@ -638,29 +638,43 @@ body {
 .playground-link,
 .project-gen-link,
 .dashboard-link,
-.ai-tools-link {
-    display: flex;
+.ai-tools-link,
+.header-link {
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 500;
+    gap: 8px;
+    padding: 10px 18px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
     text-decoration: none;
     cursor: pointer;
-    transition: var(--transition-fast);
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
 }
 
 .learning-platform-link:hover,
 .playground-link:hover,
 .project-gen-link:hover,
 .dashboard-link:hover,
-.ai-tools-link:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
+.ai-tools-link:hover,
+.header-link:hover {
+    background: var(--primary-500);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    border-color: var(--primary-600);
+}
+
+.header-link i {
+    font-size: 16px;
+}
+
+.header-link span {
+    font-weight: 600;
 }
 
 .settings-btn,
