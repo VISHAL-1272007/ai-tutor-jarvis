@@ -15,6 +15,9 @@
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* Course Generator Specific Styles */
         body {
@@ -423,8 +426,11 @@
                     <h2><i class="fas fa-check-circle"></i> Generated Course</h2>
                     
                     <div class="action-buttons">
-                        <button class="action-btn" onclick="downloadCourse()">
-                            <i class="fas fa-download"></i> Download JSON
+                        <button class="action-btn" onclick="downloadCoursePDF()">
+                            <i class="fas fa-file-pdf"></i> Download PDF
+                        </button>
+                        <button class="action-btn" onclick="downloadCourseWord()">
+                            <i class="fas fa-file-word"></i> Download DOCX
                         </button>
                         <button class="action-btn" onclick="copyCourse()">
                             <i class="fas fa-copy"></i> Copy to Clipboard

@@ -314,25 +314,179 @@ function clearResults() {
 window.clearResults = clearResults;
 window.toggleLesson = toggleLesson;
 
-function downloadCourse() {
+// ============================================================================
+// PDF DOWNLOAD FUNCTION
+// ============================================================================
+function downloadCoursePDF() {
     if (!generatedCourse) {
         alert('No course generated yet');
         return;
     }
 
-    const dataStr = JSON.stringify(generatedCourse, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    let yPosition = 20;
+    const pageHeight = doc.internal.pageSize.height;
+    const margin = 20;
+    const maxWidth = 170;
 
+    // Title
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text(generatedCourse.title, margin, yPosition);
+    yPosition += 10;
+
+    // Difficulty
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Difficulty: ${generatedCourse.difficulty}`, margin, yPosition);
+    yPosition += 7;
+
+    // Description
+    if (generatedCourse.description) {
+        const descLines = doc.splitTextToSize(generatedCourse.description, maxWidth);
+        doc.text(descLines, margin, yPosition);
+        yPosition += (descLines.length * 7) + 5;
+    }
+
+    yPosition += 5;
+
+    // Lessons
+    generatedCourse.lessons.forEach((lesson, index) => {
+        // Check if we need a new page
+        if (yPosition > pageHeight - 40) {
+            doc.addPage();
+            yPosition = 20;
+        }
+
+        // Lesson title
+        doc.setFontSize(16);
+        doc.setFont(undefined, 'bold');
+        doc.text(`Lesson ${lesson.lessonNumber}: ${lesson.title}`, margin, yPosition);
+        yPosition += 8;
+
+        // Lesson content
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        const contentLines = doc.splitTextToSize(lesson.content || '', maxWidth);
+        
+        contentLines.forEach(line => {
+            if (yPosition > pageHeight - 20) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            doc.text(line, margin, yPosition);
+            yPosition += 6;
+        });
+
+        yPosition += 5;
+
+        // Quiz section
+        if (lesson.quiz && lesson.quiz.questions) {
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('Quiz Questions:', margin, yPosition);
+            yPosition += 8;
+
+            lesson.quiz.questions.forEach((q, qIndex) => {
+                if (yPosition > pageHeight - 30) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'bold');
+                const questionText = `Q${qIndex + 1}. ${q.question}`;
+                const qLines = doc.splitTextToSize(questionText, maxWidth);
+                doc.text(qLines, margin, yPosition);
+                yPosition += (qLines.length * 6) + 3;
+
+                doc.setFont(undefined, 'normal');
+                q.options.forEach((opt, optIndex) => {
+                    if (yPosition > pageHeight - 20) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    const marker = optIndex === q.correctAnswer ? '✓ ' : '  ';
+                    doc.text(`${marker}${String.fromCharCode(65 + optIndex)}. ${opt}`, margin + 5, yPosition);
+                    yPosition += 5;
+                });
+
+                yPosition += 3;
+            });
+        }
+
+        yPosition += 10;
+    });
+
+    // Save PDF
+    doc.save(`${generatedCourse.title.replace(/\s+/g, '-').toLowerCase()}-course.pdf`);
+    alert('✅ Course downloaded as PDF successfully!');
+}
+
+// ============================================================================
+// WORD/DOCX DOWNLOAD FUNCTION
+// ============================================================================
+function downloadCourseWord() {
+    if (!generatedCourse) {
+        alert('No course generated yet');
+        return;
+    }
+
+    // Create HTML content for Word document
+    let htmlContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>${generatedCourse.title}</title></head>
+        <body>
+            <h1>${generatedCourse.title}</h1>
+            <p><strong>Difficulty:</strong> ${generatedCourse.difficulty}</p>
+            <p>${generatedCourse.description}</p>
+            <hr/>
+    `;
+
+    generatedCourse.lessons.forEach(lesson => {
+        htmlContent += `
+            <h2>Lesson ${lesson.lessonNumber}: ${lesson.title}</h2>
+            <p>${lesson.content || ''}</p>
+        `;
+
+        if (lesson.quiz && lesson.quiz.questions) {
+            htmlContent += '<h3>Quiz Questions:</h3>';
+            lesson.quiz.questions.forEach((q, qIndex) => {
+                htmlContent += `<p><strong>Q${qIndex + 1}. ${q.question}</strong></p><ul>`;
+                q.options.forEach((opt, optIndex) => {
+                    const marker = optIndex === q.correctAnswer ? ' ✓' : '';
+                    htmlContent += `<li>${String.fromCharCode(65 + optIndex)}. ${opt}${marker}</li>`;
+                });
+                htmlContent += '</ul>';
+            });
+        }
+        htmlContent += '<hr/>';
+    });
+
+    htmlContent += '</body></html>';
+
+    // Create blob and download
+    const blob = new Blob(['\ufeff', htmlContent], {
+        type: 'application/msword'
+    });
+
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${generatedCourse.title.replace(/\s+/g, '-').toLowerCase()}-course.json`;
+    link.download = `${generatedCourse.title.replace(/\s+/g, '-').toLowerCase()}-course.doc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    alert('✅ Course downloaded successfully!');
+    alert('✅ Course downloaded as Word document successfully!');
+}
+
+function downloadCourse() {
+    // Keep old JSON download as backup
+    downloadCoursePDF();
 }
 
 function copyCourse() {
@@ -351,6 +505,8 @@ function copyCourse() {
 }
 
 window.downloadCourse = downloadCourse;
+window.downloadCoursePDF = downloadCoursePDF;
+window.downloadCourseWord = downloadCourseWord;
 window.copyCourse = copyCourse;
 
 // ============================================================================
