@@ -3231,4 +3231,207 @@ textarea::placeholder {
 .bottom-nav .nav-item i { font-size: 20px; }
 .bottom-nav .nav-item.active { color: #3b82f6; }
 .bottom-nav .nav-item.active i { transform: translateY(-2px); text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
-@media (max-width: 768px) { .bottom-nav { display: flex; } .main-content { padding-bottom: 80px; } .header-actions { display: none; } .sidebar { display: none; } .mobile-menu-btn { display: none; } }
+/* COMPREHENSIVE MOBILE RESPONSIVE STYLES */
+@media (max-width: 768px) { 
+    /* Bottom Navigation */
+    .bottom-nav { display: flex; } 
+    .main-content { padding-bottom: 80px; } 
+    .header-actions { display: none !important; } 
+    .sidebar { display: none !important; } 
+    .mobile-menu-btn { display: none; }
+    
+    /* Header */
+    .jarvis-header { 
+        padding: 1rem; 
+        height: auto;
+    }
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .header-brand {
+        font-size: 1.2rem;
+    }
+    
+    /* Hero Sections */
+    .hero {
+        padding: 2rem 1rem !important;
+        margin-top: 60px !important;
+    }
+    .hero h1 {
+        font-size: 1.8rem !important;
+    }
+    .hero p {
+        font-size: 1rem !important;
+    }
+    
+    /* Containers */
+    .container {
+        padding: 1rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Grid Layouts */
+    .stats-grid,
+    .badges-grid,
+    .courses-grid,
+    .tools-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+    
+    /* Cards */
+    .stat-card,
+    .course-card,
+    .tool-card,
+    .badge-item,
+    .progress-item,
+    .activity-item {
+        padding: 1rem !important;
+    }
+    
+    /* Buttons */
+    .header-link {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.9rem !important;
+    }
+    .reset-btn,
+    .btn,
+    .primary-btn {
+        padding: 0.8rem 1.5rem !important;
+        font-size: 1rem !important;
+    }
+    
+    /* Chat Interface */
+    .chat-container {
+        height: calc(100vh - 60px) !important;
+        width: 100% !important;
+    }
+    .messages-container {
+        height: calc(100% - 140px) !important;
+        padding: 1rem !important;
+    }
+    .message {
+        max-width: 90% !important;
+    }
+    .input-area {
+        padding: 1rem !important;
+    }
+    #messageInput {
+        font-size: 1rem !important;
+    }
+    
+    /* Code Editor */
+    .editor-container {
+        flex-direction: column !important;
+    }
+    .file-explorer {
+        width: 100% !important;
+        max-height: 200px !important;
+    }
+    .editor-main {
+        width: 100% !important;
+    }
+    
+    /* Course Generator */
+    .generator-container {
+        padding: 1rem !important;
+    }
+    .form-group {
+        margin-bottom: 1rem !important;
+    }
+    
+    /* JARVIS Orb */
+    .jarvis-orb-minimal,
+    .jarvis-orb-3d {
+        width: 200px !important;
+        height: 200px !important;
+    }
+    .orb-text {
+        font-size: 1rem !important;
+    }
+    
+    /* Fonts */
+    h1 { font-size: 1.8rem !important; }
+    h2 { font-size: 1.5rem !important; }
+    h3 { font-size: 1.3rem !important; }
+    h4 { font-size: 1.1rem !important; }
+    p, span, a { font-size: 0.95rem !important; }
+    
+    /* Spacing */
+    section {
+        padding: 2rem 0 !important;
+    }
+    
+    /* Tables */
+    table {
+        font-size: 0.85rem !important;
+    }
+    
+    /* Forms */
+    input,
+    textarea,
+    select {
+        font-size: 1rem !important;
+        padding: 0.75rem !important;
+    }
+    
+    /* Footer */
+    .footer {
+        padding: 1.5rem 1rem !important;
+    }
+}
+
+/* Extra Small Devices */
+@media (max-width: 480px) {
+    .hero h1 {
+        font-size: 1.5rem !important;
+    }
+    
+    .stat-card {
+        flex-direction: column !important;
+        text-align: center !important;
+    }
+    
+    .jarvis-orb-minimal,
+    .jarvis-orb-3d {
+        width: 150px !important;
+        height: 150px !important;
+    }
+    
+    .header-link {
+        padding: 0.4rem 0.8rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    .container {
+        padding: 0.5rem !important;
+    }
+}
+
+/* Landscape Mode */
+@media (max-width: 768px) and (orientation: landscape) {
+    .hero {
+        padding: 1.5rem 1rem !important;
+    }
+    
+    .chat-container {
+        height: 100vh !important;
+    }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .header-link,
+    .btn,
+    button {
+        min-height: 44px !important;
+        min-width: 44px !important;
+    }
+    
+    .stat-card:hover,
+    .course-card:hover,
+    .tool-card:hover {
+        transform: none !important;
+    }
+}
