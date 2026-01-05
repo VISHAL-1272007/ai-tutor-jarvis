@@ -17,7 +17,7 @@ const CHAT_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 // ===== Firebase User State =====
 let currentUser = null;
 let guestPromptCount = parseInt(localStorage.getItem('guestPromptCount')) || 0;
-const MAX_GUEST_PROMPTS = 3;
+const MAX_GUEST_PROMPTS = 999; // Increased for development/testing
 
 // ===== Emoji Pool for AI Responses =====
 const responseEmojis = ['😊', '✨', '🎯', '💡', '🚀', '🌟', '👍', '📚', '🎓', '💪'];

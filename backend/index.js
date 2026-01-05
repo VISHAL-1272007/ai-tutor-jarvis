@@ -459,6 +459,13 @@ if (FREE_API_URL) {
     console.log(`🆓 FREE Self-Hosted API: ${FREE_API_URL} (UNLIMITED capacity!)`);
 }
 
+// CUSTOM JARVIS AI - Your Own Trained Model!
+const CUSTOM_JARVIS_MODEL = "aijarvis2025/jarvis-edu-ai";
+const CUSTOM_JARVIS_TOKEN = process.env.HF_CUSTOM_TOKEN;
+if (CUSTOM_JARVIS_TOKEN) {
+    console.log(`🎓 Custom JARVIS AI: ${CUSTOM_JARVIS_MODEL} (Educational Specialist)`);
+}
+
 // Helper function to call Groq API with key rotation - JARVIS 5.2 Enhanced
 async function callGroqAPI(messages) {
     const apiKey = getNextGroqKey();
@@ -548,6 +555,46 @@ async function callOpenRouterAPI(messages) {
         }
     );
     return response.data?.choices?.[0]?.message?.content;
+}
+
+// Helper function to call YOUR Custom JARVIS AI
+async function callCustomJarvisAPI(question) {
+    if (!CUSTOM_JARVIS_TOKEN) throw new Error('Custom JARVIS token not configured');
+    
+    const prompt = `### Instruction:\n${question}\n\n### Response:\n`;
+    
+    const response = await axios.post(
+        `https://api-inference.huggingface.co/models/${CUSTOM_JARVIS_MODEL}`,
+        {
+            inputs: prompt,
+            parameters: {
+                max_new_tokens: 512,
+                temperature: 0.7,
+                top_p: 0.9,
+                do_sample: true
+            }
+        },
+        {
+            headers: {
+                'Authorization': `Bearer ${CUSTOM_JARVIS_TOKEN}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 60000
+        }
+    );
+    
+    let text = '';
+    if (Array.isArray(response.data)) {
+        text = response.data[0]?.generated_text || '';
+    } else if (response.data?.generated_text) {
+        text = response.data.generated_text;
+    }
+    
+    if (text.includes('### Response:')) {
+        text = text.split('### Response:')[1].trim();
+    }
+    
+    return text || 'Model is warming up. Please try again in a few seconds.';
 }
 
 // Helper function to call FREE Self-Hosted API (Hugging Face Spaces)
@@ -893,6 +940,11 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 name: 'FREE Self-Hosted',
                 enabled: !!FREE_API_URL,
                 call: async () => await callFreeAPI(messages)
+            },
+            {
+                name: 'Custom JARVIS AI',
+                enabled: !!(CUSTOM_JARVIS_TOKEN && ['coding', 'math', 'science', 'general'].includes(queryType)),
+                call: async () => await callCustomJarvisAPI(question)
             },
             {
                 name: 'Groq',
