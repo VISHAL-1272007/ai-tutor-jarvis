@@ -1642,12 +1642,21 @@ function setTheme(themeName) {
 }
 
 function loadTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
+    // Force light theme as default for better mobile experience
+    const savedTheme = localStorage.getItem('theme');
+    const defaultTheme = 'light';
+    
+    // If no theme is saved, set light as default
+    if (!savedTheme) {
+        localStorage.setItem('theme', defaultTheme);
+    }
+    
+    const theme = savedTheme || defaultTheme;
+    document.documentElement.setAttribute('data-theme', theme);
 
     const themeSelect = document.getElementById('themeSelect');
     if (themeSelect) {
-        themeSelect.value = savedTheme;
+        themeSelect.value = theme;
     }
 
     // Show theme recommendation notification for first-time users
