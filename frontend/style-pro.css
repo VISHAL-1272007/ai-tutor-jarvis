@@ -34,29 +34,29 @@
     --error: #ef4444;
     --info: #3b82f6;
 
-    /* Dark Theme */
-    --bg-primary: #0f1419;
-    --bg-secondary: #16181d;
-    --bg-tertiary: #1e2128;
-    --bg-elevated: #252932;
-    --bg-hover: #2a2f38;
+    /* Light Theme (Default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --bg-elevated: #ffffff;
+    --bg-hover: #f1f3f5;
 
     /* Text */
-    --text-primary: #e7e9ea;
-    --text-secondary: #9ca3af;
-    --text-tertiary: #6b7280;
-    --text-inverse: #0f1419;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-tertiary: #6c757d;
+    --text-inverse: #ffffff;
 
     /* Borders */
-    --border-subtle: rgba(255, 255, 255, 0.05);
-    --border-default: rgba(255, 255, 255, 0.1);
-    --border-strong: rgba(255, 255, 255, 0.2);
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-default: rgba(0, 0, 0, 0.12);
+    --border-strong: rgba(0, 0, 0, 0.24);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
 
     /* Effects */
     --blur-sm: 4px;
