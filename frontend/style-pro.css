@@ -3039,10 +3039,13 @@ textarea::placeholder {
 
 /* Minimalist JARVIS Orb */
 .jarvis-orb-minimal {
-    width: 80px;
-    height: 80px;
+    width: 280px;
+    height: 280px;
     position: relative;
-    margin-bottom: 3rem;
+    margin: 40px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .orb-core {
@@ -3050,9 +3053,25 @@ textarea::placeholder {
     height: 100%;
     background: radial-gradient(circle at 30% 30%, var(--primary-400), var(--primary-600));
     border-radius: 50%;
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.3),
-        inset 0 0 20px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 60px rgba(59, 130, 246, 0.5),
+        inset 0 0 40px rgba(255, 255, 255, 0.2);
     animation: orbFloat 4s ease-in-out infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+}
+
+.orb-text {
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.8;
+    margin: 0;
+    padding: 20px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 2;
 }
 
 @keyframes orbFloat {
@@ -3060,12 +3079,12 @@ textarea::placeholder {
     0%,
     100% {
         transform: translateY(0) scale(1);
-        box-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 0 60px rgba(59, 130, 246, 0.5);
     }
 
     50% {
         transform: translateY(-10px) scale(1.05);
-        box-shadow: 0 0 60px rgba(59, 130, 246, 0.5);
+        box-shadow: 0 0 80px rgba(59, 130, 246, 0.7);
     }
 }
 
