@@ -947,22 +947,12 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         let usedAPI = 'Unknown';
 
         // Try APIs in priority order with automatic failover
-        // CUSTOM JARVIS AI FIRST - Your own trained educational model! 🎓
+        // GROQ FIRST - Best quality & speed for users! ⚡
         const apiAttempts = [
-            {
-                name: 'Custom JARVIS AI',
-                enabled: !!(CUSTOM_JARVIS_TOKEN && ['coding', 'math', 'science', 'general'].includes(queryType)),
-                call: async () => await callCustomJarvisAPI(question)
-            },
             {
                 name: 'Groq',
                 enabled: !!process.env.GROQ_API_KEY,
                 call: async () => await callGroqAPI(messages)
-            },
-            {
-                name: 'FREE Self-Hosted',
-                enabled: !!FREE_API_URL,
-                call: async () => await callFreeAPI(messages)
             },
             {
                 name: 'AIMLAPI',
@@ -973,6 +963,16 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 name: 'Gemini',
                 enabled: !!geminiModel,
                 call: async () => await callGeminiAPI(finalSystemPrompt, history, question)
+            },
+            {
+                name: 'Custom JARVIS AI',
+                enabled: !!(CUSTOM_JARVIS_TOKEN && ['coding', 'math', 'science', 'general'].includes(queryType)),
+                call: async () => await callCustomJarvisAPI(question)
+            },
+            {
+                name: 'FREE Self-Hosted',
+                enabled: !!FREE_API_URL,
+                call: async () => await callFreeAPI(messages)
             },
             {
                 name: 'OpenRouter',
