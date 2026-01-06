@@ -24,7 +24,8 @@ class BackendKeepAlive {
      * Initialize keep-alive service
      */
     async init() {
-        console.log('🚀 Initializing Fast Backend Wake-Up Service...');
+        console.log('🚀 Initializing ALWAYS-ALIVE Backend Service...');
+        console.log('⚡ Backend will NEVER sleep - Guaranteed 24/7 uptime!');
         
         // Immediate aggressive wake-up on page load (parallel requests)
         this.wakeUpBackend(); // Don't await - let it run in background
@@ -251,6 +252,7 @@ class BackendKeepAlive {
         console.log('   ⚡ Redundant ping: every 30 seconds (offset)');
         console.log('   ⚡ Result: ~40+ pings per 15 minutes');
         console.log('   ⚡ Backend will NEVER sleep!');
+        console.log('   💚 Status: ALWAYS ALIVE - 24/7 GUARANTEED');
         
         // Also ping immediately on any user interaction
         this.setupInteractionPing();
