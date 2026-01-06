@@ -378,7 +378,7 @@ async function searchWeb(query, mode = 'all') {
 
         console.log('✅ DuckDuckGo search successful!');
         return {
-            answer: summary || 'I found some information, but no detailed summary is available. Try rephrasing your question.',
+            answer: summary || null, // Return null instead of error message
             citations: relatedTopics.filter(t => t.FirstURL).map(t => t.FirstURL).slice(0, 5),
             sources: relatedTopics.filter(t => t.FirstURL).slice(0, 5).map(t => ({
                 title: t.Text?.substring(0, 100),
@@ -859,17 +859,28 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         const searchKeywords = [
             'latest', 'current', 'today', 'now', 'recent', 'news', 'weather',
             'what is happening', 'update', 'breaking', 'trending', 'this week',
-            'this month', 'this year', '2024', '2025', 'stock price', 'bitcoin'
+            'this month', 'this year', '2024', '2025', '2026', 'stock price', 'bitcoin',
+            'who won', 'election', 'score', 'live', 'real-time'
         ];
+        
+        // IMPORTANT: Don't use web search for coding/learning questions
+        const codingKeywords = [
+            'code', 'program', 'function', 'how to', 'explain', 'learn', 'teach',
+            'tutorial', 'practice', 'example', 'syntax', 'algorithm', 'debug',
+            'error', 'fix', 'solve', 'calculate', 'formula', 'concept'
+        ];
+        
+        const isCodingQuestion = codingKeywords.some(keyword => lowerQuestion.includes(keyword));
         const needsWebSearch = enableWebSearch !== false &&
+            !isCodingQuestion && // Skip web search for coding/learning
             searchKeywords.some(keyword => lowerQuestion.includes(keyword));
 
-        // Try web search first if needed
+        // Try web search ONLY for real-time/current events
         if (needsWebSearch) {
             console.log('🌐 Query requires web search...');
             const searchResults = await searchWeb(question, mode || 'all');
 
-            if (searchResults) {
+            if (searchResults && searchResults.answer && searchResults.answer.length > 50) {
                 // Format response with citations
                 let answer = searchResults.answer;
 
@@ -891,6 +902,8 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                     webSearchUsed: true
                 });
             }
+            // If web search fails or returns poor results, continue to AI response
+            console.log('⚠️ Web search returned insufficient results, using AI knowledge...');
         }
 
         // ===== JARVIS 5.2 ADVANCED AI PROCESSING =====
