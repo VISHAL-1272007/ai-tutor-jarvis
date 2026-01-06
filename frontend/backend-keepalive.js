@@ -5,16 +5,18 @@
 
 const BACKEND_URL = 'https://ai-tutor-jarvis.onrender.com';
 const HEALTH_ENDPOINT = `${BACKEND_URL}/health`;
-const PING_INTERVAL = 4 * 60 * 1000; // Ping every 4 minutes (more aggressive)
-const MAX_RETRIES = 5; // More retries for faster recovery
-const RETRY_DELAY = 800; // Faster retry - 800ms instead of 2s
-const PARALLEL_WAKEUP_REQUESTS = 3; // Send 3 requests simultaneously
+const PING_INTERVAL = 45 * 1000; // Ping every 45 seconds - NEVER let it sleep!
+const REDUNDANT_PING_INTERVAL = 30 * 1000; // Extra ping every 30 seconds
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 800;
+const PARALLEL_WAKEUP_REQUESTS = 3;
 
 class BackendKeepAlive {
     constructor() {
         this.isAlive = true;
         this.lastPing = null;
         this.pingTimer = null;
+        this.redundantPingTimer = null; // Second timer for redundant pinging
         this.wakeupPromise = null;
     }
 
@@ -219,25 +221,42 @@ class BackendKeepAlive {
      * Start periodic pinging to prevent sleep
      */
     startPeriodicPing() {
-        // Clear any existing timer
+        // Clear any existing timers
         if (this.pingTimer) {
             clearInterval(this.pingTimer);
         }
+        if (this.redundantPingTimer) {
+            clearInterval(this.redundantPingTimer);
+        }
 
-        // Ping every 4 minutes (more aggressive to prevent sleep)
+        // PRIMARY PING: Every 45 seconds - Main keep-alive
         this.pingTimer = setInterval(() => {
-            if (document.hidden) {
-                // Don't ping if tab is not visible (save resources)
-                return;
-            }
-            
             this.ping(false);
+            console.log('🔄 Primary ping (45s interval)');
         }, PING_INTERVAL);
 
-        console.log('🔄 Periodic ping started (every 4 minutes)');
+        // REDUNDANT PING: Every 30 seconds - Backup keep-alive (offset by 15s)
+        setTimeout(() => {
+            this.redundantPingTimer = setInterval(() => {
+                this.ping(false);
+                console.log('🔄 Redundant ping (30s interval)');
+            }, REDUNDANT_PING_INTERVAL);
+            
+            // Fire the first redundant ping immediately (offset)
+            this.ping(false);
+        }, 15000); // Start offset by 15 seconds
+
+        console.log('🚀 ULTRA-AGGRESSIVE KEEP-ALIVE STARTED:');
+        console.log('   ⚡ Primary ping: every 45 seconds');
+        console.log('   ⚡ Redundant ping: every 30 seconds (offset)');
+        console.log('   ⚡ Result: ~40+ pings per 15 minutes');
+        console.log('   ⚡ Backend will NEVER sleep!');
         
         // Also ping immediately on any user interaction
         this.setupInteractionPing();
+        
+        // Initial ping right now
+        this.ping(false);
     }
 
     /**
@@ -268,8 +287,12 @@ class BackendKeepAlive {
         if (this.pingTimer) {
             clearInterval(this.pingTimer);
             this.pingTimer = null;
-            console.log('⏸️ Periodic ping stopped');
         }
+        if (this.redundantPingTimer) {
+            clearInterval(this.redundantPingTimer);
+            this.redundantPingTimer = null;
+        }
+        console.log('⏸️ All periodic pings stopped');
     }
 
     /**
