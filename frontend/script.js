@@ -967,9 +967,10 @@ async function sendMessage() {
     elements.sendBtn.disabled = true;
 
     try {
-        // Show connecting message if backend might be sleeping
-        if (!isBackendReady) {
-            showBackendStatus('Waking up JARVIS... This may take 30-60 seconds on first use.', 'loading');
+        // Check if backend is ready, wake it up if needed
+        if (window.backendKeepAlive && !window.backendKeepAlive.isReady()) {
+            console.log('⏰ Backend is sleeping, waking it up...');
+            await window.backendKeepAlive.wakeUpBackend();
         }
 
         // 🧠 JARVIS 5.2: Advanced Mode Context with Chain-of-Thought
@@ -1038,7 +1039,7 @@ async function sendMessage() {
         }
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000); // 2 minute timeout for first request
+        const timeout = setTimeout(() => controller.abort(), 90000); // 90 second timeout
 
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -1113,13 +1114,18 @@ async function sendMessage() {
 
         let errorMsg = 'Sorry, I encountered an error. Please try again! 😔';
         if (error.name === 'AbortError') {
-            errorMsg = 'Request timed out. The backend is waking up. Please try again in 30 seconds! ⏰';
-        } else if (error.message.includes('fetch')) {
-            errorMsg = 'Cannot connect to server. Please check your internet connection! 🌐';
+            errorMsg = 'Request timed out. The backend is waking up. Please try again! ⏰';
+            // Trigger immediate wake-up for next attempt
+            if (window.backendKeepAlive) {
+                setTimeout(() => window.backendKeepAlive.wakeUpBackend(), 2000);
+            }
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+            errorMsg = 'Cannot connect to server. Waking up backend... Please try again in 10 seconds! 🌐';
             // Retry backend wake-up
             isBackendReady = false;
-            backendWakeupAttempts = 0;
-            setTimeout(() => wakeUpBackend(), 5000);
+            if (window.backendKeepAlive) {
+                setTimeout(() => window.backendKeepAlive.wakeUpBackend(), 3000);
+            }
         }
 
         addMessageToUI(errorMsg, 'ai');
