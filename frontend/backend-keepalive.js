@@ -5,13 +5,14 @@
 
 const BACKEND_URL = 'https://ai-tutor-jarvis.onrender.com';
 const HEALTH_ENDPOINT = `${BACKEND_URL}/health`;
-const PING_INTERVAL = 5 * 60 * 1000; // Ping every 5 minutes
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 2000; // 2 seconds
+const PING_INTERVAL = 4 * 60 * 1000; // Ping every 4 minutes (more aggressive)
+const MAX_RETRIES = 5; // More retries for faster recovery
+const RETRY_DELAY = 800; // Faster retry - 800ms instead of 2s
+const PARALLEL_WAKEUP_REQUESTS = 3; // Send 3 requests simultaneously
 
 class BackendKeepAlive {
     constructor() {
-        this.isAlive = false;
+        this.isAlive = true;
         this.lastPing = null;
         this.pingTimer = null;
         this.wakeupPromise = null;
@@ -21,24 +22,36 @@ class BackendKeepAlive {
      * Initialize keep-alive service
      */
     async init() {
-        console.log('🚀 Initializing Backend Keep-Alive Service...');
+        console.log('🚀 Initializing Fast Backend Wake-Up Service...');
         
-        // Immediate wake-up on page load
-        await this.wakeUpBackend();
+        // Immediate aggressive wake-up on page load (parallel requests)
+        this.wakeUpBackend(); // Don't await - let it run in background
         
-        // Start periodic pinging
+        // Start periodic pinging immediately
         this.startPeriodicPing();
         
         // Wake up backend when page becomes visible
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && !this.isAlive) {
-                this.wakeUpBackend();
+            if (!document.hidden) {
+                // Page is visible again - ensure backend is awake
+                if (!this.isAlive || this.getTimeSinceLastPing() > 3 * 60 * 1000) {
+                    this.wakeUpBackend();
+                }
             }
         });
 
-        // Ping before user leaves (to keep it warm for next visit)
+        // Aggressive ping before user leaves (to keep it warm for next visit)
         window.addEventListener('beforeunload', () => {
-            this.ping(false); // Silent ping
+            // Send 2 pings to keep it extra warm
+            this.ping(false);
+            setTimeout(() => this.ping(false), 100);
+        });
+        
+        // Pre-warm on focus
+        window.addEventListener('focus', () => {
+            if (!this.isAlive) {
+                this.wakeUpBackend();
+            }
         });
     }
 
@@ -59,21 +72,34 @@ class BackendKeepAlive {
     }
 
     async _performWakeup() {
-        console.log('⏰ Waking up backend...');
-        this.showWakeupStatus('Connecting to JARVIS...');
+        console.log('⏰ Waking up backend with parallel requests...');
+        this.showWakeupStatus('⚡ Connecting to JARVIS...', 'info');
 
+        // Try parallel requests first for fastest wake-up
+        const parallelSuccess = await this.parallelWakeup();
+        if (parallelSuccess) {
+            this.isAlive = true;
+            this.lastPing = Date.now();
+            console.log(`✅ Backend awake via parallel ping!`);
+            this.showWakeupStatus('✨ Connected! JARVIS is ready', 'success');
+            setTimeout(() => this.hideWakeupStatus(), 1500);
+            return true;
+        }
+
+        // Fallback to sequential retries with faster timing
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 const startTime = Date.now();
                 
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+                const timeout = setTimeout(() => controller.abort(), 15000); // Reduced to 15s
                 
                 const response = await fetch(HEALTH_ENDPOINT, {
                     method: 'GET',
                     signal: controller.signal,
                     headers: {
-                        'Cache-Control': 'no-cache'
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
                     }
                 });
 
@@ -84,24 +110,33 @@ class BackendKeepAlive {
                     this.isAlive = true;
                     this.lastPing = Date.now();
                     console.log(`✅ Backend is awake! (${duration}ms)`);
-                    this.showWakeupStatus('Connected! Ready to assist you ✨', 'success');
-                    
-                    // Hide status after 2 seconds
-                    setTimeout(() => this.hideWakeupStatus(), 2000);
-                    
+                    this.showWakeupStatus('✨ Connected! JARVIS is ready', 'success');
+                    setTimeout(() => this.hideWakeupStatus(), 1500);
                     return true;
                 }
             } catch (error) {
                 console.warn(`⚠️ Wake-up attempt ${attempt}/${MAX_RETRIES} failed:`, error.message);
                 
                 if (attempt < MAX_RETRIES) {
-                    this.showWakeupStatus(`Connecting... attempt ${attempt}/${MAX_RETRIES}`, 'warning');
-                    await this.sleep(RETRY_DELAY * attempt); // Exponential backoff
+                    this.showWakeupStatus(`⚡ Connecting... ${attempt}/${MAX_RETRIES}`, 'info');
+                    await this.sleep(RETRY_DELAY); // Fast retry
                 } else {
                     this.isAlive = false;
-                    console.error('❌ Failed to wake up backend after all retries');
-                    this.showWakeupStatus('Connection failed. Using offline mode...', 'error');
-                    setTimeout(() => this.hideWakeupStatus(), 5000);
+                    console.error('❌ Failed to wake up backend');
+                    this.showWakeupStatus('⚠️ Slow connection. Retrying...', 'warning');
+                    
+                    // One more aggressive attempt after a short pause
+                    await this.sleep(1000);
+                    const lastAttempt = await this.parallelWakeup();
+                    if (lastAttempt) {
+                        this.isAlive = true;
+                        this.lastPing = Date.now();
+                        this.showWakeupStatus('✨ Connected!', 'success');
+                        setTimeout(() => this.hideWakeupStatus(), 1500);
+                        return true;
+                    }
+                    
+                    setTimeout(() => this.hideWakeupStatus(), 3000);
                     return false;
                 }
             }
@@ -111,16 +146,54 @@ class BackendKeepAlive {
     }
 
     /**
+     * Parallel wake-up - send multiple requests simultaneously for faster response
+     */
+    async parallelWakeup() {
+        try {
+            const requests = Array(PARALLEL_WAKEUP_REQUESTS).fill(null).map(() => 
+                fetch(HEALTH_ENDPOINT, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    },
+                    signal: AbortSignal.timeout(12000) // 12s timeout
+                }).catch(() => null)
+            );
+
+            // Race - whoever responds first wins
+            const response = await Promise.race(requests);
+            
+            if (response && response.ok) {
+                // Cancel remaining requests (they'll complete but we don't wait)
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            console.warn('Parallel wake-up failed:', error);
+            return false;
+        }
+    }
+
+    /**
      * Ping backend to keep it alive
      */
     async ping(showStatus = false) {
         try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout for pings
+            
             const response = await fetch(HEALTH_ENDPOINT, {
                 method: 'GET',
+                signal: controller.signal,
                 headers: {
-                    'Cache-Control': 'no-cache'
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
                 }
             });
+
+            clearTimeout(timeout);
 
             if (response.ok) {
                 this.isAlive = true;
@@ -134,9 +207,9 @@ class BackendKeepAlive {
             this.isAlive = false;
             console.warn('⚠️ Ping failed:', error.message);
             
-            // If ping fails, try to wake up again
+            // If ping fails, try to wake up again quickly
             if (showStatus) {
-                this.wakeUpBackend();
+                setTimeout(() => this.wakeUpBackend(), 500);
             }
             return false;
         }
@@ -151,7 +224,7 @@ class BackendKeepAlive {
             clearInterval(this.pingTimer);
         }
 
-        // Ping every 5 minutes
+        // Ping every 4 minutes (more aggressive to prevent sleep)
         this.pingTimer = setInterval(() => {
             if (document.hidden) {
                 // Don't ping if tab is not visible (save resources)
@@ -161,7 +234,31 @@ class BackendKeepAlive {
             this.ping(false);
         }, PING_INTERVAL);
 
-        console.log('🔄 Periodic ping started (every 5 minutes)');
+        console.log('🔄 Periodic ping started (every 4 minutes)');
+        
+        // Also ping immediately on any user interaction
+        this.setupInteractionPing();
+    }
+
+    /**
+     * Setup pinging on user interactions to keep backend hot
+     */
+    setupInteractionPing() {
+        let lastInteractionPing = 0;
+        const INTERACTION_PING_COOLDOWN = 2 * 60 * 1000; // Ping at most every 2 minutes on interaction
+
+        const interactionHandler = () => {
+            const now = Date.now();
+            if (now - lastInteractionPing > INTERACTION_PING_COOLDOWN) {
+                lastInteractionPing = now;
+                this.ping(false);
+                console.log('👆 User interaction - keeping backend warm');
+            }
+        };
+
+        // Ping on any significant user interaction
+        document.addEventListener('click', interactionHandler, { passive: true, once: false });
+        document.addEventListener('keypress', interactionHandler, { passive: true, once: false });
     }
 
     /**
@@ -209,22 +306,22 @@ class BackendKeepAlive {
             info: {
                 bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: '#ffffff',
-                icon: '🔄'
+                icon: '⚡'
             },
             success: {
                 bg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 color: '#ffffff',
-                icon: '✅'
+                icon: '✨'
             },
             warning: {
                 bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                 color: '#ffffff',
-                icon: '⚠️'
+                icon: '⏰'
             },
             error: {
                 bg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                 color: '#ffffff',
-                icon: '❌'
+                icon: '⚠️'
             }
         };
 

@@ -1039,11 +1039,14 @@ async function sendMessage() {
         }
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 90000); // 90 second timeout
+        const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout (faster)
 
         const response = await fetch(API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
             body: JSON.stringify(requestData),
             signal: controller.signal
         });
