@@ -6,13 +6,16 @@ const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 
-const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+const sizes = [72, 96, 128, 144, 152, 192, 256, 384, 512];
 const iconsDir = path.join(__dirname, 'icons');
+const assetsIconDir = path.join(__dirname, 'assets', 'icon');
 
-// Ensure icons directory exists
-if (!fs.existsSync(iconsDir)) {
-    fs.mkdirSync(iconsDir, { recursive: true });
-}
+// Ensure directories exist
+[iconsDir, assetsIconDir].forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+});
 
 function drawIcon(ctx, size, maskable = false) {
     const cx = size / 2;
@@ -110,7 +113,12 @@ sizes.forEach(size => {
     
     const regularPath = path.join(iconsDir, `icon-${size}.png`);
     fs.writeFileSync(regularPath, canvas.toBuffer('image/png'));
-    console.log(`✅ Created: icon-${size}.png`);
+    console.log(`✅ Created: icons/icon-${size}.png`);
+    
+    // Also save to assets/icon for PWABuilder compatibility
+    const assetsPath = path.join(assetsIconDir, `${size}.png`);
+    fs.writeFileSync(assetsPath, canvas.toBuffer('image/png'));
+    console.log(`✅ Created: assets/icon/${size}.png`);
     
     // Maskable icons (192 and 512 only)
     if (size === 192 || size === 512) {
@@ -120,9 +128,15 @@ sizes.forEach(size => {
         
         const maskablePath = path.join(iconsDir, `icon-${size}-maskable.png`);
         fs.writeFileSync(maskablePath, maskCanvas.toBuffer('image/png'));
-        console.log(`✅ Created: icon-${size}-maskable.png`);
+        console.log(`✅ Created: icons/icon-${size}-maskable.png`);
+        
+        // Also save maskable to assets
+        const assetsMaskPath = path.join(assetsIconDir, `${size}-maskable.png`);
+        fs.writeFileSync(assetsMaskPath, maskCanvas.toBuffer('image/png'));
+        console.log(`✅ Created: assets/icon/${size}-maskable.png`);
     }
 });
 
 console.log('\n🎉 All icons generated successfully!');
 console.log(`📁 Icons saved to: ${iconsDir}`);
+console.log(`📁 Assets saved to: ${assetsIconDir}`);
