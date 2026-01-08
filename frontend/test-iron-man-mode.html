@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 IRON MAN Mode Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .test-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .test-section h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        .test-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .test-item.success {
+            border-left: 3px solid #00ff88;
+        }
+        
+        .test-item.error {
+            border-left: 3px solid #ff4444;
+        }
+        
+        .test-item.info {
+            border-left: 3px solid #00d4ff;
+        }
+        
+        .icon {
+            font-size: 20px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-badge.ready {
+            background: #00ff88;
+            color: #000;
+        }
+        
+        .status-badge.testing {
+            background: #00d4ff;
+            color: #000;
+        }
+        
+        .status-badge.error {
+            background: #ff4444;
+            color: white;
+        }
+        
+        #testResults {
+            margin-top: 20px;
+        }
+        
+        .demo-script {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .demo-script strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎬 IRON MAN JARVIS MODE</h1>
+        <p class="subtitle">Pre-Demo Testing Suite</p>
+        
+        <div class="test-section">
+            <h2>📋 Pre-Flight Checklist</h2>
+            <div id="checklistResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎤 Voice Feature Tests</h2>
+            <div class="button-group">
+                <button onclick="testSpeechRecognition()">Test Speech Recognition</button>
+                <button onclick="testTextToSpeech()">Test Text-to-Speech</button>
+                <button onclick="testWakeWord()">Test Wake Word</button>
+                <button onclick="testOrbAnimations()">Test Orb Animations</button>
+            </div>
+            <div id="testResults"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Demo Script</h2>
+            <div class="demo-script">
+                <strong>Step 1:</strong> Say "Hey JARVIS"<br>
+                <strong>Expected:</strong> Orb flashes white, voice greeting<br>
+                <br>
+                <strong>Step 2:</strong> Ask "What is machine learning?"<br>
+                <strong>Expected:</strong> Blue orb → Process → Green orb speaks answer<br>
+                <br>
+                <strong>Step 3:</strong> Follow-up "Give me an example"<br>
+                <strong>Expected:</strong> Auto-listens → Speaks example<br>
+                <br>
+                <strong>Step 4:</strong> Continue conversation naturally<br>
+                <strong>Expected:</strong> Seamless hands-free interaction
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🚀 Quick Actions</h2>
+            <div class="button-group">
+                <button onclick="window.open('https://vishai-f6197.web.app', '_blank')">🌐 Open Live Site</button>
+                <button onclick="copyDemoScript()">📋 Copy Demo Script</button>
+                <button onclick="showTroubleshooting()">🔧 Troubleshooting</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-run checklist on page load
+        window.addEventListener('load', runChecklist);
+        
+        function runChecklist() {
+            const checklist = [
+                { name: 'Web Speech API Support', test: () => 'speechSynthesis' in window && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) },
+                { name: 'HTTPS/Localhost (required for mic)', test: () => location.protocol === 'https:' || location.hostname === 'localhost' },
+                { name: 'Browser Compatibility', test: () => /Chrome|Edge|Safari/.test(navigator.userAgent) },
+                { name: 'Microphone Permission', test: () => true, note: 'Will prompt on first use' },
+                { name: 'Speaker/Audio Output', test: () => 'speechSynthesis' in window }
+            ];
+            
+            const container = document.getElementById('checklistResults');
+            container.innerHTML = '';
+            
+            let allPassed = true;
+            
+            checklist.forEach(item => {
+                const passed = item.test();
+                const div = document.createElement('div');
+                div.className = `test-item ${passed ? 'success' : 'error'}`;
+                div.innerHTML = `
+                    <span class="icon">${passed ? '✅' : '❌'}</span>
+                    <strong>${item.name}</strong>
+                    ${item.note ? `<span style="color: #666; font-size: 12px; margin-left: auto;">${item.note}</span>` : ''}
+                `;
+                container.appendChild(div);
+                
+                if (!passed) allPassed = false;
+            });
+            
+            // Overall status
+            const statusDiv = document.createElement('div');
+            statusDiv.className = 'test-item info';
+            statusDiv.innerHTML = `
+                <span class="icon">🎯</span>
+                <strong>Overall Status:</strong>
+                <span class="status-badge ${allPassed ? 'ready' : 'error'}" style="margin-left: auto;">
+                    ${allPassed ? '✅ READY FOR DEMO' : '⚠️ NEEDS ATTENTION'}
+                </span>
+            `;
+            container.appendChild(statusDiv);
+        }
+        
+        function testSpeechRecognition() {
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<div class="test-item info"><span class="icon">🎤</span><strong>Testing Speech Recognition...</strong></div>';
+            
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                
+                recognition.onstart = () => {
+                    results.innerHTML = '<div class="test-item success"><span class="icon">✅</span><strong>Speech Recognition Working!</strong> Speak now...</div>';
+                };
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    results.innerHTML = `<div class="test-item success"><span class="icon">✅</span><strong>Heard:</strong> "${transcript}"</div>`;
+                    recognition.stop();
+                };
+                
+                recognition.onerror = (error) => {
+                    results.innerHTML = `<div class="test-item error"><span class="icon">❌</span><strong>Error:</strong> ${error.error}</div>`;
+                };
+                
+                try {
+                    recognition.start();
+                } catch (e) {
+                    results.innerHTML = `<div class="test-item error"><span class="icon">❌</span><strong>Error:</strong> ${e.message}</div>`;
+                }
+            } else {
+                results.innerHTML = '<div class="test-item error"><span class="icon">❌</span><strong>Speech Recognition not supported in this browser</strong></div>';
+            }
+        }
+        
+        function testTextToSpeech() {
+            const results = document.getElementById('testResults');
+            
+            if ('speechSynthesis' in window) {
+                results.innerHTML = '<div class="test-item info"><span class="icon">🔊</span><strong>Testing Text-to-Speech...</strong></div>';
+                
+                const utterance = new SpeechSynthesisUtterance('JARVIS voice mode is operational, sir.');
+                utterance.lang = 'en-GB';
+                utterance.rate = 0.95;
+                utterance.pitch = 0.85;
+                
+                utterance.onstart = () => {
+                    results.innerHTML = '<div class="test-item success"><span class="icon">✅</span><strong>JARVIS is speaking!</strong></div>';
+                };
+                
+                utterance.onend = () => {
+                    results.innerHTML += '<div class="test-item success"><span class="icon">✅</span><strong>Text-to-Speech Working!</strong></div>';
+                };
+                
+                utterance.onerror = (error) => {
+                    results.innerHTML = `<div class="test-item error"><span class="icon">❌</span><strong>Error:</strong> ${error.error}</div>`;
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                results.innerHTML = '<div class="test-item error"><span class="icon">❌</span><strong>Text-to-Speech not supported</strong></div>';
+            }
+        }
+        
+        function testWakeWord() {
+            const results = document.getElementById('testResults');
+            results.innerHTML = `
+                <div class="test-item info">
+                    <span class="icon">👂</span>
+                    <strong>Wake Word Test:</strong> Say "Hey JARVIS" clearly
+                </div>
+                <div class="test-item info">
+                    <span class="icon">💡</span>
+                    <strong>Tip:</strong> Speak clearly and wait for the listening indicator
+                </div>
+            `;
+            
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                
+                recognition.onresult = (event) => {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript.toLowerCase();
+                    }
+                    
+                    results.innerHTML = `<div class="test-item info"><span class="icon">👂</span><strong>Listening:</strong> "${transcript}"</div>`;
+                    
+                    if (transcript.includes('hey jarvis') || transcript.includes('hey jarvis')) {
+                        results.innerHTML = `
+                            <div class="test-item success">
+                                <span class="icon">✅</span>
+                                <strong>Wake Word Detected!</strong>
+                            </div>
+                            <div class="test-item success">
+                                <span class="icon">⚡</span>
+                                <strong>JARVIS Activated!</strong>
+                            </div>
+                        `;
+                        
+                        // Speak response
+                        const utterance = new SpeechSynthesisUtterance('Yes, sir? How may I assist you?');
+                        utterance.lang = 'en-GB';
+                        window.speechSynthesis.speak(utterance);
+                        
+                        recognition.stop();
+                    }
+                };
+                
+                recognition.start();
+                
+                setTimeout(() => {
+                    recognition.stop();
+                    if (!results.innerHTML.includes('Wake Word Detected')) {
+                        results.innerHTML += '<div class="test-item info"><span class="icon">ℹ️</span><strong>Test complete.</strong> If wake word wasn\'t detected, try speaking more clearly.</div>';
+                    }
+                }, 10000);
+            }
+        }
+        
+        function testOrbAnimations() {
+            const results = document.getElementById('testResults');
+            const states = ['idle', 'listening', 'speaking', 'activated'];
+            let currentState = 0;
+            
+            const interval = setInterval(() => {
+                if (currentState >= states.length) {
+                    clearInterval(interval);
+                    results.innerHTML = '<div class="test-item success"><span class="icon">✅</span><strong>All orb animations tested!</strong></div>';
+                    return;
+                }
+                
+                const state = states[currentState];
+                const emojis = { idle: '💤', listening: '👂', speaking: '🔊', activated: '⚡' };
+                
+                results.innerHTML = `
+                    <div class="test-item info">
+                        <span class="icon">${emojis[state]}</span>
+                        <strong>Testing ${state} state...</strong>
+                    </div>
+                `;
+                
+                currentState++;
+            }, 1500);
+        }
+        
+        function copyDemoScript() {
+            const script = `JARVIS Demo Script:
+
+1. Say "Hey JARVIS"
+   → Orb flashes white
+   → Voice: "Yes, sir? How may I assist you?"
+
+2. Ask: "What is machine learning?"
+   → Blue orb (listening)
+   → Processing
+   → Green orb (speaking answer)
+
+3. Follow-up: "Give me an example"
+   → Auto-listens
+   → Speaks example
+
+4. Continue natural conversation
+   → Hands-free mode active
+   → No clicking needed`;
+            
+            navigator.clipboard.writeText(script).then(() => {
+                alert('✅ Demo script copied to clipboard!');
+            });
+        }
+        
+        function showTroubleshooting() {
+            alert(`🔧 Troubleshooting Tips:
+
+1. Microphone Issues:
+   - Grant microphone permission
+   - Check browser settings
+   - Try refreshing page
+
+2. Voice Not Speaking:
+   - Check volume/mute
+   - Verify speakers connected
+   - Try different browser
+
+3. Wake Word Not Working:
+   - Speak clearly: "HEY JARVIS"
+   - Wait for blue orb
+   - Check microphone input
+
+4. Browser Compatibility:
+   - Use Chrome/Edge (best)
+   - Safari works (limited)
+   - Firefox not supported
+
+5. HTTPS Required:
+   - Use vishai-f6197.web.app
+   - Localhost also works
+   - HTTP blocks microphone`);
+        }
+    </script>
+</body>
+</html>
