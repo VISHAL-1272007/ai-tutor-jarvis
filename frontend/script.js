@@ -1112,6 +1112,50 @@ async function sendMessage() {
             await addMessageWithTypingEffect(answerWithEmoji, 'ai');
             currentChatMessages.push({ role: 'assistant', content: answerWithEmoji });
 
+            // 🌐 WEB SEARCH: Check if we need to search the web for more info
+            if (window.jarvisWebSearch && window.jarvisWebSearch.initialized) {
+                try {
+                    const needsSearch = window.jarvisWebSearch.needsWebSearch(question, data.answer);
+                    
+                    if (needsSearch) {
+                        console.log('[JARVIS Web Search] Performing web search...');
+                        
+                        // Show searching indicator
+                        const searchLoadingDiv = document.createElement('div');
+                        searchLoadingDiv.className = 'message ai search-loading';
+                        searchLoadingDiv.innerHTML = `
+                            <div class="search-loading-spinner"></div>
+                            <div class="search-loading-text">🌐 Searching the web for latest information...</div>
+                        `;
+                        elements.messagesArea.appendChild(searchLoadingDiv);
+                        scrollToBottom();
+                        
+                        // Perform search
+                        const searchResults = await window.jarvisWebSearch.performWebSearch(question);
+                        
+                        // Remove loading indicator
+                        searchLoadingDiv.remove();
+                        
+                        // Display search results with Perplexity-style UI
+                        if (searchResults && searchResults.results && searchResults.results.length > 0) {
+                            const searchHTML = window.jarvisWebSearch.formatSearchResults(searchResults);
+                            if (searchHTML) {
+                                const searchDiv = document.createElement('div');
+                                searchDiv.className = 'message ai';
+                                searchDiv.innerHTML = searchHTML;
+                                elements.messagesArea.appendChild(searchDiv);
+                                scrollToBottom();
+                                
+                                console.log('[JARVIS Web Search] Displayed', searchResults.results.length, 'results');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[JARVIS Web Search] Search failed:', error);
+                    // Continue without web search
+                }
+            }
+
             // 🧠 JARVIS 5.2: Add smart follow-up suggestion buttons
             if (data.followUpSuggestions && data.followUpSuggestions.length > 0) {
                 addFollowUpButtons(data.followUpSuggestions);

@@ -47,7 +47,7 @@ export function getEnvironment() {
  */
 export const API_KEYS = {
     newsapi: 'f000b146329e4dddb6116bfe6457257d',
-    gnews: '', // Optional: Add GNews API key here
+    gnews: '04bd561bdf98168ae5a687448240cc6a',
 };
 
 /**
