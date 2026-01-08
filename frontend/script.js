@@ -978,18 +978,48 @@ async function sendMessage() {
 
     try {
         // 📸 IMAGE ANALYSIS: If image is uploaded, use Gemini Vision API
-        if (uploadedImage && uploadedImage.base64 && window.geminiVision) {
-            console.log('[JARVIS Vision] Analyzing image with Gemini...');
+        if (uploadedImage && uploadedImage.base64) {
+            console.log('[JARVIS Vision] Image detected, analyzing with Gemini...');
+            console.log('[JARVIS Vision] Image size:', uploadedImage.base64.length, 'chars');
+            
+            // Check if Gemini Vision is available
+            if (!window.geminiVision) {
+                console.error('[JARVIS Vision] Gemini Vision not loaded!');
+                removeTypingIndicator();
+                await addMessageWithTypingEffect("❌ Image analysis is not available right now. Please try again later.", 'ai');
+                if (window.imageUploadSystem) window.imageUploadSystem.removeImage();
+                isTyping = false;
+                elements.sendBtn.disabled = false;
+                return;
+            }
             
             try {
+                // Show analyzing indicator
+                const typingIndicator = document.querySelector('.typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.innerHTML = `
+                        <div class="analyzing-image">
+                            <div class="analyzing-spinner"></div>
+                            <span>🔮 Analyzing image with JARVIS Vision...</span>
+                        </div>
+                    `;
+                }
+                
                 // Use Gemini Vision API
                 const visionResponse = await window.geminiVision.analyzeImage(uploadedImage.base64, userPrompt);
+                
+                console.log('[JARVIS Vision] Got response:', visionResponse.substring(0, 100) + '...');
                 
                 // Remove typing indicator
                 removeTypingIndicator();
                 
-                // Display vision response with image
+                // Display vision response
                 await addMessageWithTypingEffect(visionResponse, 'ai');
+                
+                // Speak the response
+                if (typeof speak === 'function') {
+                    speak(visionResponse);
+                }
                 
                 // Clear the image after successful analysis
                 if (window.imageUploadSystem) {
@@ -1003,12 +1033,22 @@ async function sendMessage() {
                 isTyping = false;
                 elements.sendBtn.disabled = false;
                 return; // Exit early - vision analysis complete
+                
             } catch (visionError) {
                 console.error('[JARVIS Vision] Error:', visionError);
-                // Fall back to regular chat if vision fails
+                
+                // Remove typing indicator and show error
+                removeTypingIndicator();
+                await addMessageWithTypingEffect(`❌ Sorry, I couldn't analyze the image. Error: ${visionError.message}. Please try again!`, 'ai');
+                
+                // Clear the image
                 if (window.imageUploadSystem) {
                     window.imageUploadSystem.removeImage();
                 }
+                
+                isTyping = false;
+                elements.sendBtn.disabled = false;
+                return;
             }
         }
         

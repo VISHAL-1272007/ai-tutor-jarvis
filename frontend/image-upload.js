@@ -98,7 +98,12 @@ class ImageUploadSystem {
     }
 
     async handleImageSelect(file) {
-        if (!file) return;
+        if (!file) {
+            console.log('📸 No file selected');
+            return;
+        }
+        
+        console.log('📸 Image selected:', file.name, file.type, file.size);
 
         // Validate file type
         if (!this.allowedTypes.includes(file.type)) {
@@ -115,9 +120,13 @@ class ImageUploadSystem {
         try {
             // Show loading state
             this.showLoadingState();
+            console.log('📸 Processing image...');
 
             // Read and compress image
             const imageData = await this.readAndCompressImage(file);
+            
+            console.log('📸 Image processed:', imageData.width, 'x', imageData.height);
+            console.log('📸 Base64 length:', imageData.base64.length);
             
             // Store image data
             this.currentImage = file;
@@ -225,11 +234,14 @@ class ImageUploadSystem {
     }
 
     getCurrentImage() {
+        console.log('📸 getCurrentImage called, hasData:', !!this.currentImageData);
         return this.currentImageData;
     }
 
     hasImage() {
-        return this.currentImageData !== null;
+        const has = this.currentImageData !== null;
+        console.log('📸 hasImage:', has);
+        return has;
     }
 
     showLoadingState() {
