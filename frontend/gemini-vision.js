@@ -101,8 +101,8 @@ class GeminiVisionAPI {
 const geminiVision = new GeminiVisionAPI();
 window.geminiVision = geminiVision;
 
-// Test function (for debugging)
-export async function testGeminiVision() {
+// Test function (for debugging) - available as window.testGeminiVision()
+window.testGeminiVision = async function() {
     if (!geminiVision.isConfigured()) {
         console.warn('⚠️ Gemini API key not configured');
         return false;
@@ -111,4 +111,6 @@ export async function testGeminiVision() {
     console.log('✅ Gemini Vision API configured');
     console.log('📋 Available features:', geminiVision.getFeatures());
     return true;
-}
+};
+
+console.log('🔮 JARVIS Gemini Vision API ready!');

@@ -434,5 +434,4 @@ const imageUploadSystem = new ImageUploadSystem();
 // Make it available globally for script.js
 window.imageUploadSystem = imageUploadSystem;
 
-// Export for use in other scripts
-export { imageUploadSystem };
+console.log('📸 JARVIS Image Upload System ready!');
