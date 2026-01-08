@@ -1,0 +1,292 @@
+/* ===== IRON MAN JARVIS ORB ANIMATIONS ===== */
+/* Enhanced orb visual effects for JARVIS voice mode */
+
+#jarvisOrb {
+    position: fixed;
+    bottom: 100px;
+    right: 30px;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #667eea 0%, #764ba2 50%, rgba(102, 126, 234, 0.3) 100%);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.5),
+                0 0 40px rgba(102, 126, 234, 0.3),
+                0 0 60px rgba(102, 126, 234, 0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+    animation: orbFloat 6s ease-in-out infinite, orbPulse 4s ease-in-out infinite;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+#jarvisOrb:hover {
+    transform: scale(1.1);
+    opacity: 1;
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.8),
+                0 0 60px rgba(102, 126, 234, 0.6),
+                0 0 90px rgba(102, 126, 234, 0.4);
+}
+
+#jarvisOrb::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    top: -10%;
+    left: -10%;
+    filter: blur(10px);
+    opacity: 0.5;
+}
+
+#jarvisOrb::after {
+    content: '🎤';
+    font-size: 32px;
+    position: absolute;
+    animation: iconFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
+
+/* Orb States */
+#jarvisOrb.listening {
+    background: radial-gradient(circle, #00d4ff 0%, #667eea 50%, #764ba2 100%);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.8),
+                0 0 60px rgba(102, 126, 234, 0.6),
+                0 0 90px rgba(118, 75, 162, 0.4),
+                inset 0 0 50px rgba(0, 212, 255, 0.3);
+    animation: orbFloat 6s ease-in-out infinite, orbPulse 2s ease-in-out infinite, listenRing 2s ease-in-out infinite;
+}
+
+#jarvisOrb.listening::after {
+    content: '👂';
+    animation: iconFloat 1s ease-in-out infinite, iconRotate 8s linear infinite;
+}
+
+#jarvisOrb.speaking {
+    background: radial-gradient(circle, #00ff88 0%, #00d4ff 50%, #667eea 100%);
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.9),
+                0 0 80px rgba(0, 212, 255, 0.7),
+                0 0 120px rgba(102, 126, 234, 0.5),
+                inset 0 0 60px rgba(0, 255, 136, 0.3);
+    animation: orbFloat 6s ease-in-out infinite, speakPulse 0.5s ease-in-out infinite, speakWave 1.5s ease-in-out infinite;
+}
+
+#jarvisOrb.speaking::after {
+    content: '🔊';
+    animation: speakBounce 0.5s ease-in-out infinite;
+}
+
+#jarvisOrb.activated {
+    background: radial-gradient(circle, #ffffff 0%, #00ff88 50%, #00d4ff 100%);
+    box-shadow: 0 0 50px rgba(255, 255, 255, 1),
+                0 0 100px rgba(0, 255, 136, 0.8),
+                0 0 150px rgba(0, 212, 255, 0.6),
+                inset 0 0 80px rgba(255, 255, 255, 0.5);
+    animation: activationFlash 0.5s ease-out, orbFloat 6s ease-in-out infinite;
+}
+
+#jarvisOrb.activated::after {
+    content: '⚡';
+    animation: activationSpin 0.5s ease-out;
+}
+
+#jarvisOrb.idle {
+    opacity: 0.7;
+    animation: orbFloat 6s ease-in-out infinite, orbPulse 4s ease-in-out infinite;
+}
+
+#jarvisOrb.idle::after {
+    content: '💤';
+    opacity: 0.6;
+}
+
+/* Keyframe Animations */
+@keyframes orbFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes orbPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+}
+
+@keyframes iconFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes iconRotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes listenRing {
+    0%, 100% {
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.8),
+                    0 0 60px rgba(102, 126, 234, 0.6),
+                    0 0 90px rgba(118, 75, 162, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(0, 212, 255, 1),
+                    0 0 80px rgba(102, 126, 234, 0.8),
+                    0 0 120px rgba(118, 75, 162, 0.6);
+    }
+}
+
+@keyframes speakPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes speakWave {
+    0%, 100% {
+        box-shadow: 0 0 40px rgba(0, 255, 136, 0.9),
+                    0 0 80px rgba(0, 212, 255, 0.7),
+                    0 0 120px rgba(102, 126, 234, 0.5);
+    }
+    33% {
+        box-shadow: 0 0 50px rgba(0, 255, 136, 1),
+                    0 0 100px rgba(0, 212, 255, 0.9),
+                    0 0 150px rgba(102, 126, 234, 0.7);
+    }
+    66% {
+        box-shadow: 0 0 30px rgba(0, 255, 136, 0.8),
+                    0 0 60px rgba(0, 212, 255, 0.6),
+                    0 0 90px rgba(102, 126, 234, 0.4);
+    }
+}
+
+@keyframes speakBounce {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.3);
+    }
+}
+
+@keyframes activationFlash {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+        transform: scale(1.3);
+        box-shadow: 0 0 100px rgba(255, 255, 255, 1),
+                    0 0 200px rgba(0, 255, 136, 1),
+                    0 0 300px rgba(0, 212, 255, 0.8);
+    }
+}
+
+@keyframes activationSpin {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.5);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+/* Ripple Effect on Click */
+#jarvisOrb.ripple::before {
+    animation: rippleEffect 1s ease-out;
+}
+
+@keyframes rippleEffect {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(3);
+        opacity: 0;
+    }
+}
+
+/* Sound Wave Visualization (for speaking state) */
+#jarvisOrb.speaking::before {
+    content: '';
+    position: absolute;
+    width: 120%;
+    height: 120%;
+    border-radius: 50%;
+    border: 3px solid rgba(0, 255, 136, 0.6);
+    animation: soundWave 1s ease-out infinite;
+}
+
+@keyframes soundWave {
+    0% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    #jarvisOrb {
+        width: 60px;
+        height: 60px;
+        bottom: 80px;
+        right: 20px;
+    }
+    
+    #jarvisOrb::after {
+        font-size: 24px;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    #jarvisOrb {
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+}
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    #jarvisOrb,
+    #jarvisOrb::after,
+    #jarvisOrb::before {
+        animation: none !important;
+    }
+    
+    #jarvisOrb {
+        transition: none;
+    }
+}
