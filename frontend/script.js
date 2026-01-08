@@ -1178,7 +1178,13 @@ async function sendMessage() {
             
             // Add random emoji to response
             const randomEmoji = responseEmojis[Math.floor(Math.random() * responseEmojis.length)];
-            const Display web search sources inline if we searched
+            const answerWithEmoji = finalAnswer + ' ' + randomEmoji;
+
+            // Add AI message to UI and context
+            await addMessageWithTypingEffect(answerWithEmoji, 'ai');
+            currentChatMessages.push({ role: 'assistant', content: answerWithEmoji });
+
+            // 🌐 Display web search sources inline if we searched
             if (webSearchResults && webSearchResults.results && webSearchResults.results.length > 0) {
                 const sourcesHTML = window.jarvisWebSearch.formatSearchResults(webSearchResults);
                 if (sourcesHTML) {
@@ -1186,13 +1192,7 @@ async function sendMessage() {
                     sourcesDiv.className = 'message ai web-sources-inline';
                     sourcesDiv.innerHTML = sourcesHTML;
                     elements.messagesArea.appendChild(sourcesDiv);
-                    scrollToBottom();IS Web Search] Displayed', searchResults.results.length, 'results');
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.warn('[JARVIS Web Search] Search failed:', error);
-                    // Continue without web search
+                    scrollToBottom();
                 }
             }
 
