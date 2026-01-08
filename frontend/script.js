@@ -1091,9 +1091,22 @@ async function sendMessage() {
             currentChatMessages.push({ role: 'assistant', content: imageMessage });
         } else {
             // Regular text response
+            let finalAnswer = data.answer;
+            
+            // 🧠 MASTER AI: Enhance response with news, personalization, and deep knowledge
+            if (window.jarvisMasterAI && window.jarvisMasterAI.initialized) {
+                try {
+                    finalAnswer = await window.jarvisMasterAI.generateEnhancedResponse(question, data.answer);
+                    console.log('[JARVIS Master AI] Response enhanced with personalized context');
+                } catch (error) {
+                    console.warn('[JARVIS Master AI] Enhancement failed, using original response:', error);
+                    finalAnswer = data.answer;
+                }
+            }
+            
             // Add random emoji to response
             const randomEmoji = responseEmojis[Math.floor(Math.random() * responseEmojis.length)];
-            const answerWithEmoji = data.answer + ' ' + randomEmoji;
+            const answerWithEmoji = finalAnswer + ' ' + randomEmoji;
 
             // Add AI message to UI and context
             await addMessageWithTypingEffect(answerWithEmoji, 'ai');
