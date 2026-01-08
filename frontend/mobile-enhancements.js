@@ -349,8 +349,8 @@ if (isMobile) {
 }
 
 // Add CSS animations
-const style = document.createElement('style');
-style.textContent = `
+const mobileStyle = document.createElement('style');
+mobileStyle.textContent = `
     @keyframes slideInRight {
         from { transform: translateX(200px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
@@ -372,4 +372,4 @@ style.textContent = `
         user-select: none;
     }
 `;
-document.head.appendChild(style);
+document.head.appendChild(mobileStyle);
