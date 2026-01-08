@@ -42,6 +42,33 @@ export function getEnvironment() {
 }
 
 /**
+ * API Keys Configuration
+ * News APIs for JARVIS Master AI
+ */
+export const API_KEYS = {
+    newsapi: 'f000b146329e4dddb6116bfe6457257d',
+    gnews: '', // Optional: Add GNews API key here
+};
+
+/**
+ * Initialize API keys in global scope
+ */
+export function initializeAPIKeys() {
+    window.NEWS_API_KEY = API_KEYS.newsapi;
+    window.GNEWS_API_KEY = API_KEYS.gnews;
+    
+    // Also set in localStorage as fallback
+    if (API_KEYS.newsapi) {
+        localStorage.setItem('newsapi_api_key', API_KEYS.newsapi);
+    }
+    if (API_KEYS.gnews) {
+        localStorage.setItem('gnews_api_key', API_KEYS.gnews);
+    }
+    
+    console.log('[JARVIS Config] API keys initialized ✅');
+}
+
+/**
  * Log configuration info (for debugging)
  */
 export function logConfig() {
