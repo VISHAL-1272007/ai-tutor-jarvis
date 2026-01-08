@@ -1,0 +1,461 @@
+/* ===== JARVIS 2026 PROFESSIONAL WELCOME SCREEN ===== */
+/* Production-Level Iron Man Style UI */
+
+/* Welcome Screen - Clean Hero */
+.welcome-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: calc(100vh - 180px);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animated Background Grid */
+.welcome-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        linear-gradient(rgba(102, 126, 234, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(102, 126, 234, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridMove 20s linear infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes gridMove {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(50px, 50px); }
+}
+
+/* Welcome Title */
+.welcome-header {
+    text-align: center;
+    margin-bottom: 20px;
+    z-index: 1;
+    animation: fadeInDown 0.8s ease-out;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#welcomeTitle {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 700;
+    background: linear-gradient(135deg, #00d4ff 0%, #667eea 50%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
+}
+
+.welcome-subtitle {
+    font-size: clamp(13px, 2vw, 16px);
+    color: var(--text-secondary);
+    font-weight: 400;
+    opacity: 0.8;
+    display: none; /* Hide the messy subtitle */
+}
+
+/* ===== PROFESSIONAL JARVIS ORB ===== */
+.jarvis-orb-minimal {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 30px auto;
+    z-index: 1;
+    cursor: pointer;
+    animation: fadeInUp 0.8s ease-out 0.2s backwards;
+}
+
+/* Outer Glow Rings */
+.jarvis-orb-minimal::before,
+.jarvis-orb-minimal::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.jarvis-orb-minimal::before {
+    width: 220px;
+    height: 220px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    animation: orbRing1 4s ease-in-out infinite;
+}
+
+.jarvis-orb-minimal::after {
+    width: 260px;
+    height: 260px;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+    animation: orbRing2 6s ease-in-out infinite reverse;
+}
+
+@keyframes orbRing1 {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+    50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.6; }
+}
+
+@keyframes orbRing2 {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.2; }
+    50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.4; }
+}
+
+/* Main Orb Core */
+.orb-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: 
+        radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 30%),
+        radial-gradient(circle at 70% 70%, rgba(0, 0, 0, 0.2) 0%, transparent 30%),
+        radial-gradient(circle at center, #0a1628 0%, #0d1f3c 40%, #1a3a5c 70%, #2a4a6c 100%);
+    box-shadow: 
+        0 0 40px rgba(0, 212, 255, 0.3),
+        0 0 80px rgba(102, 126, 234, 0.2),
+        inset 0 0 60px rgba(0, 212, 255, 0.1),
+        inset 0 -20px 40px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    animation: orbPulse 4s ease-in-out infinite, orbFloat 6s ease-in-out infinite;
+    transition: all 0.3s ease;
+}
+
+.jarvis-orb-minimal:hover .orb-core {
+    box-shadow: 
+        0 0 60px rgba(0, 212, 255, 0.5),
+        0 0 100px rgba(102, 126, 234, 0.3),
+        inset 0 0 80px rgba(0, 212, 255, 0.2),
+        inset 0 -20px 40px rgba(0, 0, 0, 0.4);
+    transform: scale(1.05);
+}
+
+/* Arc Reactor Center Glow */
+.orb-core::before {
+    content: '';
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, 
+        rgba(0, 212, 255, 0.9) 0%, 
+        rgba(0, 212, 255, 0.4) 30%, 
+        transparent 70%);
+    border-radius: 50%;
+    animation: arcGlow 2s ease-in-out infinite;
+    z-index: 2;
+}
+
+@keyframes arcGlow {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Rotating Light Beam */
+.orb-core::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        transparent 40%,
+        rgba(0, 212, 255, 0.1) 50%,
+        transparent 60%
+    );
+    animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Center Text */
+.orb-text {
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    color: rgba(0, 212, 255, 0.9);
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+    z-index: 3;
+    line-height: 1.5;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Hide the old ring element */
+.orb-ring {
+    display: none;
+}
+
+@keyframes orbPulse {
+    0%, 100% { 
+        box-shadow: 
+            0 0 40px rgba(0, 212, 255, 0.3),
+            0 0 80px rgba(102, 126, 234, 0.2),
+            inset 0 0 60px rgba(0, 212, 255, 0.1);
+    }
+    50% { 
+        box-shadow: 
+            0 0 50px rgba(0, 212, 255, 0.5),
+            0 0 100px rgba(102, 126, 234, 0.3),
+            inset 0 0 80px rgba(0, 212, 255, 0.2);
+    }
+}
+
+@keyframes orbFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== What's New Section - Cleaner ===== */
+.whats-new-2026 {
+    display: none; /* Hide this section - too cluttered */
+}
+
+/* ===== Quick Action Chips - Professional ===== */
+.action-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin: 30px auto;
+    max-width: 700px;
+    z-index: 1;
+    animation: fadeInUp 0.8s ease-out 0.4s backwards;
+}
+
+.chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 25px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+
+.chip:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 212, 255, 0.2);
+}
+
+.chip i {
+    font-size: 14px;
+    color: #00d4ff;
+}
+
+/* ===== Quick Links - Hide for cleaner look ===== */
+.quick-links {
+    display: none;
+}
+
+/* ===== FIXED JARVIS ORB (Bottom Right) ===== */
+#jarvisOrb {
+    position: fixed;
+    bottom: 100px;
+    right: 25px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: 
+        radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 30%),
+        radial-gradient(circle at center, #0a1628 0%, #1a3a5c 60%, #2a4a6c 100%);
+    box-shadow: 
+        0 0 25px rgba(0, 212, 255, 0.4),
+        0 0 50px rgba(102, 126, 234, 0.2),
+        inset 0 0 30px rgba(0, 212, 255, 0.15);
+    cursor: pointer;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    animation: orbFloat 6s ease-in-out infinite;
+    transition: all 0.3s ease;
+}
+
+#jarvisOrb:hover {
+    transform: scale(1.1);
+    box-shadow: 
+        0 0 40px rgba(0, 212, 255, 0.6),
+        0 0 80px rgba(102, 126, 234, 0.4),
+        inset 0 0 40px rgba(0, 212, 255, 0.2);
+}
+
+#jarvisOrb::before {
+    content: '';
+    position: absolute;
+    width: 25px;
+    height: 25px;
+    background: radial-gradient(circle, rgba(0, 212, 255, 0.8) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: arcGlow 2s ease-in-out infinite;
+}
+
+#jarvisOrb::after {
+    content: '🎤';
+    font-size: 22px;
+    position: absolute;
+    filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.5));
+    z-index: 2;
+}
+
+/* Orb States */
+#jarvisOrb.listening {
+    background: 
+        radial-gradient(circle at center, #001a33 0%, #003366 60%, #004d99 100%);
+    box-shadow: 
+        0 0 40px rgba(0, 212, 255, 0.8),
+        0 0 80px rgba(0, 212, 255, 0.5),
+        inset 0 0 40px rgba(0, 212, 255, 0.3);
+    animation: orbFloat 6s ease-in-out infinite, listenPulse 1s ease-in-out infinite;
+}
+
+#jarvisOrb.listening::after {
+    content: '👂';
+    animation: iconPulse 1s ease-in-out infinite;
+}
+
+@keyframes listenPulse {
+    0%, 100% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.8), 0 0 80px rgba(0, 212, 255, 0.5); }
+    50% { box-shadow: 0 0 60px rgba(0, 212, 255, 1), 0 0 100px rgba(0, 212, 255, 0.7); }
+}
+
+#jarvisOrb.speaking {
+    background: 
+        radial-gradient(circle at center, #001a1a 0%, #003333 60%, #006666 100%);
+    box-shadow: 
+        0 0 40px rgba(0, 255, 136, 0.8),
+        0 0 80px rgba(0, 255, 136, 0.5),
+        inset 0 0 40px rgba(0, 255, 136, 0.3);
+    animation: orbFloat 6s ease-in-out infinite, speakPulse 0.5s ease-in-out infinite;
+}
+
+#jarvisOrb.speaking::after {
+    content: '🔊';
+    animation: speakBounce 0.3s ease-in-out infinite;
+}
+
+@keyframes speakPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes speakBounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+@keyframes iconPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+    .welcome-screen {
+        padding: 30px 16px;
+        min-height: calc(100vh - 160px);
+    }
+    
+    #welcomeTitle {
+        font-size: 24px;
+    }
+    
+    .jarvis-orb-minimal {
+        width: 140px;
+        height: 140px;
+        margin: 25px auto;
+    }
+    
+    .jarvis-orb-minimal::before {
+        width: 170px;
+        height: 170px;
+    }
+    
+    .jarvis-orb-minimal::after {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .orb-text {
+        font-size: 9px;
+    }
+    
+    .action-chips {
+        gap: 8px;
+    }
+    
+    .chip {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+    
+    #jarvisOrb {
+        width: 55px;
+        height: 55px;
+        bottom: 90px;
+        right: 20px;
+    }
+    
+    #jarvisOrb::after {
+        font-size: 18px;
+    }
+}
+
+/* ===== Developer Credit - Cleaner ===== */
+.developer-credit {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    z-index: 100;
+    white-space: nowrap;
+}
+
+.developer-credit:hover {
+    opacity: 0.8;
+}
