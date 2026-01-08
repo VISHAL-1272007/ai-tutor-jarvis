@@ -27,5 +27,8 @@
     "groq"
   ],
   "author": "Vishal",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "canvas": "^3.2.0"
+  }
 }

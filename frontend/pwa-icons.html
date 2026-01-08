@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS PWA Icon Generator</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .steps {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0,212,255,0.2);
+        }
+        .steps h2 { color: #00d4ff; margin-top: 0; }
+        .steps ol { line-height: 2.2; }
+        .steps a { color: #f093fb; }
+        .steps code {
+            background: rgba(0,212,255,0.2);
+            padding: 3px 8px;
+            border-radius: 5px;
+            color: #00d4ff;
+        }
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(102,126,234,0.4); }
+        .btn-download { background: linear-gradient(135deg, #00d4ff, #0099cc); }
+        .btn-pwa { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .icon-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+        .icon-card:hover {
+            border-color: #00d4ff;
+            transform: translateY(-5px);
+        }
+        .icon-card canvas {
+            border-radius: 20%;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        .icon-card p { margin: 15px 0 10px; font-weight: 600; }
+        .icon-card small { color: #888; }
+        .icon-card button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        .status {
+            background: rgba(0,212,255,0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .status.success { background: rgba(0,255,136,0.1); border-color: #00ff88; color: #00ff88; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 JARVIS PWA Icon Generator</h1>
+        <p class="subtitle">Generate all required icons for your Android App</p>
+        
+        <div class="steps">
+            <h2>📱 Convert to Android App (FREE)</h2>
+            <ol>
+                <li><strong>Generate icons</strong> by clicking the button below</li>
+                <li><strong>Download all icons</strong> as a ZIP file</li>
+                <li>Go to <a href="https://www.pwabuilder.com" target="_blank">PWABuilder.com</a></li>
+                <li>Enter your URL: <code>https://vishai-f6197.web.app</code></li>
+                <li>Click <strong>"Start"</strong> → <strong>"Package for stores"</strong></li>
+                <li>Select <strong>"Android"</strong> → Download APK</li>
+                <li>Upload to <strong>Amazon Appstore</strong> or <strong>Samsung Galaxy Store</strong> (FREE!)</li>
+            </ol>
+        </div>
+        
+        <div class="btn-group">
+            <button onclick="generateAllIcons()">🎨 Generate Icons</button>
+            <button class="btn-download" onclick="downloadAllIcons()">📥 Download ZIP</button>
+            <button class="btn-pwa" onclick="window.open('https://www.pwabuilder.com', '_blank')">🚀 Open PWABuilder</button>
+        </div>
+        
+        <div id="status" class="status hidden"></div>
+        <div class="icon-grid" id="iconGrid"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const icons = {};
+        
+        function drawIcon(ctx, size, maskable = false) {
+            const cx = size / 2;
+            const cy = size / 2;
+            const scale = size / 512;
+            
+            // Background gradient
+            const bgGrad = ctx.createLinearGradient(0, 0, size, size);
+            bgGrad.addColorStop(0, '#667eea');
+            bgGrad.addColorStop(0.5, '#764ba2');
+            bgGrad.addColorStop(1, '#f093fb');
+            
+            if (maskable) {
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, size, size);
+            } else {
+                ctx.beginPath();
+                ctx.arc(cx, cy, size * 0.47, 0, Math.PI * 2);
+                ctx.fillStyle = bgGrad;
+                ctx.fill();
+            }
+            
+            if (!maskable) {
+                // Outer ring
+                ctx.beginPath();
+                ctx.arc(cx, cy, size * 0.35, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(0, 212, 255, 0.6)';
+                ctx.lineWidth = Math.max(2, 4 * scale);
+                ctx.stroke();
+                
+                // Inner ring
+                ctx.beginPath();
+                ctx.arc(cx, cy, size * 0.27, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
+                ctx.lineWidth = Math.max(1.5, 3 * scale);
+                ctx.stroke();
+            }
+            
+            // Core
+            const coreRadius = maskable ? size * 0.23 : size * 0.18;
+            ctx.beginPath();
+            ctx.arc(cx, cy, coreRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fill();
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = Math.max(3, (maskable ? 8 : 6) * scale);
+            ctx.stroke();
+            
+            // Glow layers
+            [[0.16, 0.12, 0.3], [0.10, 0.08, 0.5], [0.05, 0.04, 0.8]].forEach(([mR, nR, opacity]) => {
+                ctx.beginPath();
+                ctx.arc(cx, cy, size * (maskable ? mR : nR), 0, Math.PI * 2);
+                ctx.fillStyle = opacity === 0.8 ? `rgba(255,255,255,${opacity})` : `rgba(0,212,255,${opacity})`;
+                ctx.fill();
+            });
+            
+            // J letter
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.max(20, (maskable ? 100 : 80) * scale)}px Arial Black, Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('J', cx, cy + (5 * scale));
+            
+            // Decorative lines
+            if (!maskable) {
+                ctx.strokeStyle = 'rgba(0, 212, 255, 0.8)';
+                ctx.lineWidth = Math.max(1.5, 3 * scale);
+                [[cx, 0.15, cx, 0.23], [cx, 0.77, cx, 0.85], [0.15, cy/size, 0.23, cy/size], [0.77, cy/size, 0.85, cy/size]]
+                    .forEach(([x1, y1, x2, y2]) => {
+                        ctx.beginPath();
+                        ctx.moveTo(typeof x1 === 'number' && x1 < 1 ? size * x1 : x1, size * y1);
+                        ctx.lineTo(typeof x2 === 'number' && x2 < 1 ? size * x2 : x2, size * y2);
+                        ctx.stroke();
+                    });
+                // Fixed lines
+                ctx.beginPath(); ctx.moveTo(size*0.15, cy); ctx.lineTo(size*0.23, cy); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(size*0.77, cy); ctx.lineTo(size*0.85, cy); ctx.stroke();
+            }
+        }
+        
+        function generateAllIcons() {
+            const grid = document.getElementById('iconGrid');
+            const status = document.getElementById('status');
+            grid.innerHTML = '';
+            
+            sizes.forEach(size => {
+                // Regular icon
+                createIconCard(grid, size, false);
+                
+                // Maskable (192 & 512 only)
+                if (size === 192 || size === 512) {
+                    createIconCard(grid, size, true);
+                }
+            });
+            
+            status.textContent = '✅ All icons generated! Click "Download ZIP" to get all icons.';
+            status.className = 'status success';
+        }
+        
+        function createIconCard(container, size, maskable) {
+            const card = document.createElement('div');
+            card.className = 'icon-card';
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const displaySize = Math.min(size, 150);
+            canvas.style.width = displaySize + 'px';
+            canvas.style.height = displaySize + 'px';
+            
+            const ctx = canvas.getContext('2d');
+            drawIcon(ctx, size, maskable);
+            
+            const name = maskable ? `icon-${size}-maskable.png` : `icon-${size}.png`;
+            icons[name] = canvas.toDataURL('image/png');
+            
+            card.appendChild(canvas);
+            card.innerHTML += `
+                <p>${name}</p>
+                <small>${size}×${size}px</small>
+                <button onclick="downloadSingle('${name}')">Download</button>
+            `;
+            container.appendChild(card);
+        }
+        
+        function downloadSingle(name) {
+            const link = document.createElement('a');
+            link.download = name;
+            link.href = icons[name];
+            link.click();
+        }
+        
+        async function downloadAllIcons() {
+            if (Object.keys(icons).length === 0) {
+                generateAllIcons();
+            }
+            
+            const status = document.getElementById('status');
+            status.textContent = '⏳ Creating ZIP file...';
+            status.className = 'status';
+            
+            const zip = new JSZip();
+            const folder = zip.folder('icons');
+            
+            for (const [name, dataUrl] of Object.entries(icons)) {
+                const base64 = dataUrl.split(',')[1];
+                folder.file(name, base64, { base64: true });
+            }
+            
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.download = 'jarvis-pwa-icons.zip';
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            
+            status.textContent = '✅ ZIP downloaded! Now upload icons to your frontend/icons/ folder.';
+            status.className = 'status success';
+        }
+        
+        // Auto-generate on load
+        window.onload = generateAllIcons;
+    </script>
+</body>
+</html>

@@ -1,62 +1,78 @@
 {
     "name": "JARVIS AI 6.0 - Smart Student Assistant",
-    "short_name": "JARVIS",
-    "description": "Professional AI Student Assistant by VISHAL. Serving 30,000+ students with advanced AI capabilities.",
-    "start_url": "/index.html",
+    "short_name": "JARVIS AI",
+    "description": "Your personal AI assistant powered by advanced AI. Chat, learn, code, and create with JARVIS - serving 30,000+ students worldwide. Built by VISHAL.",
+    "start_url": "/index.html?source=pwa",
     "scope": "/",
+    "id": "/",
     "display": "standalone",
-    "background_color": "#ffffff",
+    "display_override": ["standalone", "minimal-ui"],
+    "background_color": "#0a0a1a",
     "theme_color": "#667eea",
     "orientation": "any",
     "prefer_related_applications": false,
+    "lang": "en",
+    "dir": "ltr",
     "icons": [
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-72.png",
             "sizes": "72x72",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-96.png",
             "sizes": "96x96",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-128.png",
             "sizes": "128x128",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-144.png",
             "sizes": "144x144",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-152.png",
             "sizes": "152x152",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-192.png",
             "sizes": "192x192",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-192-maskable.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/icon-384.png",
             "sizes": "384x384",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
+            "src": "icons/icon-512.png",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "icons/icon-512-maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         }
     ],
     "categories": [
@@ -66,66 +82,48 @@
     ],
     "screenshots": [
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
-            "sizes": "540x720",
+            "src": "screenshots/screenshot-mobile.png",
+            "sizes": "1080x1920",
             "type": "image/png",
-            "form_factor": "narrow"
+            "form_factor": "narrow",
+            "label": "JARVIS AI Chat"
         },
         {
-            "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
-            "sizes": "720x540",
+            "src": "screenshots/screenshot-desktop.png",
+            "sizes": "1920x1080",
             "type": "image/png",
-            "form_factor": "wide"
+            "form_factor": "wide",
+            "label": "Desktop Experience"
         }
     ],
     "shortcuts": [
         {
-            "name": "AI Chat",
+            "name": "Start Chat",
             "short_name": "Chat",
-            "description": "Start AI conversation",
-            "url": "/index.html",
-            "icons": [
-                {
-                    "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
-                    "sizes": "192x192"
-                }
-            ]
+            "description": "Start a conversation with JARVIS",
+            "url": "/index.html?action=chat",
+            "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
         },
         {
-            "name": "Courses",
+            "name": "AI Courses",
             "short_name": "Learn",
-            "description": "Browse courses",
-            "url": "/courses.html",
-            "icons": [
-                {
-                    "src": "https://cdn-icons-png.flaticon.com/512/2436/2436874.png",
-                    "sizes": "192x192"
-                }
-            ]
+            "description": "Generate AI courses",
+            "url": "/course-generator.html",
+            "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
         },
         {
             "name": "Code Playground",
             "short_name": "Code",
-            "description": "Write and test code",
+            "description": "Write and run code",
             "url": "/playground.html",
-            "icons": [
-                {
-                    "src": "https://cdn-icons-png.flaticon.com/512/1005/1005141.png",
-                    "sizes": "192x192"
-                }
-            ]
+            "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
         },
         {
             "name": "AI Tools",
             "short_name": "Tools",
             "description": "Access AI tools",
             "url": "/ai-tools.html",
-            "icons": [
-                {
-                    "src": "https://cdn-icons-png.flaticon.com/512/4712/4712027.png",
-                    "sizes": "192x192"
-                }
-            ]
+            "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
         }
     ],
     "share_target": {
@@ -136,5 +134,8 @@
             "text": "text",
             "url": "url"
         }
+    },
+    "launch_handler": {
+        "client_mode": "navigate-existing"
     }
 }
