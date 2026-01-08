@@ -967,6 +967,72 @@ async function sendMessage() {
     elements.sendBtn.disabled = true;
 
     try {
+        // 🌐 WEB SEARCH: Check if we need to search FIRST (Perplexity-style)
+        let webSearchResults = null;
+        let searchContext = '';
+        
+        if (window.jarvisWebSearch && window.jarvisWebSearch.initialized) {
+            // Always check for real-time queries or uncertain topics
+            const needsSearch = window.jarvisWebSearch.needsWebSearch(question, '');
+            
+            if (needsSearch) {
+                console.log('[JARVIS Web Search] Performing web search BEFORE response...');
+                
+                // Replace typing indicator with search indicator
+                removeTypingIndicator();
+                const searchingDiv = document.createElement('div');
+                searchingDiv.className = 'message ai searching-web';
+                searchingDiv.id = 'webSearchIndicator';
+                searchingDiv.innerHTML = `
+                    <div class="web-search-inline">
+                        <div class="search-inline-header">
+                            <div class="search-spinner"></div>
+                            <span class="search-status">Searching the web...</span>
+                        </div>
+                        <div class="search-inline-sources" id="searchSources">
+                            <div class="source-item loading">
+                                <i class="fas fa-globe"></i> DuckDuckGo
+                            </div>
+                            <div class="source-item loading">
+                                <i class="fas fa-newspaper"></i> News APIs
+                            </div>
+                            <div class="source-item loading">
+                                <i class="fas fa-book"></i> Wikipedia
+                            </div>
+                        </div>
+                    </div>
+                `;
+                elements.messagesArea.appendChild(searchingDiv);
+                scrollToBottom();
+                
+                // Perform search
+                webSearchResults = await window.jarvisWebSearch.performWebSearch(question);
+                
+                // Update search indicator to show sources found
+                if (webSearchResults && webSearchResults.results && webSearchResults.results.length > 0) {
+                    const sourcesDiv = document.getElementById('searchSources');
+                    if (sourcesDiv) {
+                        sourcesDiv.innerHTML = webSearchResults.results.slice(0, 3).map((result, i) => `
+                            <div class="source-item found" style="animation-delay: ${i * 0.1}s">
+                                <i class="fas fa-check-circle"></i> 
+                                <span>${result.source}: ${result.title.substring(0, 40)}...</span>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    // Build context from search results
+                    searchContext = `\n\n[Web Search Results]:\n`;
+                    webSearchResults.results.slice(0, 5).forEach((result, i) => {
+                        searchContext += `${i + 1}. ${result.title} (${result.source})\n${result.snippet}\n\n`;
+                    });
+                    
+                    console.log('[JARVIS Web Search] Found', webSearchResults.results.length, 'sources');
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 800)); // Brief pause to show sources
+            }
+        }
+
         // Check if backend is ready, wake it up if needed
         if (window.backendKeepAlive && !window.backendKeepAlive.isReady()) {
             console.log('⏰ Backend is sleeping, waking it up...');
@@ -1025,10 +1091,10 @@ async function sendMessage() {
 
         // Prepare request data
         const requestData = {
-            question,
+            question: question + searchContext, // Add search context to question
             history: recentHistory,
             mode: currentMode,
-            model: currentModel, // Send selected model
+            model: currentModel,
             systemPrompt: finalPrompt
         };
 
@@ -1061,6 +1127,12 @@ async function sendMessage() {
         hideBackendStatus();
 
         const data = await response.json();
+
+        // Remove search indicator if exists
+        const searchIndicator = document.getElementById('webSearchIndicator');
+        if (searchIndicator) {
+            searchIndicator.remove();
+        }
 
         // Remove typing indicator
         removeTypingIndicator();
@@ -1106,47 +1178,15 @@ async function sendMessage() {
             
             // Add random emoji to response
             const randomEmoji = responseEmojis[Math.floor(Math.random() * responseEmojis.length)];
-            const answerWithEmoji = finalAnswer + ' ' + randomEmoji;
-
-            // Add AI message to UI and context
-            await addMessageWithTypingEffect(answerWithEmoji, 'ai');
-            currentChatMessages.push({ role: 'assistant', content: answerWithEmoji });
-
-            // 🌐 WEB SEARCH: Check if we need to search the web for more info
-            if (window.jarvisWebSearch && window.jarvisWebSearch.initialized) {
-                try {
-                    const needsSearch = window.jarvisWebSearch.needsWebSearch(question, data.answer);
-                    
-                    if (needsSearch) {
-                        console.log('[JARVIS Web Search] Performing web search...');
-                        
-                        // Show searching indicator
-                        const searchLoadingDiv = document.createElement('div');
-                        searchLoadingDiv.className = 'message ai search-loading';
-                        searchLoadingDiv.innerHTML = `
-                            <div class="search-loading-spinner"></div>
-                            <div class="search-loading-text">🌐 Searching the web for latest information...</div>
-                        `;
-                        elements.messagesArea.appendChild(searchLoadingDiv);
-                        scrollToBottom();
-                        
-                        // Perform search
-                        const searchResults = await window.jarvisWebSearch.performWebSearch(question);
-                        
-                        // Remove loading indicator
-                        searchLoadingDiv.remove();
-                        
-                        // Display search results with Perplexity-style UI
-                        if (searchResults && searchResults.results && searchResults.results.length > 0) {
-                            const searchHTML = window.jarvisWebSearch.formatSearchResults(searchResults);
-                            if (searchHTML) {
-                                const searchDiv = document.createElement('div');
-                                searchDiv.className = 'message ai';
-                                searchDiv.innerHTML = searchHTML;
-                                elements.messagesArea.appendChild(searchDiv);
-                                scrollToBottom();
-                                
-                                console.log('[JARVIS Web Search] Displayed', searchResults.results.length, 'results');
+            const Display web search sources inline if we searched
+            if (webSearchResults && webSearchResults.results && webSearchResults.results.length > 0) {
+                const sourcesHTML = window.jarvisWebSearch.formatSearchResults(webSearchResults);
+                if (sourcesHTML) {
+                    const sourcesDiv = document.createElement('div');
+                    sourcesDiv.className = 'message ai web-sources-inline';
+                    sourcesDiv.innerHTML = sourcesHTML;
+                    elements.messagesArea.appendChild(sourcesDiv);
+                    scrollToBottom();IS Web Search] Displayed', searchResults.results.length, 'results');
                             }
                         }
                     }
