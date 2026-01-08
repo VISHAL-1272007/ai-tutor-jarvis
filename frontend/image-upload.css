@@ -1,0 +1,206 @@
+/* ===== GEMINI-STYLE IMAGE UPLOAD STYLES ===== */
+
+/* Image Preview Container */
+.image-preview-container {
+    padding: 12px;
+    margin-bottom: 8px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.image-preview-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.image-preview-wrapper img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    display: block;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.remove-image-btn:hover {
+    background: #ff4444;
+    transform: scale(1.1);
+}
+
+/* Upload Buttons */
+.input-icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-icon-btn:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: var(--primary);
+}
+
+.input-icon-btn:active {
+    transform: scale(0.95);
+}
+
+/* Message with Image */
+.message-image {
+    margin-bottom: 12px;
+}
+
+.message-image img {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.message-image img:hover {
+    transform: scale(1.02);
+}
+
+/* Vision Analysis Loading State */
+.vision-analyzing {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.vision-analyzing .spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(102, 126, 234, 0.2);
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.vision-analyzing .status-text {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Drag and Drop Styles */
+.input-container.drag-over {
+    background: rgba(102, 126, 234, 0.1);
+    border: 2px dashed #667eea !important;
+}
+
+/* Image Upload Notification */
+.image-notification {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    font-size: 14px;
+    font-weight: 500;
+    animation: slideIn 0.3s ease-out;
+}
+
+.image-notification.success {
+    background: #00ff88;
+    color: #000;
+}
+
+.image-notification.error {
+    background: #ff4444;
+    color: #fff;
+}
+
+.image-notification.info {
+    background: #667eea;
+    color: #fff;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .image-preview-wrapper img {
+        max-height: 200px;
+    }
+    
+    .message-image img {
+        max-height: 300px;
+    }
+    
+    .image-notification {
+        bottom: 80px;
+        right: 10px;
+        left: 10px;
+        font-size: 13px;
+    }
+}
+
+/* Dark Mode Support */
+[data-theme="dark"] .image-preview-container {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+[data-theme="dark"] .remove-image-btn {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .remove-image-btn:hover {
+    background: #ff4444;
+}

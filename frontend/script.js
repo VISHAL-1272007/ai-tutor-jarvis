@@ -1,6 +1,8 @@
 // ===== Firebase Integration =====
 import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signOut, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, getDoc, setDoc, limit } from './firebase-config.js';
 import { getBackendURL } from './config.js';
+import { imageUploadSystem } from './image-upload.js';
+import { geminiVision } from './gemini-vision.js';
 
 // ===== Configuration =====
 // Backend API URL - Auto-detects environment (local/production)
@@ -890,11 +892,15 @@ function setupEventListeners() {
 async function sendMessage() {
     console.log('🚀 sendMessage called');
     const question = elements.messageInput.value.trim();
+    const hasImage = imageUploadSystem.hasImage();
+    
     console.log('📝 Question:', question);
+    console.log('🖼️ Has Image:', hasImage);
     console.log('⏳ isTyping:', isTyping);
 
-    if (!question || isTyping) {
-        console.log('❌ Blocked: Empty question or already typing');
+    // Allow image-only messages (no text required)
+    if ((!question && !hasImage) || isTyping) {
+        console.log('❌ Blocked: No input or already typing');
         return;
     }
 
@@ -942,9 +948,13 @@ async function sendMessage() {
     // Increment query count
     incrementQueryCount();
 
+    // Get uploaded image if any
+    const uploadedImage = imageUploadSystem.getCurrentImage();
+
     // Add user message to UI and context
-    addMessageToUI(question, 'user');
-    currentChatMessages.push({ role: 'user', content: question });
+    const userPrompt = question || "What's in this image?";
+    addMessageToUI(userPrompt, 'user', uploadedImage);
+    currentChatMessages.push({ role: 'user', content: userPrompt });
 
     // Award XP for sending message
     if (typeof window.addXP === 'function' && currentUser) {
@@ -967,6 +977,37 @@ async function sendMessage() {
     elements.sendBtn.disabled = true;
 
     try {
+        // 📸 IMAGE ANALYSIS: If image is uploaded, use Gemini Vision API
+        if (uploadedImage && uploadedImage.base64) {
+            console.log('[JARVIS Vision] Analyzing image with Gemini...');
+            
+            try {
+                // Use Gemini Vision API
+                const visionResponse = await geminiVision.analyzeImage(uploadedImage.base64, userPrompt);
+                
+                // Remove typing indicator
+                removeTypingIndicator();
+                
+                // Display vision response with image
+                await addMessageWithTypingEffect(visionResponse, 'ai');
+                
+                // Clear the image after successful analysis
+                imageUploadSystem.removeImage();
+                
+                // Save chat history
+                currentChatMessages.push({ role: 'ai', content: visionResponse });
+                await saveChatToFirebase();
+                
+                isTyping = false;
+                elements.sendBtn.disabled = false;
+                return; // Exit early - vision analysis complete
+            } catch (visionError) {
+                console.error('[JARVIS Vision] Error:', visionError);
+                // Fall back to regular chat if vision fails
+                imageUploadSystem.removeImage();
+            }
+        }
+        
         // 🌐 WEB SEARCH: Check if we need to search FIRST (Perplexity-style)
         let webSearchResults = null;
         let searchContext = '';
@@ -1239,12 +1280,23 @@ async function sendMessage() {
 }
 
 // ===== Add Message to UI =====
-function addMessageToUI(content, sender) {
+function addMessageToUI(content, sender, imageData = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}`;
 
+    // Build image HTML if image is present
+    let imageHTML = '';
+    if (imageData && imageData.url) {
+        imageHTML = `
+            <div class="message-image">
+                <img src="${imageData.url}" alt="Uploaded image" style="max-width: 400px; border-radius: 12px; margin-bottom: 12px;">
+            </div>
+        `;
+    }
+
     messageDiv.innerHTML = `
         <div class="message-wrapper">
+            ${imageHTML}
             <div class="message-content">${formatMessage(content)}</div>
             ${sender === 'ai' ? `
                 <div class="message-actions">

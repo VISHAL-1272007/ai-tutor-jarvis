@@ -1,5 +1,5 @@
 # 🚀 ZERO TO HERO AI CAREER ROADMAP
-## Complete Life Path - 2 Year Plan (2026-2028)
+## Complete Life Path - 2 Year Plan (2
 
 **Created for:** VISHAL  
 **Starting Point:** Jan 2026 (2nd Year Engineering)  
