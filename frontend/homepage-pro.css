@@ -1,0 +1,743 @@
+/* ===== PROFESSIONAL JARVIS HOMEPAGE REDESIGN ===== */
+/* Modern, Clean, Mobile-First Design */
+
+/* Welcome Screen - Professional Hero Section */
+.welcome-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: calc(100vh - 200px);
+    opacity: 1;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Welcome Header - Modern Typography */
+.welcome-header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeInUp 0.8s ease-out 0.1s backwards;
+}
+
+#welcomeTitle {
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+
+.welcome-subtitle {
+    font-size: clamp(16px, 2.5vw, 20px);
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin-top: 12px;
+    opacity: 0.9;
+}
+
+/* JARVIS Orb - Enhanced Professional Design */
+.jarvis-orb-minimal {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 40px auto;
+    animation: fadeInUp 0.8s ease-out 0.2s backwards, orbFloat 6s ease-in-out infinite;
+}
+
+.orb-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, 
+        rgba(102, 126, 234, 0.9) 0%, 
+        rgba(118, 75, 162, 0.8) 50%, 
+        rgba(102, 126, 234, 0.6) 100%);
+    box-shadow: 
+        0 0 60px rgba(102, 126, 234, 0.4),
+        0 0 100px rgba(118, 75, 162, 0.3),
+        inset 0 0 40px rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.orb-core::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 70%
+    );
+    animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.orb-text {
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    color: white;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    z-index: 1;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+}
+
+.orb-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 2px solid rgba(102, 126, 234, 0.3);
+    animation: ringPulse 3s ease-in-out infinite;
+}
+
+@keyframes ringPulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.5;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+@keyframes orbFloat {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+/* What's New Section - Card Design */
+.whats-new-2026 {
+    width: 100%;
+    max-width: 1000px;
+    margin: 48px auto 40px;
+    padding: 32px;
+    background: rgba(102, 126, 234, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 24px;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+    animation: fadeInUp 0.8s ease-out 0.3s backwards;
+}
+
+.whats-new-2026 h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.new-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.new-feature {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 16px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.new-feature:hover {
+    transform: translateY(-8px);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
+}
+
+.new-feature i {
+    font-size: 36px;
+    color: #667eea;
+    transition: all 0.3s ease;
+}
+
+.new-feature:hover i {
+    transform: scale(1.2) rotate(10deg);
+    filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6));
+}
+
+.new-feature span {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+/* Action Chips - Modern Pill Buttons */
+.action-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    max-width: 900px;
+    margin: 40px auto 32px;
+    padding: 0 20px;
+    animation: fadeInUp 0.8s ease-out 0.4s backwards;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    background: var(--bg-secondary);
+    border: 2px solid rgba(102, 126, 234, 0.2);
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.chip:hover {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: transparent;
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
+}
+
+.chip i {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.chip:hover i {
+    transform: scale(1.2);
+}
+
+/* Quick Links - Professional Card Grid */
+.quick-links-2026 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    max-width: 1000px;
+    margin: 40px auto 60px;
+    padding: 0 20px;
+    animation: fadeInUp 0.8s ease-out 0.5s backwards;
+}
+
+.quick-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 24px;
+    background: var(--bg-secondary);
+    border: 1px solid rgba(102, 126, 234, 0.1);
+    border-radius: 20px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.quick-link:hover::before {
+    transform: scaleX(1);
+}
+
+.quick-link:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.25);
+    border-color: rgba(102, 126, 234, 0.3);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+}
+
+.quick-link i {
+    font-size: 48px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transition: all 0.3s ease;
+}
+
+.quick-link:hover i {
+    transform: scale(1.15) rotate(5deg);
+    filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.5));
+}
+
+.quick-link span {
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-primary);
+    transition: color 0.3s ease;
+}
+
+.quick-link:hover span {
+    color: #667eea;
+}
+
+/* Bottom Navigation - Mobile App Style */
+.bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border-top: 1px solid rgba(102, 126, 234, 0.1);
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.bottom-nav-items {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 16px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    min-width: 60px;
+}
+
+.nav-item.active {
+    color: #667eea;
+}
+
+.nav-item i {
+    font-size: 22px;
+    transition: all 0.3s ease;
+}
+
+.nav-item span {
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.nav-item:active {
+    transform: scale(0.95);
+}
+
+.nav-item.active i {
+    transform: scale(1.1);
+    color: #667eea;
+    filter: drop-shadow(0 0 10px rgba(102, 126, 234, 0.5));
+}
+
+/* Developer Credit - Footer */
+.developer-credit {
+    text-align: center;
+    padding: 24px 20px;
+    margin-top: 40px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    opacity: 0.8;
+    animation: fadeInUp 0.8s ease-out 0.6s backwards;
+}
+
+.developer-credit strong {
+    color: #667eea;
+    font-weight: 700;
+}
+
+/* ===== MOBILE RESPONSIVE DESIGN ===== */
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .welcome-screen {
+        padding: 40px 20px 30px;
+    }
+
+    .new-features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-links-2026 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .welcome-screen {
+        padding: 30px 16px 100px;
+        min-height: calc(100vh - 150px);
+    }
+
+    .welcome-header {
+        margin-bottom: 32px;
+    }
+
+    #welcomeTitle {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+
+    .welcome-subtitle {
+        font-size: 16px;
+    }
+
+    .jarvis-orb-minimal {
+        width: 160px;
+        height: 160px;
+        margin: 32px auto;
+    }
+
+    .orb-ring {
+        width: 180px;
+        height: 180px;
+    }
+
+    .orb-text {
+        font-size: 14px;
+    }
+
+    .whats-new-2026 {
+        padding: 24px 20px;
+        margin: 32px auto 32px;
+    }
+
+    .whats-new-2026 h3 {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+
+    .new-features-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .new-feature {
+        padding: 20px 12px;
+    }
+
+    .new-feature i {
+        font-size: 32px;
+    }
+
+    .new-feature span {
+        font-size: 13px;
+    }
+
+    .action-chips {
+        gap: 8px;
+        margin: 32px auto 24px;
+        padding: 0 16px;
+    }
+
+    .chip {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+
+    .chip i {
+        font-size: 16px;
+    }
+
+    .quick-links-2026 {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin: 32px auto 80px;
+        padding: 0 16px;
+    }
+
+    .quick-link {
+        padding: 24px 20px;
+        flex-direction: row;
+        gap: 16px;
+        text-align: left;
+    }
+
+    .quick-link i {
+        font-size: 36px;
+    }
+
+    .quick-link span {
+        font-size: 15px;
+        text-align: left;
+    }
+
+    .bottom-nav {
+        display: block;
+    }
+
+    .developer-credit {
+        padding: 16px;
+        font-size: 12px;
+        margin-bottom: 60px;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+    #welcomeTitle {
+        font-size: 28px;
+    }
+
+    .jarvis-orb-minimal {
+        width: 140px;
+        height: 140px;
+        margin: 24px auto;
+    }
+
+    .orb-ring {
+        width: 160px;
+        height: 160px;
+    }
+
+    .orb-text {
+        font-size: 12px;
+    }
+
+    .new-features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .whats-new-2026 {
+        padding: 20px 16px;
+    }
+
+    .chip {
+        padding: 10px 16px;
+        font-size: 13px;
+        gap: 8px;
+    }
+
+    .quick-link {
+        padding: 20px 16px;
+    }
+
+    .quick-link i {
+        font-size: 32px;
+    }
+}
+
+/* Landscape Mobile */
+@media (max-width: 896px) and (orientation: landscape) {
+    .welcome-screen {
+        padding: 20px 16px 20px;
+        min-height: auto;
+    }
+
+    .jarvis-orb-minimal {
+        width: 120px;
+        height: 120px;
+        margin: 20px auto;
+    }
+
+    .orb-ring {
+        width: 140px;
+        height: 140px;
+    }
+
+    .whats-new-2026 {
+        margin: 24px auto;
+    }
+
+    .action-chips {
+        margin: 24px auto 20px;
+    }
+
+    .quick-links-2026 {
+        grid-template-columns: repeat(2, 1fr);
+        margin: 24px auto 20px;
+    }
+}
+
+/* Extra Small Devices */
+@media (max-width: 360px) {
+    #welcomeTitle {
+        font-size: 24px;
+    }
+
+    .welcome-subtitle {
+        font-size: 14px;
+    }
+
+    .chip {
+        padding: 8px 14px;
+        font-size: 12px;
+    }
+
+    .nav-item {
+        padding: 6px 10px;
+        min-width: 50px;
+    }
+
+    .nav-item i {
+        font-size: 20px;
+    }
+
+    .nav-item span {
+        font-size: 10px;
+    }
+}
+
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+    .welcome-screen {
+        background: radial-gradient(
+            ellipse at top,
+            rgba(102, 126, 234, 0.05) 0%,
+            transparent 50%
+        );
+    }
+
+    .orb-core {
+        box-shadow: 
+            0 0 80px rgba(102, 126, 234, 0.5),
+            0 0 120px rgba(118, 75, 162, 0.4),
+            inset 0 0 50px rgba(255, 255, 255, 0.15);
+    }
+
+    .whats-new-2026 {
+        background: rgba(102, 126, 234, 0.08);
+        border-color: rgba(102, 126, 234, 0.15);
+    }
+
+    .new-feature {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .chip {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(102, 126, 234, 0.25);
+    }
+
+    .quick-link {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(102, 126, 234, 0.15);
+    }
+}
+
+/* Light Mode Enhancements */
+@media (prefers-color-scheme: light) {
+    .orb-core {
+        box-shadow: 
+            0 0 60px rgba(102, 126, 234, 0.3),
+            0 0 100px rgba(118, 75, 162, 0.2),
+            inset 0 0 40px rgba(255, 255, 255, 0.2);
+    }
+
+    .whats-new-2026 {
+        background: rgba(102, 126, 234, 0.03);
+    }
+}
+
+/* Accessibility - Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .jarvis-orb-minimal,
+    .orb-ring,
+    .orb-core::before {
+        animation: none !important;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .chip,
+    .new-feature,
+    .quick-link {
+        border-width: 2px;
+    }
+
+    .orb-core {
+        border-width: 3px;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .bottom-nav,
+    .jarvis-orb-minimal,
+    .orb-ring {
+        display: none !important;
+    }
+
+    .welcome-screen {
+        padding: 20px;
+    }
+}
