@@ -1,13 +1,19 @@
 // ===== GEMINI VISION AI INTEGRATION =====
-// Google Gemini API for image analysis
+// Routes through backend to avoid CORS issues
 
 class GeminiVisionAPI {
     constructor() {
-        // Get API key from global config
-        this.apiKey = window.API_KEYS?.gemini || 'AIzaSyDqTVxM_Uh-pKXqj6H8NfzC6gV_YQwKxLk';
-        this.apiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-        this.model = 'gemini-1.5-flash';
+        // Use backend endpoint to avoid CORS
+        this.backendURL = this.getBackendURL();
         console.log('🔮 Gemini Vision API initialized');
+    }
+
+    getBackendURL() {
+        const hostname = window.location.hostname;
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            return 'http://localhost:3000';
+        }
+        return 'https://ai-tutor-jarvis.onrender.com';
     }
 
     /**
@@ -18,50 +24,31 @@ class GeminiVisionAPI {
      */
     async analyzeImage(imageBase64, prompt) {
         try {
-            console.log('🔮 Analyzing image with Gemini Vision...');
+            console.log('🔮 Analyzing image via backend...');
+            console.log('🔮 Image size:', Math.round(imageBase64.length / 1024), 'KB');
             
-            const requestBody = {
-                contents: [{
-                    parts: [
-                        {
-                            text: prompt || "What's in this image? Describe it in detail."
-                        },
-                        {
-                            inline_data: {
-                                mime_type: "image/jpeg",
-                                data: imageBase64
-                            }
-                        }
-                    ]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 2048,
-                }
-            };
-
-            const response = await fetch(`${this.apiEndpoint}?key=${this.apiKey}`, {
+            const response = await fetch(`${this.backendURL}/vision`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(requestBody)
+                body: JSON.stringify({
+                    image: imageBase64,
+                    prompt: prompt || "What's in this image? Describe it in detail."
+                })
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                console.error('Gemini API Error:', errorData);
-                throw new Error(`API Error: ${response.status}`);
+                console.error('Vision API Error:', errorData);
+                throw new Error(errorData.error || `API Error: ${response.status}`);
             }
 
             const data = await response.json();
             
-            // Extract text from response
-            if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+            if (data.answer) {
                 console.log('✅ Gemini Vision response received');
-                return data.candidates[0].content.parts[0].text;
+                return data.answer;
             } else {
                 throw new Error('Invalid response format');
             }
@@ -72,11 +59,11 @@ class GeminiVisionAPI {
     }
 
     /**
-     * Check if API key is configured
+     * Check if backend is configured
      * @returns {boolean}
      */
     isConfigured() {
-        return !!this.apiKey && this.apiKey !== 'YOUR_GEMINI_API_KEY';
+        return !!this.backendURL;
     }
 
     /**
@@ -103,12 +90,8 @@ window.geminiVision = geminiVision;
 
 // Test function (for debugging) - available as window.testGeminiVision()
 window.testGeminiVision = async function() {
-    if (!geminiVision.isConfigured()) {
-        console.warn('⚠️ Gemini API key not configured');
-        return false;
-    }
-    
     console.log('✅ Gemini Vision API configured');
+    console.log('📡 Backend URL:', geminiVision.backendURL);
     console.log('📋 Available features:', geminiVision.getFeatures());
     return true;
 };

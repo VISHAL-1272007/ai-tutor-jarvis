@@ -752,6 +752,65 @@ app.get('/logout', (req, res, next) => {
     });
 });
 
+// ===== GEMINI VISION API ENDPOINT =====
+app.post('/vision', apiLimiter, async (req, res) => {
+    try {
+        const { image, prompt } = req.body;
+        
+        if (!image) {
+            return res.status(400).json({ error: 'Image data required' });
+        }
+        
+        console.log('🔮 [Vision] Analyzing image...');
+        
+        // Use Gemini Vision API
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDqTVxM_Uh-pKXqj6H8NfzC6gV_YQwKxLk';
+        const apiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+        
+        const requestBody = {
+            contents: [{
+                parts: [
+                    {
+                        text: prompt || "What's in this image? Describe it in detail and explain what you see."
+                    },
+                    {
+                        inline_data: {
+                            mime_type: "image/jpeg",
+                            data: image
+                        }
+                    }
+                ]
+            }],
+            generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 2048,
+            }
+        };
+        
+        const response = await axios.post(`${apiEndpoint}?key=${GEMINI_API_KEY}`, requestBody, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 60000
+        });
+        
+        if (response.data.candidates && response.data.candidates[0]?.content?.parts?.[0]?.text) {
+            const answer = response.data.candidates[0].content.parts[0].text;
+            console.log('✅ [Vision] Image analyzed successfully');
+            res.json({ answer, success: true });
+        } else {
+            throw new Error('Invalid response from Gemini Vision');
+        }
+        
+    } catch (error) {
+        console.error('❌ [Vision] Error:', error.message);
+        res.status(500).json({ 
+            error: 'Failed to analyze image', 
+            details: error.message 
+        });
+    }
+});
+
 // Apply rate limiter to /ask endpoint
 app.post('/ask', apiLimiter, async (req, res) => {
     try {
