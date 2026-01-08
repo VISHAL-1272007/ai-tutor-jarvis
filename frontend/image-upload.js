@@ -8,12 +8,17 @@ class ImageUploadSystem {
         this.maxFileSize = 10 * 1024 * 1024; // 10MB
         this.allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         
-        this.init();
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
     }
 
     init() {
         this.setupEventListeners();
-        console.log('📸 Image Upload System initialized');
+        console.log('📸 JARVIS Image Upload System initialized');
     }
 
     setupEventListeners() {
@@ -292,6 +297,7 @@ class ImageUploadSystem {
 }
 
 // Add animation styles
+// Add animation styles
 const style = document.createElement('style');
 style.textContent = `
     @keyframes slideIn {
@@ -320,11 +326,101 @@ style.textContent = `
         background: rgba(102, 126, 234, 0.1);
         border: 2px dashed #667eea !important;
     }
+    
+    /* Image Preview Container */
+    .image-preview-container {
+        padding: 12px 16px;
+        background: rgba(102, 126, 234, 0.05);
+        border-top: 1px solid rgba(102, 126, 234, 0.1);
+        transition: opacity 0.3s ease;
+    }
+    
+    .image-preview-wrapper {
+        position: relative;
+        display: inline-block;
+        max-width: 200px;
+    }
+    
+    .image-preview-wrapper img {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        object-fit: cover;
+    }
+    
+    .remove-image-btn {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #ff4444;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transition: transform 0.2s ease;
+    }
+    
+    .remove-image-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    /* Message with Image */
+    .message-image {
+        margin-bottom: 12px;
+    }
+    
+    .message-image img {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+    
+    .message-image img:hover {
+        transform: scale(1.02);
+    }
+    
+    /* Image Analysis Indicator */
+    .analyzing-image {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        border-radius: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .analyzing-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(102, 126, 234, 0.3);
+        border-top-color: #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 `;
 document.head.appendChild(style);
 
-// Initialize system
+// Initialize system globally
 const imageUploadSystem = new ImageUploadSystem();
+
+// Make it available globally for script.js
+window.imageUploadSystem = imageUploadSystem;
 
 // Export for use in other scripts
 export { imageUploadSystem };

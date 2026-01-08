@@ -1,8 +1,8 @@
 // ===== Firebase Integration =====
 import { auth, db, googleProvider, signInWithPopup, onAuthStateChanged, signOut, collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc, getDoc, setDoc, limit } from './firebase-config.js';
 import { getBackendURL } from './config.js';
-import { imageUploadSystem } from './image-upload.js';
-import { geminiVision } from './gemini-vision.js';
+
+// Image upload and Gemini Vision are loaded globally via window object
 
 // ===== Configuration =====
 // Backend API URL - Auto-detects environment (local/production)
@@ -892,7 +892,7 @@ function setupEventListeners() {
 async function sendMessage() {
     console.log('🚀 sendMessage called');
     const question = elements.messageInput.value.trim();
-    const hasImage = imageUploadSystem.hasImage();
+    const hasImage = window.imageUploadSystem && window.imageUploadSystem.hasImage();
     
     console.log('📝 Question:', question);
     console.log('🖼️ Has Image:', hasImage);
@@ -949,7 +949,7 @@ async function sendMessage() {
     incrementQueryCount();
 
     // Get uploaded image if any
-    const uploadedImage = imageUploadSystem.getCurrentImage();
+    const uploadedImage = window.imageUploadSystem ? window.imageUploadSystem.getCurrentImage() : null;
 
     // Add user message to UI and context
     const userPrompt = question || "What's in this image?";
@@ -978,12 +978,12 @@ async function sendMessage() {
 
     try {
         // 📸 IMAGE ANALYSIS: If image is uploaded, use Gemini Vision API
-        if (uploadedImage && uploadedImage.base64) {
+        if (uploadedImage && uploadedImage.base64 && window.geminiVision) {
             console.log('[JARVIS Vision] Analyzing image with Gemini...');
             
             try {
                 // Use Gemini Vision API
-                const visionResponse = await geminiVision.analyzeImage(uploadedImage.base64, userPrompt);
+                const visionResponse = await window.geminiVision.analyzeImage(uploadedImage.base64, userPrompt);
                 
                 // Remove typing indicator
                 removeTypingIndicator();
@@ -992,7 +992,9 @@ async function sendMessage() {
                 await addMessageWithTypingEffect(visionResponse, 'ai');
                 
                 // Clear the image after successful analysis
-                imageUploadSystem.removeImage();
+                if (window.imageUploadSystem) {
+                    window.imageUploadSystem.removeImage();
+                }
                 
                 // Save chat history
                 currentChatMessages.push({ role: 'ai', content: visionResponse });
@@ -1004,7 +1006,9 @@ async function sendMessage() {
             } catch (visionError) {
                 console.error('[JARVIS Vision] Error:', visionError);
                 // Fall back to regular chat if vision fails
-                imageUploadSystem.removeImage();
+                if (window.imageUploadSystem) {
+                    window.imageUploadSystem.removeImage();
+                }
             }
         }
         

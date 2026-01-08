@@ -1,13 +1,13 @@
 // ===== GEMINI VISION AI INTEGRATION =====
 // Google Gemini API for image analysis
 
-import { API_KEYS } from './config.js';
-
 class GeminiVisionAPI {
     constructor() {
-        this.apiKey = API_KEYS.gemini;
+        // Get API key from global config
+        this.apiKey = window.API_KEYS?.gemini || 'AIzaSyDqTVxM_Uh-pKXqj6H8NfzC6gV_YQwKxLk';
         this.apiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
         this.model = 'gemini-1.5-flash';
+        console.log('🔮 Gemini Vision API initialized');
     }
 
     /**
@@ -18,6 +18,8 @@ class GeminiVisionAPI {
      */
     async analyzeImage(imageBase64, prompt) {
         try {
+            console.log('🔮 Analyzing image with Gemini Vision...');
+            
             const requestBody = {
                 contents: [{
                     parts: [
@@ -58,6 +60,7 @@ class GeminiVisionAPI {
             
             // Extract text from response
             if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+                console.log('✅ Gemini Vision response received');
                 return data.candidates[0].content.parts[0].text;
             } else {
                 throw new Error('Invalid response format');
@@ -94,9 +97,9 @@ class GeminiVisionAPI {
     }
 }
 
-// Initialize and export
+// Initialize and make globally available
 const geminiVision = new GeminiVisionAPI();
-export { geminiVision };
+window.geminiVision = geminiVision;
 
 // Test function (for debugging)
 export async function testGeminiVision() {
