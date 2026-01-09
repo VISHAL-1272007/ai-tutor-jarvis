@@ -2135,17 +2135,19 @@ function showBackendStatus(message, type) {
         statusDiv.id = 'backendStatus';
         statusDiv.style.cssText = `
             position: fixed;
-            top: 70px;
+            top: 10px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 10px 20px;
+            border-radius: 25px;
             font-weight: 500;
+            font-size: 13px;
             z-index: 10000;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
             animation: slideDown 0.3s ease;
-            max-width: 90%;
+            max-width: 85%;
             text-align: center;
+            backdrop-filter: blur(10px);
         `;
         document.body.appendChild(statusDiv);
     }

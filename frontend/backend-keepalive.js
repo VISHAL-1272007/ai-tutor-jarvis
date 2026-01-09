@@ -308,20 +308,22 @@ class BackendKeepAlive {
             statusEl.id = 'backend-status';
             statusEl.style.cssText = `
                 position: fixed;
-                top: 80px;
+                top: 10px;
                 left: 50%;
                 transform: translateX(-50%);
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-size: 14px;
+                padding: 10px 20px;
+                border-radius: 25px;
+                font-size: 13px;
                 font-weight: 500;
                 z-index: 10000;
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
                 transition: all 0.3s ease;
                 animation: slideDown 0.3s ease;
+                max-width: 85%;
+                backdrop-filter: blur(10px);
             `;
             document.body.appendChild(statusEl);
         }
