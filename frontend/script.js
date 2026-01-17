@@ -4,6 +4,14 @@ import { getBackendURL } from './config.js';
 
 // Image upload and Gemini Vision are loaded globally via window object
 
+// ===== PRODUCTION MODE - Disable Console Logs =====
+const DEBUG_MODE = false; // Set to true for development, false for production
+if (!DEBUG_MODE) {
+    console.log = function() {};
+    console.error = function() {};
+    console.warn = function() {};
+}
+
 // ===== Configuration =====
 // Backend API URL - Auto-detects environment (local/production)
 const BACKEND_BASE_URL = getBackendURL();
@@ -95,10 +103,19 @@ let currentPlan = 'free';
 let dailyQueryCount = parseInt(localStorage.getItem('dailyQueryCount')) || 0;
 let lastQueryDate = localStorage.getItem('lastQueryDate') || new Date().toDateString();
 
+// ===== Hide Loading Spinner When Page Loads =====
+window.addEventListener('load', () => {
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) {
+        spinner.classList.add('hidden');
+        setTimeout(() => {
+            spinner.style.display = 'none';
+        }, 300);
+    }
+});
+
 // ===== Initialize =====
 function init() {
-    // console.log('🚀 Initializing app...');
-
     // Setup event listeners first (including sign out button)
     setupEventListeners();
     initSpeechRecognition();
@@ -1923,15 +1940,29 @@ function toggleSidebar() {
 
 // ===== Utilities =====
 function scrollToBottom() {
-    // Immediate scroll to bottom for real-time typing effect
-    if (elements.chatContainer) {
-        elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
-    }
-    // Also scroll messages area into view
-    const lastMessage = elements.messagesArea?.lastElementChild;
-    if (lastMessage) {
-        lastMessage.scrollIntoView({ behavior: 'auto', block: 'end' });
-    }
+    // Ensure smooth auto-scroll to latest message
+    requestAnimationFrame(() => {
+        // Method 1: Scroll chat container
+        if (elements.chatContainer) {
+            setTimeout(() => {
+                elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight + 500;
+            }, 0);
+        }
+        
+        // Method 2: Scroll messages area
+        if (elements.messagesArea) {
+            setTimeout(() => {
+                elements.messagesArea.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                const lastMessage = elements.messagesArea.lastElementChild;
+                if (lastMessage) {
+                    lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            }, 10);
+        }
+    });
+            }
+        }
+    });
 }
 
 function sleep(ms) {

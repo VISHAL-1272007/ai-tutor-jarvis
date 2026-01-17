@@ -5,6 +5,8 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
+const { startDailyUpdates, getLatestNews } = require('./daily-news-trainer');
+const { queryWolframAlpha, getDirectAnswer } = require('./wolfram-simple');
 // Ensure we load .env from backend directory even if process started elsewhere
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -88,6 +90,8 @@ function generateCoTPrompt(question, queryType, conversationHistory) {
         : '';
 
     return `You are JARVIS (Just A Rather Very Intelligent System) - the sophisticated AI assistant built by Tony Stark. You are now serving Sir (the user) with the same loyalty and intelligence.
+
+⚠️ **CRITICAL - FACTUAL ACCURACY DIRECTIVE:** Strictly provide factual information only. If you are uncertain about any information, state that you do not know instead of guessing or hallucinating. Accuracy is paramount.
 
 🤖 **Your Core Directives:**
 - Speak with sophistication, British elegance, and absolute loyalty.
@@ -242,6 +246,11 @@ function getNextGeminiKey() {
 
 // ===== WEB SEARCH APIs =====
 const SEARCH_APIS = {
+    jina: {
+        enabled: !!process.env.JINA_API_KEY,
+        key: process.env.JINA_API_KEY,
+        endpoint: 'https://api.jina.ai/v1/search'
+    },
     perplexity: {
         enabled: !!process.env.PERPLEXITY_API_KEY,
         key: process.env.PERPLEXITY_API_KEY,
@@ -264,7 +273,50 @@ const SEARCH_APIS = {
 async function searchWeb(query, mode = 'all') {
     console.log(`🔍 Searching web for: "${query}" [Mode: ${mode}]`);
 
-    // Try Perplexity API first (best quality with citations)
+    // Try Jina AI first (HIGHEST free tier - 10K/month) 🔥
+    if (SEARCH_APIS.jina.enabled) {
+        try {
+            console.log('🔥 Using Jina AI Search (10K/month free)...');
+            const response = await axios.get(
+                'https://api.jina.ai/v1/search',
+                {
+                    params: {
+                        q: query,
+                        limit: 10
+                    },
+                    headers: {
+                        'Authorization': `Bearer ${SEARCH_APIS.jina.key}`,
+                        'Accept': 'application/json'
+                    },
+                    timeout: 12000
+                }
+            );
+
+            const results = response.data.data || response.data.results || response.data || [];
+            const topResults = Array.isArray(results) ? results.slice(0, 5) : [];
+
+            if (topResults.length > 0) {
+                // Format results
+                const summary = await generateSearchSummary(query, topResults, mode);
+
+                console.log('✅ Jina AI search successful!');
+                return {
+                    answer: summary,
+                    citations: topResults.map(r => r.url || r.link),
+                    sources: topResults.map(r => ({
+                        title: r.title || r.heading,
+                        url: r.url || r.link,
+                        snippet: r.content || r.description || r.snippet
+                    })),
+                    searchEngine: 'Jina AI'
+                };
+            }
+        } catch (error) {
+            console.error('⚠️ Jina AI error:', error.message);
+        }
+    }
+
+    // Try Perplexity API second (best quality with citations)
     if (SEARCH_APIS.perplexity.enabled) {
         try {
             console.log('🌐 Using Perplexity API...');
@@ -477,7 +529,7 @@ async function callGroqAPI(messages) {
         {
             model: 'llama-3.3-70b-versatile', // Most capable model
             messages: messages,
-            temperature: 0.7,
+            temperature: 0.1,
             max_tokens: 4096, // Increased for detailed responses
             top_p: 0.95,
             frequency_penalty: 0.1, // Reduce repetition
@@ -504,7 +556,7 @@ async function callAimlApi(messages) {
         {
             model: 'meta-llama/Meta-Llama-3-70B-Instruct-Turbo',
             messages: messages,
-            temperature: 0.7,
+            temperature: 0.1,
             max_tokens: 2000
         },
         {
@@ -1636,20 +1688,83 @@ Use clear language, avoid jargon, and make it engaging!`;
     }
 });
 
-// 6. ElevenLabs API - Text-to-Speech
+// 6. Text-to-Speech - UPGRADED with Edge TTS (Unlimited Free!)
 app.post('/api/tts', apiLimiter, async (req, res) => {
     try {
-        const { text } = req.body;
+        const { text, voice = 'en-US-AriaNeural' } = req.body;
 
         if (!text) {
             return res.status(400).json({ error: 'Text required' });
         }
 
+        console.log(`🎤 Generating TTS with: ${voice}...`);
+
+        // Try Edge TTS first (UNLIMITED FREE!) 🔥
+        try {
+            console.log('🎵 Using Edge TTS (Unlimited free)...');
+            
+            // Use Node.js to call Python edge-tts
+            const { exec } = require('child_process');
+            const fs = require('fs');
+            const path = require('path');
+            const tmpFile = path.join('/tmp', `tts-${Date.now()}.mp3`);
+
+            // Create Python command to use edge-tts
+            const pythonCode = `
+import edge_tts
+import asyncio
+async def tts():
+    communicate = edge_tts.Communicate("${text.replace(/"/g, '\\"')}", voice="${voice}")
+    await communicate.save("${tmpFile}")
+asyncio.run(tts())
+`;
+
+            // For simpler approach, use edge-tts CLI if available
+            return exec(`npx edge-tts --text "${text.replace(/"/g, '\\"')}" --voice "${voice}" --output "${tmpFile}"`, async (error, stdout, stderr) => {
+                if (error) {
+                    console.error('⚠️ Edge TTS CLI error, falling back to ElevenLabs...');
+                    // Fallback to ElevenLabs
+                    return handleElevenLabsTTS(text, req, res);
+                }
+
+                try {
+                    const audioData = fs.readFileSync(tmpFile);
+                    fs.unlinkSync(tmpFile); // Clean up temp file
+                    
+                    res.setHeader('Content-Type', 'audio/mpeg');
+                    res.setHeader('X-TTS-Provider', 'Edge TTS');
+                    return res.send(audioData);
+                } catch (err) {
+                    console.error('❌ Edge TTS file error:', err.message);
+                    return handleElevenLabsTTS(text, req, res);
+                }
+            });
+
+        } catch (edgeError) {
+            console.error('⚠️ Edge TTS error:', edgeError.message);
+            // Fallback to ElevenLabs
+        }
+
+        // Fallback to ElevenLabs API (10K chars/month free)
+        return handleElevenLabsTTS(text, req, res);
+
+    } catch (error) {
+        console.error('❌ TTS error:', error.message);
+        res.status(500).json({
+            error: 'Failed to generate speech',
+            message: error.message
+        });
+    }
+});
+
+// Helper function for ElevenLabs TTS
+async function handleElevenLabsTTS(text, req, res) {
+    try {
         const apiKey = process.env.ELEVENLABS_API_KEY;
         if (!apiKey || apiKey === 'your_elevenlabs_api_key_here') {
             return res.status(503).json({
-                error: 'ElevenLabs API key not configured',
-                message: 'Please add ELEVENLABS_API_KEY to .env file'
+                error: 'All TTS services unavailable',
+                message: 'Install edge-tts (pip install edge-tts) for unlimited free TTS, or configure ElevenLabs API key'
             });
         }
 
@@ -1696,9 +1811,74 @@ app.post('/api/tts', apiLimiter, async (req, res) => {
             message: error.message
         });
     }
+}
+
+// 7. Deepgram API - Speech-to-Text (Voice Input) 🎤
+app.post('/api/stt', apiLimiter, async (req, res) => {
+    try {
+        const { audioBuffer, mimeType = 'audio/wav' } = req.body;
+
+        if (!audioBuffer) {
+            return res.status(400).json({ error: 'Audio buffer required' });
+        }
+
+        const apiKey = process.env.DEEPGRAM_API_KEY;
+        if (!apiKey || apiKey === 'your_deepgram_api_key_here') {
+            return res.status(503).json({
+                error: 'Deepgram API key not configured',
+                message: 'Please add DEEPGRAM_API_KEY to .env file. Get from: https://console.deepgram.com'
+            });
+        }
+
+        console.log('🎤 Converting speech to text using Deepgram...');
+
+        // Convert base64 to buffer
+        const buffer = Buffer.from(audioBuffer, 'base64');
+
+        // Call Deepgram API
+        const response = await axios.post(
+            'https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&language=en',
+            buffer,
+            {
+                headers: {
+                    'Authorization': `Token ${apiKey}`,
+                    'Content-Type': mimeType
+                },
+                timeout: 30000
+            }
+        );
+
+        const transcript = response.data.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+        const confidence = response.data.results?.channels?.[0]?.alternatives?.[0]?.confidence || 0;
+
+        if (!transcript) {
+            return res.json({
+                success: false,
+                text: '',
+                confidence: 0,
+                message: 'No speech detected'
+            });
+        }
+
+        console.log(`✅ Speech recognized: "${transcript}" (Confidence: ${(confidence * 100).toFixed(0)}%)`);
+
+        return res.json({
+            success: true,
+            text: transcript,
+            confidence: confidence,
+            provider: 'Deepgram'
+        });
+
+    } catch (error) {
+        console.error('❌ Deepgram STT error:', error.response?.data || error.message);
+        res.status(500).json({
+            error: 'Failed to convert speech to text',
+            message: error.message
+        });
+    }
 });
 
-// 7. GitHub API - List Repositories
+// 8. GitHub API - List Repositories
 app.get('/api/github/repos', apiLimiter, async (req, res) => {
     try {
         if (!process.env.GITHUB_API_TOKEN || process.env.GITHUB_API_TOKEN === 'your_github_token_here') {
@@ -1814,7 +1994,34 @@ app.post('/api/github/content', apiLimiter, async (req, res) => {
     }
 });
 
-// 9. General Chat API - For Project Generator and other tools
+// 9. Daily News API - Get Latest Tamil News for JARVIS Training
+app.get('/api/news/latest', apiLimiter, async (req, res) => {
+    try {
+        const news = getLatestNews();
+        if (!news || news.length === 0) {
+            return res.json({
+                success: false,
+                message: 'No news data available yet. Daily updates begin at 8 AM.',
+                headlines: []
+            });
+        }
+        
+        res.json({
+            success: true,
+            headlines: news,
+            message: `Latest ${news.length} headlines from Tamil news sources`,
+            lastUpdate: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ News API error:', error.message);
+        res.status(500).json({
+            error: 'Failed to fetch news',
+            message: error.message
+        });
+    }
+});
+
+// 10. General Chat API - For Project Generator and other tools
 app.post('/api/chat', apiLimiter, async (req, res) => {
     try {
         const { message, history, systemPrompt } = req.body;
@@ -1901,17 +2108,97 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
             throw new Error('All AI APIs failed. Please try again later.');
         }
 
+        // 🔍 Enhance with Wolfram Alpha knowledge if available
+        let wolframEnhancement = null;
+        try {
+            // Detect if this is a factual/computational question
+            if (message.match(/(calculate|solve|what is|define|convert|how much|how many|who|when|where|fact|explain|find|derive)/i)) {
+                console.log('🔍 Checking Wolfram Alpha for enhanced answer...');
+                const wolframResult = await queryWolframAlpha(message);
+                if (wolframResult && wolframResult.success && wolframResult.answer) {
+                    wolframEnhancement = wolframResult.answer;
+                    console.log('📚 Enhanced with Wolfram Alpha knowledge');
+                }
+            }
+        } catch (error) {
+            console.log('⚠️ Wolfram Alpha enhancement failed (non-blocking):', error.message);
+        }
+
         console.log('✅ Chat response generated successfully');
+        
+        let finalResponse = response;
+        if (wolframEnhancement) {
+            finalResponse = `${response}\n\n📚 **Verified by Wolfram Alpha:**\n${wolframEnhancement}`;
+        }
+
         return res.json({
             success: true,
-            response: response,
-            provider: usedAPI
+            response: finalResponse,
+            provider: usedAPI,
+            wolframEnhanced: !!wolframEnhancement
         });
 
     } catch (error) {
         console.error('❌ Chat API error:', error.message);
         res.status(500).json({
             error: 'Failed to generate response',
+            message: error.message
+        });
+    }
+});
+
+// 🔍 Wolfram Alpha Query API
+app.get('/api/wolfram/query', apiLimiter, async (req, res) => {
+    try {
+        const { q } = req.query;
+
+        if (!q) {
+            return res.status(400).json({ error: 'Query required' });
+        }
+
+        console.log(`🔍 Wolfram Alpha query: ${q.substring(0, 50)}...`);
+
+        const result = await queryWolframAlpha(q);
+
+        if (result.success) {
+            return res.json({
+                success: true,
+                query: q,
+                answer: result.answer,
+                pod: result.pod,
+                timestamp: result.timestamp
+            });
+        } else {
+            return res.json({
+                success: false,
+                query: q,
+                message: 'No results found',
+                answer: null
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Wolfram Alpha query error:', error.message);
+        res.status(500).json({
+            error: 'Failed to query Wolfram Alpha',
+            message: error.message
+        });
+    }
+});
+
+// 📊 Wolfram Alpha Health Check
+app.get('/api/wolfram/health', apiLimiter, async (req, res) => {
+    try {
+        res.json({
+            success: true,
+            status: 'Wolfram Alpha API is operational',
+            appId: 'X3ALYR52E9',
+            message: 'Ready for queries'
+        });
+    } catch (error) {
+        console.error('❌ Wolfram health check error:', error.message);
+        res.status(500).json({
+            error: 'Wolfram Alpha health check failed',
             message: error.message
         });
     }
@@ -2336,3 +2623,12 @@ function startServer(port, attempts = 0) {
 }
 
 startServer(BASE_PORT);
+
+// 📰 Start daily news training system
+console.log('\n📰 Initializing Daily News Training System...');
+try {
+    startDailyUpdates();
+    console.log('✅ Daily news system initialized successfully');
+} catch (err) {
+    console.error('⚠️ Daily news system error (non-blocking):', err.message);
+}

@@ -12,6 +12,7 @@
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
     <!-- Professional Styles -->
     <link rel="stylesheet" href="style-pro.css?v=2">
+    <link rel="stylesheet" href="gemini-mobile.css?v=2026">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -336,6 +337,114 @@
                 padding: 1.5rem;
             }
         }
+
+        /* Gemini-style Mobile Optimizations */
+        @media (max-width: 500px) {
+            body {
+                padding-bottom: 70px;
+            }
+
+            .jarvis-header {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 100;
+                padding: 10px 16px;
+            }
+
+            .header-actions {
+                display: none !important;
+            }
+
+            .hero {
+                margin-top: 60px;
+                padding: 2rem 1rem;
+            }
+
+            .hero h1 {
+                font-size: 1.5rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .progress-section {
+                padding-bottom: 80px;
+            }
+
+            .stat-card {
+                padding: 1rem;
+                border-radius: 16px;
+            }
+
+            .stat-card:hover {
+                transform: none;
+            }
+
+            .stat-card:active {
+                transform: scale(0.98);
+            }
+
+            .stat-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.4rem;
+            }
+
+            .stat-info h3 {
+                font-size: 1.5rem;
+            }
+
+            .xp-section,
+            .badges-section,
+            .course-progress-section,
+            .activity-section {
+                padding: 1rem;
+                border-radius: 16px;
+            }
+
+            .footer {
+                padding-bottom: 80px;
+            }
+
+            /* Bottom Nav Styles */
+            .bottom-nav {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: 60px !important;
+                background: var(--bg-secondary, #f8f9fa) !important;
+                border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+                display: flex !important;
+                justify-content: space-around !important;
+                align-items: center !important;
+                z-index: 1000 !important;
+                padding-bottom: env(safe-area-inset-bottom, 0);
+            }
+
+            .bottom-nav .nav-item {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                padding: 8px;
+                color: #6c757d;
+                text-decoration: none;
+                font-size: 10px;
+                font-weight: 500;
+            }
+
+            .bottom-nav .nav-item i {
+                font-size: 20px;
+            }
+
+            .bottom-nav .nav-item.active {
+                color: #667eea;
+            }
+        }
     </style>
 </head>
 
@@ -479,7 +588,40 @@
         </div>
     </footer>
 
+    <!-- Mobile Bottom Navigation -->
+    <nav class="bottom-nav" style="display: none;">
+        <a href="index.html" class="nav-item">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </a>
+        <a href="courses.html" class="nav-item">
+            <i class="fas fa-graduation-cap"></i>
+            <span>Learn</span>
+        </a>
+        <a href="playground.html" class="nav-item">
+            <i class="fas fa-code"></i>
+            <span>Code</span>
+        </a>
+        <a href="ai-tools.html" class="nav-item">
+            <i class="fas fa-tools"></i>
+            <span>Tools</span>
+        </a>
+        <a href="progress.html" class="nav-item active">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </a>
+    </nav>
+
     <script src="progress.js"></script>
+    <script>
+        // Show bottom nav on mobile
+        if (window.innerWidth <= 768) {
+            document.querySelector('.bottom-nav').style.display = 'flex';
+        }
+        window.addEventListener('resize', () => {
+            document.querySelector('.bottom-nav').style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+        });
+    </script>
 </body>
 
 </html>

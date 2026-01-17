@@ -287,6 +287,12 @@ async function runCode() {
     const code = editor.getValue();
     const language = document.getElementById('languageSelect').value;
     const outputArea = document.getElementById('outputArea');
+    const outputPanel = document.querySelector('.output-panel');
+
+    // Show output panel
+    if (outputPanel) {
+        outputPanel.classList.add('show');
+    }
 
     // Clear output
     outputArea.innerHTML = '';

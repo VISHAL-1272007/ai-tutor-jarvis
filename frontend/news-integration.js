@@ -21,19 +21,25 @@ class NewsIntegration {
     }
 
     async initializeNewsUpdates() {
-        console.log('[JARVIS News] Initializing daily knowledge updates...');
+        // Silent initialization - no console spam
         await this.fetchLatestNews();
         setInterval(() => this.fetchLatestNews(), this.updateInterval);
     }
 
     async fetchLatestNews() {
         try {
-            console.log('[JARVIS News] Fetching latest news and updates...');
-            const newsData = await Promise.all([
+            // Use Promise.allSettled to handle API failures gracefully
+            const results = await Promise.allSettled([
                 this.fetchFromNewsAPI(),
                 this.fetchFromGNews(),
                 this.fetchFromRSS()
             ]);
+
+            // Only process successful results
+            const newsData = results
+                .filter(r => r.status === 'fulfilled')
+                .map(r => r.value)
+                .filter(articles => articles && articles.length > 0);
 
             this.newsCache = this.processAndMergeNews(newsData);
             this.lastUpdate = new Date();
@@ -44,11 +50,9 @@ class NewsIntegration {
                 lastUpdate: this.lastUpdate
             }));
 
-            console.log(`[JARVIS News] Updated with ${this.newsCache.length} articles`);
             return this.newsCache;
         } catch (error) {
-            console.error('[JARVIS News] Update failed:', error);
-            // Load from cache if available
+            // Silent failure - load from cache
             return this.loadFromCache();
         }
     }
@@ -59,17 +63,23 @@ class NewsIntegration {
             if (!apiKey) return [];
 
             const categories = this.categories.map(async (category) => {
-                const response = await fetch(
-                    `${this.sources.newsAPI}/top-headlines?category=${category}&language=en&apiKey=${apiKey}`
-                );
-                const data = await response.json();
-                return data.articles || [];
+                try {
+                    const response = await fetch(
+                        `${this.sources.newsAPI}/top-headlines?category=${category}&language=en&apiKey=${apiKey}`,
+                        { signal: AbortSignal.timeout(5000) }
+                    );
+                    if (!response.ok) return []; // Silent failure
+                    const data = await response.json();
+                    return data.articles || [];
+                } catch (e) {
+                    return []; // Silent failure for individual categories
+                }
             });
 
             const results = await Promise.all(categories);
             return results.flat().slice(0, 50);
         } catch (error) {
-            console.warn('[NewsAPI] Fetch failed:', error);
+            // Silent failure
             return [];
         }
     }
@@ -79,25 +89,34 @@ class NewsIntegration {
             const apiKey = window.GNEWS_API_KEY || this.getAPIKey('gnews');
             if (!apiKey) return [];
 
-            const response = await fetch(
-                `${this.sources.gnews}/top-headlines?lang=en&max=50&apikey=${apiKey}`
-            );
-            const data = await response.json();
-            return data.articles || [];
+            try {
+                const response = await fetch(
+                    `${this.sources.gnews}/top-headlines?lang=en&max=50&apikey=${apiKey}`,
+                    { signal: AbortSignal.timeout(5000) }
+                );
+                if (!response.ok) return [];
+                const data = await response.json();
+                return data.articles || [];
+            } catch (e) {
+                return []; // Silent failure
+            }
         } catch (error) {
-            console.warn('[GNews] Fetch failed:', error);
+            // Silent failure
             return [];
         }
     }
 
     async fetchFromRSS() {
         try {
-            const rssFeeds = await Promise.all(
+            const rssFeeds = await Promise.allSettled(
                 this.sources.rss.map(url => this.parseRSSFeed(url))
             );
-            return rssFeeds.flat().slice(0, 30);
+            const validFeeds = rssFeeds
+                .filter(r => r.status === 'fulfilled' && r.value)
+                .map(r => r.value);
+            return validFeeds.flat().slice(0, 30);
         } catch (error) {
-            console.warn('[RSS] Fetch failed:', error);
+            // Silent failure
             return [];
         }
     }
@@ -248,11 +267,10 @@ class NewsIntegration {
                 const data = JSON.parse(cached);
                 this.newsCache = data.articles || [];
                 this.lastUpdate = new Date(data.lastUpdate);
-                console.log('[JARVIS News] Loaded from cache:', this.newsCache.length, 'articles');
                 return this.newsCache;
             }
         } catch (error) {
-            console.error('[JARVIS News] Cache load failed:', error);
+            // Silent failure
         }
         return [];
     }
@@ -274,6 +292,5 @@ class NewsIntegration {
     }
 }
 
-// Initialize global news integration
+// Initialize global news integration (silent)
 window.jarvisNews = new NewsIntegration();
-console.log('[JARVIS News Integration] System initialized and running');

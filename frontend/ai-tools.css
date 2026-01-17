@@ -1269,6 +1269,156 @@ textarea::placeholder {
     }
 }
 
+/* ===== GEMINI-STYLE MOBILE OPTIMIZATIONS ===== */
+@media (max-width: 500px) {
+    body {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+    }
+
+    .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding-bottom: 60px;
+    }
+
+    /* Header */
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        padding: 0 12px !important;
+        z-index: 100;
+        background: var(--bg-primary);
+    }
+
+    .header-actions {
+        display: none !important;
+    }
+
+    .header-center h1 {
+        font-size: 16px !important;
+    }
+
+    /* Mode Selector */
+    .mode-selector {
+        position: fixed;
+        top: 56px;
+        left: 0;
+        right: 0;
+        z-index: 99;
+        padding: 8px 12px;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mode-tab {
+        padding: 8px 14px;
+        font-size: 13px;
+        border-radius: 20px;
+    }
+
+    /* Chat Container / Tools Container */
+    .chat-container {
+        flex: 1;
+        overflow-y: auto;
+        padding-top: 110px;
+        padding-bottom: 80px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Tool Cards */
+    .tool-card {
+        margin: 12px;
+        padding: 16px;
+        border-radius: 16px;
+    }
+
+    .tool-header h2 {
+        font-size: 18px !important;
+    }
+
+    .tool-header p {
+        font-size: 13px;
+    }
+
+    .input-group textarea,
+    .input-group input {
+        font-size: 16px; /* Prevents iOS zoom */
+        padding: 14px;
+        min-height: 100px;
+    }
+
+    .btn {
+        padding: 14px 20px;
+        font-size: 15px;
+        min-width: auto;
+        width: 100%;
+        min-height: 48px;
+        border-radius: 24px;
+    }
+
+    .btn-primary:active {
+        transform: scale(0.97);
+    }
+
+    .output-area {
+        padding: 14px;
+        font-size: 14px;
+        border-radius: 12px;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 60px !important;
+        background: var(--bg-primary) !important;
+        border-top: 1px solid var(--border-subtle) !important;
+        display: flex !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        z-index: 1000 !important;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .bottom-nav .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 8px;
+        color: var(--text-tertiary);
+        text-decoration: none;
+        font-size: 10px;
+        font-weight: 500;
+    }
+
+    .bottom-nav .nav-item i {
+        font-size: 20px;
+    }
+
+    .bottom-nav .nav-item.active {
+        color: var(--primary-500);
+    }
+
+    /* Settings Modal */
+    .settings-modal-content {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        border-radius: 0 !important;
+    }
+}
+
 /* ===== MARKDOWN STYLES ===== */
 .message-content h1, .message-content h2, .message-content h3 {
     margin-top: 24px;

@@ -1,0 +1,872 @@
+/* ============================================
+   GEMINI-STYLE MOBILE APP UI
+   Professional, Clean, Real App Experience
+   ============================================ */
+
+/* ===== MOBILE-FIRST BASE STYLES ===== */
+@media (max-width: 768px) {
+    /* Root Variables for Mobile */
+    :root {
+        --mobile-nav-height: 60px;
+        --mobile-input-height: 70px;
+        --mobile-header-height: 56px;
+        --mobile-spacing: 16px;
+        --mobile-radius: 24px;
+        --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Reset body for app-like feel */
+    body {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile */
+        overflow: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Hide sidebar on mobile */
+    .sidebar {
+        position: fixed;
+        left: -100%;
+        width: 85%;
+        max-width: 320px;
+        height: 100%;
+        z-index: 1000;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .sidebar.active {
+        left: 0;
+    }
+
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 999;
+        backdrop-filter: blur(4px);
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    .sidebar-close-btn {
+        display: flex !important;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bg-hover);
+        border: none;
+        color: var(--text-primary);
+        font-size: 18px;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+    /* ===== MAIN CONTENT LAYOUT ===== */
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* ===== HEADER - Gemini Style ===== */
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--mobile-header-height);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px !important;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-subtle);
+        z-index: 100;
+        gap: 8px;
+    }
+
+    .mobile-menu-btn {
+        display: flex !important;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-size: 20px;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    .mobile-menu-btn:active {
+        background: var(--bg-hover);
+    }
+
+    .header-center {
+        flex: 1;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        position: static !important;
+        transform: none !important;
+    }
+
+    .brain-btn {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .header-brain-icon {
+        font-size: 22px;
+    }
+
+    /* Hide desktop nav links on mobile */
+    .header-actions {
+        display: none !important;
+    }
+
+    .settings-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: transparent;
+        border: none;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .settings-btn:active {
+        background: var(--bg-hover);
+    }
+
+    /* ===== MODE SELECTOR - Gemini Pills ===== */
+    .mode-selector {
+        position: fixed;
+        top: var(--mobile-header-height);
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-subtle);
+        z-index: 99;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .mode-selector::-webkit-scrollbar {
+        display: none;
+    }
+
+    .mode-tab {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+        transition: all 0.2s;
+    }
+
+    .mode-tab.active {
+        background: var(--primary-500);
+        color: white;
+        border-color: var(--primary-500);
+    }
+
+    .mode-tab i {
+        margin-right: 6px;
+    }
+
+    /* ===== CHAT CONTAINER ===== */
+    .chat-container {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-top: calc(var(--mobile-header-height) + 50px);
+        padding-bottom: calc(var(--mobile-input-height) + var(--mobile-nav-height) + 20px);
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* ===== WELCOME SCREEN - Gemini Style ===== */
+    .welcome-screen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 20px 20px 40px;
+        min-height: 100%;
+        text-align: center;
+    }
+
+    .welcome-header {
+        margin-bottom: 24px;
+    }
+
+    #welcomeTitle,
+    .welcome-content h1 {
+        font-size: 26px !important;
+        font-weight: 600;
+        line-height: 1.3;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    /* ===== JARVIS ORB - Gemini-like Animation ===== */
+    .jarvis-orb-minimal {
+        width: 120px !important;
+        height: 120px !important;
+        margin: 20px auto 30px !important;
+        position: relative;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .orb-core {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-500), #8b5cf6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 
+            0 0 40px rgba(59, 130, 246, 0.4),
+            0 0 80px rgba(59, 130, 246, 0.2);
+        animation: orbPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes orbPulse {
+        0%, 100% {
+            transform: scale(1);
+            box-shadow: 
+                0 0 40px rgba(59, 130, 246, 0.4),
+                0 0 80px rgba(59, 130, 246, 0.2);
+        }
+        50% {
+            transform: scale(1.05);
+            box-shadow: 
+                0 0 60px rgba(59, 130, 246, 0.5),
+                0 0 100px rgba(59, 130, 246, 0.3);
+        }
+    }
+
+    .orb-text {
+        font-size: 12px !important;
+        font-weight: 700;
+        color: white;
+        text-align: center;
+        letter-spacing: 1px;
+    }
+
+    /* ===== ACTION CHIPS - Gemini Style ===== */
+    .action-chips {
+        display: flex !important;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 16px;
+        margin-top: 10px;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 20px !important;
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700)) !important;
+        border: 2px solid var(--primary-500) !important;
+        border-radius: 16px !important;
+        font-size: 15px !important;
+        font-weight: 600;
+        color: white !important;
+        cursor: pointer;
+        transition: all 0.3s;
+        white-space: nowrap;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    }
+
+    .chip:active {
+        background: linear-gradient(135deg, var(--primary-700), var(--primary-800)) !important;
+        transform: scale(0.97);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4) !important;
+    }
+
+    .chip i {
+        font-size: 18px;
+        color: white;
+    }
+
+    /* Action chips container */
+    .action-chips {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 12px !important;
+        padding: 20px 16px !important;
+        margin-bottom: 20px !important;
+        background: rgba(59, 130, 246, 0.05) !important;
+        border-radius: 16px !important;
+    }
+
+    /* ===== MESSAGES AREA - Clean Chat Bubbles ===== */
+    .messages-area {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .message {
+        display: flex;
+        gap: 12px;
+        animation: messageIn 0.3s ease-out;
+    }
+
+    @keyframes messageIn {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .message-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+
+    .message.user .message-avatar {
+        background: var(--primary-500);
+        color: white;
+    }
+
+    .message.ai .message-avatar {
+        background: linear-gradient(135deg, var(--primary-500), #8b5cf6);
+        color: white;
+    }
+
+    .message-content {
+        flex: 1;
+        font-size: 15px;
+        line-height: 1.6;
+        min-width: 0;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .message.user .message-content {
+        background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+        color: white;
+        padding: 12px 16px;
+        border-radius: 18px 18px 4px 18px; /* Realistic bubble tail */
+        max-width: 80%;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+        word-wrap: break-word;
+    }
+
+    .message.ai .message-content {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        padding: 12px 16px;
+        border-radius: 18px 18px 18px 4px; /* Realistic bubble tail on opposite side */
+        max-width: 85%;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+        word-wrap: break-word;
+    }
+
+    /* Code blocks in messages */
+    .message-content pre {
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        padding: 14px;
+        overflow-x: auto;
+        font-size: 13px;
+        margin: 12px 0;
+    }
+
+    .message-content code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+    }
+
+    /* ===== INPUT AREA - Gemini Floating Style ===== */
+    .input-area {
+        position: fixed !important;
+        bottom: calc(var(--mobile-nav-height) + var(--safe-area-bottom)) !important;
+        left: 0 !important;
+        right: 0 !important;
+        padding: 12px 16px !important;
+        background: var(--bg-primary) !important;
+        border-top: 1px solid var(--border-subtle) !important;
+        z-index: 100 !important;
+    }
+
+    .input-container {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 8px 12px !important;
+        background: var(--bg-secondary) !important;
+        border: 1px solid var(--border-default) !important;
+        border-radius: 28px !important;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .input-container:focus-within {
+        border-color: var(--primary-500);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    /* Model dropdown - Compact */
+    .model-dropdown {
+        flex-shrink: 0;
+    }
+
+    .model-dropdown-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 10px;
+        background: var(--bg-hover);
+        border: none;
+        border-radius: 16px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-primary);
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .model-dropdown-btn .model-icon {
+        font-size: 14px;
+    }
+
+    .model-dropdown-btn .model-name {
+        max-width: 50px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+    }
+
+    .model-dropdown-btn .fa-chevron-down {
+        display: none;
+    }
+
+    /* Input icons */
+    .input-icon-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        border-radius: 50% !important;
+        background: transparent !important;
+        border: none !important;
+        color: var(--text-secondary) !important;
+        font-size: 16px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+        flex-shrink: 0;
+    }
+
+    .input-icon-btn:active {
+        background: var(--bg-hover) !important;
+        color: var(--primary-500) !important;
+    }
+
+    .input-divider {
+        display: none !important;
+    }
+
+    /* Message Input Textarea */
+    #messageInput,
+    textarea#messageInput {
+        flex: 1 !important;
+        min-width: 0 !important;
+        min-height: 40px !important;
+        max-height: 120px !important;
+        height: auto !important;
+        padding: 10px 8px !important;
+        font-size: 16px !important; /* Prevents iOS zoom */
+        line-height: 1.4 !important;
+        resize: none !important;
+        background: transparent !important;
+        border: none !important;
+        outline: none !important;
+        color: var(--text-primary) !important;
+    }
+
+    #messageInput::placeholder {
+        color: var(--text-tertiary);
+        font-size: 15px;
+    }
+
+    /* Send Button - Gemini Style */
+    .send-btn {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        border-radius: 50% !important;
+        background: var(--primary-500) !important;
+        border: none !important;
+        color: white !important;
+        font-size: 16px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer;
+        transition: transform 0.2s, background 0.2s;
+        flex-shrink: 0;
+    }
+
+    .send-btn:active {
+        transform: scale(0.92);
+        background: var(--primary-600) !important;
+    }
+
+    .send-btn:disabled {
+        background: var(--bg-hover) !important;
+        color: var(--text-tertiary) !important;
+    }
+
+    /* Mic button */
+    .mic-btn {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+    }
+
+    .mic-btn.active {
+        background: #ef4444 !important;
+        color: white !important;
+        animation: micPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes micPulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+        50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    }
+
+    /* Input footer - hide */
+    .input-footer {
+        display: none !important;
+    }
+
+    /* Image preview */
+    .image-preview-container {
+        position: fixed;
+        bottom: calc(var(--mobile-nav-height) + var(--mobile-input-height) + 10px);
+        left: 16px;
+        right: 16px;
+        z-index: 101;
+        display: none;
+    }
+
+    .image-preview-container[style*="display: flex"],
+    .image-preview-container:not([style*="display: none"]) {
+        display: flex !important;
+    }
+
+    .image-preview-wrapper {
+        position: relative;
+        max-width: 100px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .image-preview-wrapper img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .remove-image-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.7);
+        border: none;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* ===== BOTTOM NAVIGATION - App Style ===== */
+    .bottom-nav {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: var(--mobile-nav-height) !important;
+        padding-bottom: var(--safe-area-bottom) !important;
+        background: var(--bg-primary) !important;
+        border-top: 1px solid var(--border-subtle) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-around !important;
+        z-index: 101 !important;
+    }
+
+    .bottom-nav .nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 8px 12px;
+        color: var(--text-tertiary);
+        text-decoration: none;
+        font-size: 11px;
+        font-weight: 500;
+        transition: color 0.2s;
+        min-width: 56px;
+    }
+
+    .bottom-nav .nav-item i {
+        font-size: 20px;
+    }
+
+    .bottom-nav .nav-item.active {
+        color: var(--primary-500);
+    }
+
+    .bottom-nav .nav-item:active {
+        opacity: 0.7;
+    }
+
+    /* ===== TYPING INDICATOR ===== */
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px;
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        max-width: fit-content;
+    }
+
+    .thinking-text {
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--primary-500);
+        border-radius: 50%;
+        animation: typingBounce 1.2s ease-in-out infinite;
+    }
+
+    /* ===== MODALS - Full Screen Mobile ===== */
+    .settings-modal-content {
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+
+    .voice-commit-container {
+        width: 100% !important;
+        max-width: none !important;
+        height: 100% !important;
+        max-height: none !important;
+        border-radius: 0 !important;
+        padding: 24px 20px !important;
+    }
+
+    /* ===== HIDE UNNECESSARY ELEMENTS ===== */
+    .developer-credit,
+    #jarvisOrb {
+        display: none !important;
+    }
+
+    /* ===== SCROLLBAR HIDE ===== */
+    .chat-container::-webkit-scrollbar,
+    .messages-area::-webkit-scrollbar,
+    .container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .chat-container,
+    .messages-area,
+    .container {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+}
+
+/* ===== EXTRA SMALL SCREENS (iPhone SE, etc.) ===== */
+@media (max-width: 375px) {
+    #welcomeTitle,
+    .welcome-content h1 {
+        font-size: 22px !important;
+    }
+
+    .jarvis-orb-minimal {
+        width: 100px !important;
+        height: 100px !important;
+    }
+
+    .chip {
+        padding: 10px 14px !important;
+        font-size: 13px !important;
+    }
+
+    .action-chips {
+        gap: 8px;
+    }
+
+    .model-dropdown-btn .model-name {
+        display: none !important;
+    }
+
+    .bottom-nav .nav-item {
+        min-width: 48px;
+        padding: 8px 8px;
+        font-size: 10px;
+    }
+
+    .bottom-nav .nav-item i {
+        font-size: 18px;
+    }
+}
+
+/* ===== LANDSCAPE MODE ===== */
+@media (max-width: 768px) and (orientation: landscape) {
+    .welcome-screen {
+        padding: 16px 24px 32px;
+    }
+
+    .jarvis-orb-minimal {
+        width: 80px !important;
+        height: 80px !important;
+        margin: 12px auto 16px !important;
+    }
+
+    #welcomeTitle {
+        font-size: 22px !important;
+    }
+
+    .action-chips {
+        max-width: 500px;
+    }
+
+    .chat-container {
+        padding-top: calc(var(--mobile-header-height) + 45px);
+    }
+}
+
+/* ===== TOUCH DEVICE OPTIMIZATIONS ===== */
+@media (hover: none) and (pointer: coarse) {
+    /* Larger touch targets */
+    .chip,
+    .mode-tab,
+    .input-icon-btn,
+    .send-btn,
+    .bottom-nav .nav-item {
+        min-height: 44px;
+    }
+
+    /* Remove hover effects - use active states */
+    .chip:hover,
+    .mode-tab:hover,
+    .input-icon-btn:hover {
+        background: inherit;
+        color: inherit;
+    }
+
+    /* Active feedback */
+    .chip:active,
+    .mode-tab:active,
+    .input-icon-btn:active {
+        transform: scale(0.96);
+        opacity: 0.85;
+    }
+}
+
+/* ===== DARK THEME ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+    [data-theme="chatgpt-pro"] .input-container,
+    [data-theme="default"] .input-container {
+        background: var(--bg-tertiary) !important;
+    }
+
+    [data-theme="chatgpt-pro"] .chip,
+    [data-theme="default"] .chip {
+        background: var(--bg-tertiary) !important;
+    }
+}
+
+/* ===== PWA / Standalone Mode ===== */
+@media (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    .header {
+        padding-top: env(safe-area-inset-top) !important;
+        height: calc(var(--mobile-header-height) + env(safe-area-inset-top));
+    }
+
+    .bottom-nav {
+        padding-bottom: calc(var(--safe-area-bottom) + 10px) !important;
+    }
+}

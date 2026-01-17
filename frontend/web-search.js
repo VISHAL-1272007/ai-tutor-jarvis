@@ -17,10 +17,40 @@ class WebSearchSystem {
     }
 
     init() {
-        console.log('[JARVIS Web Search] Initializing search system...');
+        // Silent initialization
         this.loadSearchHistory();
         this.initialized = true;
-        console.log('[JARVIS Web Search] System ready ✅');
+    }
+
+    /**
+     * Search using backend server (most reliable for current data)
+     * @param {string} query - Search query
+     * @returns {Promise<Object>} - Search results
+     */
+    async searchWithBackend(query) {
+        try {
+            const BACKEND_BASE_URL = getBackendURL || window.BACKEND_URL || 'http://localhost:5000';
+            const response = await fetch(`${BACKEND_BASE_URL}/search`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ query: query })
+            });
+
+            if (!response.ok) throw new Error('Backend search failed');
+
+            const data = await response.json();
+            return {
+                source: 'Backend Server',
+                timestamp: new Date(),
+                summary: data.summary || '',
+                answer: data.answer || '',
+                results: data.results || []
+            };
+        } catch (error) {
+            throw error; // Re-throw to try other methods
+        }
     }
 
     /**
@@ -80,17 +110,25 @@ class WebSearchSystem {
      * @returns {Promise<Object>} - Search results
      */
     async performWebSearch(query) {
-        console.log('[JARVIS Web Search] Searching for:', query);
-
         // Check cache first
         const cacheKey = query.toLowerCase().trim();
         if (this.cache.has(cacheKey)) {
-            console.log('[JARVIS Web Search] Retrieved from cache');
             return this.cache.get(cacheKey);
         }
 
         try {
-            // Try multiple search methods in parallel
+            // Try backend search first (most reliable)
+            try {
+                const backendResults = await this.searchWithBackend(query);
+                if (backendResults && backendResults.results && backendResults.results.length > 0) {
+                    this.cacheResult(cacheKey, backendResults);
+                    return backendResults;
+                }
+            } catch (e) {
+                // Backend failed, continue to other methods
+            }
+
+            // Try multiple search methods in parallel as fallback
             const results = await Promise.race([
                 this.searchWithDuckDuckGo(query),
                 this.searchWithNewsAPIs(query),
@@ -106,7 +144,7 @@ class WebSearchSystem {
             return results;
 
         } catch (error) {
-            console.error('[JARVIS Web Search] Search failed:', error);
+            // Silent fallback
             return this.getFallbackResults(query);
         }
     }
@@ -431,6 +469,5 @@ class WebSearchSystem {
     }
 }
 
-// Initialize global web search system
+// Initialize global web search system (silent)
 window.jarvisWebSearch = new WebSearchSystem();
-console.log('[JARVIS Web Search] System initialized and ready');
