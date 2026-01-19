@@ -8,6 +8,7 @@ const FormData = require('form-data');
 const { startDailyUpdates, getLatestNews } = require('./daily-news-trainer');
 const { queryWolframAlpha, getDirectAnswer } = require('./wolfram-simple');
 const AutonomousRAGPipeline = require('./autonomous-rag-pipeline');
+const FunctionCallingEngine = require('./function-calling-engine');
 // Ensure we load .env from backend directory even if process started elsewhere
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -319,6 +320,18 @@ if (process.env.GROQ_API_KEY) {
     console.log('🧠 Autonomous RAG Pipeline initialized');
 } else {
     console.warn('⚠️ GROQ_API_KEY not found - RAG Pipeline disabled');
+}
+
+// ===== Initialize Function Calling Engine =====
+let functionCallingEngine = null;
+if (process.env.GROQ_API_KEY) {
+    functionCallingEngine = new FunctionCallingEngine(
+        process.env.GROQ_API_KEY,
+        process.env.GEMINI_API_KEY
+    );
+    console.log('🔧 Function Calling Engine initialized with 10 tools');
+} else {
+    console.warn('⚠️ GROQ_API_KEY not found - Function Calling Engine disabled');
 }
 // 🧠 Smart Detection: Determine if web search is needed
 function detectWebSearchNeeded(question) {
@@ -1064,6 +1077,36 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             }
         }
 
+        // ===== FUNCTION CALLING ENGINE (Tool Selection & Execution) =====
+        let functionCallingResult = null;
+        let functionCallingUsed = false;
+        let toolResults = '';
+
+        if (functionCallingEngine) {
+            console.log('🔧 Checking if Function Calling is needed...');
+            try {
+                const toolAnalysis = await functionCallingEngine.determineToolsNeeded(question);
+                
+                if (toolAnalysis.needsTools && toolAnalysis.toolCalls && toolAnalysis.toolCalls.length > 0) {
+                    console.log('✅ Function Calling TRIGGERED - Executing tools...');
+                    
+                    // Execute the determined tools
+                    const execResults = await functionCallingEngine.executeToolCalls(toolAnalysis.toolCalls);
+                    
+                    // Integrate tool results
+                    functionCallingResult = await functionCallingEngine.integrateToolResults(question, execResults);
+                    
+                    toolResults = `\n\n🔧 **TOOLS USED:** ${functionCallingResult.toolsUsed.join(', ')}\n`;
+                    functionCallingUsed = true;
+                    
+                    console.log(`✅ Function Calling Complete - Tools: ${functionCallingResult.toolsUsed.join(', ')}`);
+                }
+            } catch (fcError) {
+                console.warn(`⚠️ Function Calling error: ${fcError.message}, continuing without tools`);
+                functionCallingUsed = false;
+            }
+        }
+
         // ===== AUTONOMOUS RAG PIPELINE (Advanced Web Search with LLM Analysis) =====
         let webSearchResults = null;
         let webContext = '';
@@ -1317,7 +1360,16 @@ I'm having trouble connecting to the AI service right now.
             searchEngine: webSearchResults?.searchEngine || null,
             // RAG Pipeline Metadata
             ragPipelineUsed: ragPipelineUsed,
-            quality: webSearchResults ? 'HIGH_CONFIDENCE' : 'KNOWLEDGE_BASE'
+            quality: webSearchResults ? 'HIGH_CONFIDENCE' : 'KNOWLEDGE_BASE',
+            // Function Calling Metadata
+            functionCallingUsed: functionCallingUsed,
+            toolsUsed: functionCallingResult?.toolsUsed || [],
+            toolResults: functionCallingResult?.toolResults || [],
+            toolsInfo: functionCallingUsed ? {
+                totalToolsCalled: functionCallingResult?.toolsUsed?.length || 0,
+                successfulTools: functionCallingResult?.toolResults?.filter(t => t.success)?.length || 0,
+                failedTools: functionCallingResult?.toolResults?.filter(t => !t.success)?.length || 0
+            } : null
         };
 
         res.json(responseObject);
