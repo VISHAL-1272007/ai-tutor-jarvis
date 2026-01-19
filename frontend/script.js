@@ -108,23 +108,8 @@ function hideLoadingSpinner() {
     const spinner = document.getElementById('loadingSpinner');
     if (spinner && !spinner.classList.contains('hidden')) {
         spinner.classList.add('hidden');
-        // No need to set display:none, CSS handles visibility
     }
 }
-
-// Hide spinner as soon as DOM is interactive (not waiting for all resources)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        // Hide spinner immediately when DOM is ready (before init())
-        setTimeout(hideLoadingSpinner, 100);
-    });
-} else {
-    // DOM already loaded
-    setTimeout(hideLoadingSpinner, 100);
-}
-
-// Also hide on full page load for any edge cases
-window.addEventListener('load', hideLoadingSpinner);
 
 // ===== Initialize =====
 function init() {
@@ -208,7 +193,9 @@ function init() {
     // JARVIS greeting on page load
     setTimeout(() => {
         greetUser();
-    }, 1000);
+        // Hide spinner after app is initialized
+        hideLoadingSpinner();
+    }, 500);
 }
 
 // ===== Initialize Mobile Bottom Nav =====
