@@ -13,7 +13,14 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
 
     <!-- Early Theme Init - Prevents Flash -->
-    <script src="theme-init.js"></script>
+    <script src="theme-init.js" async></script>
+
+    <!-- Preload Critical Resources -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="preload" href="global-pro.css" as="style">
+    <link rel="preload" href="script.js" as="script">
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -30,12 +37,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 
-    <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Libraries - Non-blocking load -->
+    <script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\" defer></script>
+    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\" defer></script>
     
-    <!-- Master AI System -->
-    <script src="news-integration.js"></script>
+    <!-- Master AI System - Defer to prevent blocking -->
+    <script src=\"news-integration.js\" defer></script>
     <script src="user-memory.js"></script>
     <script src="master-ai-engine.js"></script>
     <script src="web-search.js"></script>

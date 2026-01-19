@@ -103,16 +103,28 @@ let currentPlan = 'free';
 let dailyQueryCount = parseInt(localStorage.getItem('dailyQueryCount')) || 0;
 let lastQueryDate = localStorage.getItem('lastQueryDate') || new Date().toDateString();
 
-// ===== Hide Loading Spinner When Page Loads =====
-window.addEventListener('load', () => {
+// ===== Hide Loading Spinner When Page Loads - OPTIMIZED =====
+function hideLoadingSpinner() {
     const spinner = document.getElementById('loadingSpinner');
-    if (spinner) {
+    if (spinner && !spinner.classList.contains('hidden')) {
         spinner.classList.add('hidden');
-        setTimeout(() => {
-            spinner.style.display = 'none';
-        }, 300);
+        // No need to set display:none, CSS handles visibility
     }
-});
+}
+
+// Hide spinner as soon as DOM is interactive (not waiting for all resources)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        // Hide spinner immediately when DOM is ready (before init())
+        setTimeout(hideLoadingSpinner, 100);
+    });
+} else {
+    // DOM already loaded
+    setTimeout(hideLoadingSpinner, 100);
+}
+
+// Also hide on full page load for any edge cases
+window.addEventListener('load', hideLoadingSpinner);
 
 // ===== Initialize =====
 function init() {
