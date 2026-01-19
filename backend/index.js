@@ -7,6 +7,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
 const { startDailyUpdates, getLatestNews } = require('./daily-news-trainer');
 const { queryWolframAlpha, getDirectAnswer } = require('./wolfram-simple');
+const AutonomousRAGPipeline = require('./autonomous-rag-pipeline');
 // Ensure we load .env from backend directory even if process started elsewhere
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -17,6 +18,7 @@ if (process.env.GEMINI_API_KEY) {
     geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
     console.log('✅ Google Gemini initialized as backup');
 }
+
 
 // ===== JARVIS 5.2 ADVANCED AI ENGINE =====
 console.log('🧠 Initializing JARVIS 5.2 Advanced AI Engine...');
@@ -306,6 +308,18 @@ const SEARCH_APIS = {
     }
 };
 
+// ===== Initialize Autonomous RAG Pipeline =====
+let ragPipeline = null;
+if (process.env.GROQ_API_KEY) {
+    ragPipeline = new AutonomousRAGPipeline(
+        process.env.GROQ_API_KEY,
+        process.env.GEMINI_API_KEY,
+        SEARCH_APIS
+    );
+    console.log('🧠 Autonomous RAG Pipeline initialized');
+} else {
+    console.warn('⚠️ GROQ_API_KEY not found - RAG Pipeline disabled');
+}
 // 🧠 Smart Detection: Determine if web search is needed
 function detectWebSearchNeeded(question) {
     const lowerQuestion = question.toLowerCase().trim();
@@ -1050,35 +1064,71 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             }
         }
 
-        // ===== AUTO-DETECT WEB SEARCH NEED =====
-        // Use smart detection to determine if web search is beneficial
+        // ===== AUTONOMOUS RAG PIPELINE (Advanced Web Search with LLM Analysis) =====
         let webSearchResults = null;
         let webContext = '';
-        
-        // AUTOMATIC: Check if this query needs web search (news, current events, unknown topics)
-        const shouldSearchWeb = detectWebSearchNeeded(question);
-        
-        if (shouldSearchWeb && enableWebSearch !== false) {
-            console.log('🌐 Web search auto-detected! Fetching real-time information...');
+        let ragPipelineUsed = false;
+
+        // Check if RAG Pipeline should be used
+        const useRagPipeline = enableWebSearch !== false && ragPipeline && detectWebSearchNeeded(question);
+
+        if (useRagPipeline) {
+            console.log('🚀 Activating Autonomous RAG Pipeline...');
             try {
-                webSearchResults = await searchWeb(question, mode || 'all');
+                const ragResult = await ragPipeline.executePipeline(question, mode || 'general');
                 
-                if (webSearchResults && webSearchResults.sources && webSearchResults.sources.length > 0) {
-                    // Format web results as context for AI to use
-                    webContext = `\n\n📚 **REAL-TIME CONTEXT FROM WEB SEARCH:**\n\n`;
-                    webContext += `${webSearchResults.answer || ''}\n\n`;
-                    webContext += `**Sources Used:**\n`;
-                    webSearchResults.sources.forEach((source, i) => {
-                        if (source.title && source.url) {
-                            webContext += `${i + 1}. [${source.title}](${source.url})\n`;
-                        }
+                if (ragResult.type === 'SUCCESS') {
+                    // High-confidence response with sources
+                    webContext = `\n\n📊 **ADVANCED RETRIEVED CONTEXT:**\n\n${ragResult.response}\n\n`;
+                    webSearchResults = {
+                        sources: ragResult.sources,
+                        answer: ragResult.response,
+                        searchEngine: 'Autonomous RAG Pipeline'
+                    };
+                    ragPipelineUsed = true;
+                    console.log(`✅ RAG Pipeline: High confidence response generated`);
+                } else if (ragResult.type === 'CLARIFICATION') {
+                    // Low confidence - asking for clarification
+                    console.log(`⚠️ RAG Pipeline: Requesting user clarification`);
+                    return res.json({
+                        answer: ragResult.response,
+                        type: 'CLARIFICATION_NEEDED',
+                        options: ragResult.options,
+                        webSearchUsed: true,
+                        searchEngine: 'Autonomous RAG Pipeline',
+                        quality: 'LOW_CONFIDENCE'
                     });
-                    webContext += `\n(Reference these sources in your response when relevant)`;
-                    
-                    console.log(`✅ Web context prepared with ${webSearchResults.sources.length} sources`);
                 }
-            } catch (error) {
-                console.log('⚠️ Web search failed, continuing with AI knowledge:', error.message);
+            } catch (ragError) {
+                console.warn(`⚠️ RAG Pipeline error: ${ragError.message}, falling back to standard search`);
+                ragPipelineUsed = false;
+            }
+        }
+
+        // ===== FALLBACK: Standard Web Search (if RAG Pipeline not available or didn't trigger) =====
+        if (!ragPipelineUsed) {
+            const shouldSearchWeb = detectWebSearchNeeded(question);
+            
+            if (shouldSearchWeb && enableWebSearch !== false) {
+                console.log('🌐 Standard web search auto-detected...');
+                try {
+                    webSearchResults = await searchWeb(question, mode || 'all');
+                    
+                    if (webSearchResults && webSearchResults.sources && webSearchResults.sources.length > 0) {
+                        webContext = `\n\n📚 **REAL-TIME CONTEXT FROM WEB SEARCH:**\n\n`;
+                        webContext += `${webSearchResults.answer || ''}\n\n`;
+                        webContext += `**Sources Used:**\n`;
+                        webSearchResults.sources.forEach((source, i) => {
+                            if (source.title && source.url) {
+                                webContext += `${i + 1}. [${source.title}](${source.url})\n`;
+                            }
+                        });
+                        webContext += `\n(Reference these sources in your response when relevant)`;
+                        console.log(`✅ Web context prepared with ${webSearchResults.sources.length} sources`);
+                    }
+                } catch (error) {
+                    console.log('⚠️ Web search failed, continuing with AI knowledge:', error.message);
+                }
             }
         }
         
@@ -1264,7 +1314,10 @@ I'm having trouble connecting to the AI service right now.
             followUpSuggestions,
             webSearchUsed: !!webSearchResults,
             sources: webSearchResults?.sources || null,
-            searchEngine: webSearchResults?.searchEngine || null
+            searchEngine: webSearchResults?.searchEngine || null,
+            // RAG Pipeline Metadata
+            ragPipelineUsed: ragPipelineUsed,
+            quality: webSearchResults ? 'HIGH_CONFIDENCE' : 'KNOWLEDGE_BASE'
         };
 
         res.json(responseObject);
