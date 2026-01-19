@@ -535,15 +535,25 @@
                 spinner.style.display = 'none';
             }
             // Remove listeners after first use
-            document.removeEventListener('click', hideSpinner);
-            document.removeEventListener('keypress', hideSpinner);
-            document.removeEventListener('touchstart', hideSpinner);
+            document.removeEventListener('click', hideSpinner, true);
+            document.removeEventListener('keypress', hideSpinner, true);
+            document.removeEventListener('touchstart', hideSpinner, true);
         }
         
-        // Hide on any interaction
-        document.addEventListener('click', hideSpinner, true);
-        document.addEventListener('keypress', hideSpinner, true);
+        // Hide on any interaction but exclude message input
+        document.addEventListener('click', function(e) {
+            if (e.target.id !== 'messageInput') {
+                hideSpinner();
+            }
+        }, true);
         document.addEventListener('touchstart', hideSpinner, true);
+        // Only listen for Enter key on non-input elements
+        document.addEventListener('keypress', function(e) {
+            // Don't hide spinner on input/textarea - let them handle their own events
+            if (e.target !== document.getElementById('messageInput')) {
+                hideSpinner();
+            }
+        }, true);
     </script>
 </body>
 
