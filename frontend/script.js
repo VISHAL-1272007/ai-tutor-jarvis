@@ -111,6 +111,12 @@ function hideLoadingSpinner() {
     }
 }
 
+// ===== Safety Timeout - Hide spinner after 5 seconds maximum =====
+let spinnerTimeout = setTimeout(() => {
+    hideLoadingSpinner();
+    console.warn('⚠️ Spinner timeout: Forcing hide after 5 seconds');
+}, 5000);
+
 // ===== Initialize =====
 function init() {
     // Setup event listeners first (including sign out button)
@@ -194,6 +200,7 @@ function init() {
     setTimeout(() => {
         greetUser();
         // Hide spinner after app is initialized
+        clearTimeout(spinnerTimeout);
         hideLoadingSpinner();
     }, 500);
 }
