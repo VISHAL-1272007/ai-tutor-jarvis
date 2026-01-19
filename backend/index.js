@@ -269,6 +269,53 @@ const SEARCH_APIS = {
     }
 };
 
+// 🧠 Smart Detection: Determine if web search is needed
+function detectWebSearchNeeded(question) {
+    const lowerQuestion = question.toLowerCase().trim();
+    
+    // Keywords that suggest current events or real-time information is needed
+    const currentEventKeywords = [
+        'latest', 'current', 'today', 'now', 'recent', 'news', 'weather',
+        'what is happening', 'update', 'breaking', 'trending', 'live',
+        'this week', 'this month', 'this year', '2024', '2025', '2026',
+        'right now', 'just happened', 'latest news', 'latest updates',
+        'bitcoin', 'stock price', 'crypto', 'election', 'score', 'who won'
+    ];
+    
+    // Keywords indicating user is asking about something unknown or specific
+    const unknownTopicKeywords = [
+        'tell me about', 'what is', 'who is', 'where is', 'when did',
+        'how do', 'research', 'investigate', 'find out', 'discover',
+        'look up', 'search for', 'browse', 'check', 'find me',
+        'give me information', 'details about', 'info on', 'facts about'
+    ];
+    
+    // Keywords to AVOID web search for (educational/coding/learning)
+    const skipWebSearchKeywords = [
+        'explain', 'teach me', 'how to code', 'tutorial', 'help me understand',
+        'what does', 'meaning of', 'definition', 'algorithm', 'concept',
+        'learn', 'study', 'write code', 'program', 'function', 'debug',
+        'error', 'fix my', 'help with', 'can you help', 'example of'
+    ];
+    
+    // Check if this should skip web search
+    if (skipWebSearchKeywords.some(keyword => lowerQuestion.includes(keyword))) {
+        // Exception: If it has BOTH 'latest' or 'news' AND is NOT coding-related
+        const hasRealTimeKeyword = currentEventKeywords.some(kw => lowerQuestion.includes(kw));
+        if (!hasRealTimeKeyword) {
+            return false;
+        }
+    }
+    
+    // Check for real-time/current event keywords
+    const needsRealTime = currentEventKeywords.some(keyword => lowerQuestion.includes(keyword));
+    
+    // Check for topic exploration keywords
+    const needsResearch = unknownTopicKeywords.some(keyword => lowerQuestion.includes(keyword));
+    
+    return needsRealTime || needsResearch;
+}
+
 // Web Search Function with Multiple API Support
 async function searchWeb(query, mode = 'all') {
     console.log(`🔍 Searching web for: "${query}" [Mode: ${mode}]`);
@@ -966,57 +1013,38 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             }
         }
 
-        // Check if web search is needed
-        const searchKeywords = [
-            'latest', 'current', 'today', 'now', 'recent', 'news', 'weather',
-            'what is happening', 'update', 'breaking', 'trending', 'this week',
-            'this month', 'this year', '2024', '2025', '2026', 'stock price', 'bitcoin',
-            'who won', 'election', 'score', 'live', 'real-time'
-        ];
+        // ===== AUTO-DETECT WEB SEARCH NEED =====
+        // Use smart detection to determine if web search is beneficial
+        let webSearchResults = null;
+        let webContext = '';
         
-        // IMPORTANT: Don't use web search for coding/learning questions
-        const codingKeywords = [
-            'code', 'program', 'function', 'how to', 'explain', 'learn', 'teach',
-            'tutorial', 'practice', 'example', 'syntax', 'algorithm', 'debug',
-            'error', 'fix', 'solve', 'calculate', 'formula', 'concept'
-        ];
+        // AUTOMATIC: Check if this query needs web search (news, current events, unknown topics)
+        const shouldSearchWeb = detectWebSearchNeeded(question);
         
-        const isCodingQuestion = codingKeywords.some(keyword => lowerQuestion.includes(keyword));
-        const needsWebSearch = enableWebSearch !== false &&
-            !isCodingQuestion && // Skip web search for coding/learning
-            searchKeywords.some(keyword => lowerQuestion.includes(keyword));
-
-        // Try web search ONLY for real-time/current events
-        if (needsWebSearch) {
-            console.log('🌐 Query requires web search...');
-            const searchResults = await searchWeb(question, mode || 'all');
-
-            if (searchResults && searchResults.answer && searchResults.answer.length > 50) {
-                // Format response with citations
-                let answer = searchResults.answer;
-
-                if (searchResults.sources && searchResults.sources.length > 0) {
-                    answer += '\n\n---\n\n### 📚 Sources:\n\n';
-                    searchResults.sources.forEach((source, i) => {
+        if (shouldSearchWeb && enableWebSearch !== false) {
+            console.log('🌐 Web search auto-detected! Fetching real-time information...');
+            try {
+                webSearchResults = await searchWeb(question, mode || 'all');
+                
+                if (webSearchResults && webSearchResults.sources && webSearchResults.sources.length > 0) {
+                    // Format web results as context for AI to use
+                    webContext = `\n\n📚 **REAL-TIME CONTEXT FROM WEB SEARCH:**\n\n`;
+                    webContext += `${webSearchResults.answer || ''}\n\n`;
+                    webContext += `**Sources Used:**\n`;
+                    webSearchResults.sources.forEach((source, i) => {
                         if (source.title && source.url) {
-                            answer += `${i + 1}. [${source.title}](${source.url})\n`;
+                            webContext += `${i + 1}. [${source.title}](${source.url})\n`;
                         }
                     });
-                    answer += `\n*Powered by ${searchResults.searchEngine}*`;
+                    webContext += `\n(Reference these sources in your response when relevant)`;
+                    
+                    console.log(`✅ Web context prepared with ${webSearchResults.sources.length} sources`);
                 }
-
-                return res.json({
-                    answer,
-                    citations: searchResults.citations,
-                    sources: searchResults.sources,
-                    searchEngine: searchResults.searchEngine,
-                    webSearchUsed: true
-                });
+            } catch (error) {
+                console.log('⚠️ Web search failed, continuing with AI knowledge:', error.message);
             }
-            // If web search fails or returns poor results, continue to AI response
-            console.log('⚠️ Web search returned insufficient results, using AI knowledge...');
         }
-
+        
         // ===== JARVIS 5.2 ADVANCED AI PROCESSING =====
         const apiKey = getNextGroqKey();
 
@@ -1031,11 +1059,19 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         console.log(`🎯 Query type detected: ${queryType.toUpperCase()}`);
 
         // 🧠 Generate advanced Chain-of-Thought prompt
-        const advancedSystemPrompt = generateCoTPrompt(question, queryType, history);
+        let advancedSystemPrompt = generateCoTPrompt(question, queryType, history);
+        
+        // 🌐 ENHANCE prompt with web search context and citation instructions
+        if (webContext) {
+            advancedSystemPrompt += webContext;
+            advancedSystemPrompt += `\n\n⚠️ **IMPORTANT:** When answering, naturally cite the sources above using markdown links when providing information from them.`;
+        }
+        
         const finalSystemPrompt = systemPrompt || advancedSystemPrompt;
 
         if (process.env.NODE_ENV !== 'production') {
             console.log('🤖 JARVIS 5.2 processing with', EXPERT_PERSONAS[queryType].name);
+            if (webContext) console.log('📊 Web search context included in prompt');
         }
 
         // Construct messages array with enhanced context
@@ -1183,12 +1219,18 @@ I'm having trouble connecting to the AI service right now.
             answer += `\n\n_[JARVIS 5.2 | ${EXPERT_PERSONAS[queryType].name} | ${usedAPI}]_`;
         }
 
-        res.json({
+        // 🌐 Include web search metadata in response
+        const responseObject = {
             answer,
             queryType,
             expertMode: EXPERT_PERSONAS[queryType].name,
-            followUpSuggestions
-        });
+            followUpSuggestions,
+            webSearchUsed: !!webSearchResults,
+            sources: webSearchResults?.sources || null,
+            searchEngine: webSearchResults?.searchEngine || null
+        };
+
+        res.json(responseObject);
 
     } catch (error) {
         console.error('❌ ERROR:', error.response?.data || error.message);
