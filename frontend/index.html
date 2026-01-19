@@ -169,26 +169,6 @@
 </head>
 
 <body class="home-page">
-    <!-- Loading Spinner -->
-    <div class="loading-spinner" id="loadingSpinner">
-        <div class="spinner"></div>
-        <p>Loading JARVIS...</p>
-    </div>
-    
-    <!-- Critical: Hide spinner after 3 seconds MAX if it's still showing -->
-    <script>
-        (function() {
-            // Hide spinner after 3 seconds no matter what
-            setTimeout(function() {
-                const spinner = document.getElementById('loadingSpinner');
-                if (spinner) {
-                    spinner.classList.add('hidden');
-                    spinner.style.display = 'none';
-                }
-            }, 3000);
-        })();
-    </script>
-
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -525,33 +505,6 @@
         if (localStorage.getItem('banner2026Closed') === 'true') {
             const banner = document.getElementById('newYearBanner');
             if (banner) banner.style.display = 'none';
-        }
-        
-        // ===== Hide spinner on user interaction (safe version) =====
-        function hideSpinner() {
-            const spinner = document.getElementById('loadingSpinner');
-            if (spinner && !spinner.classList.contains('hidden')) {
-                spinner.classList.add('hidden');
-                spinner.style.display = 'none';
-            }
-        }
-        
-        // Hide spinner on safe interactions only - bubbling phase (not capture)
-        // This allows normal event handling to proceed
-        
-        // Hide on click (bubbling phase - safe)
-        document.addEventListener('click', hideSpinner, false);
-        
-        // Hide on touch (bubbling phase - safe)
-        document.addEventListener('touchstart', hideSpinner, false);
-        
-        // Hide on scroll
-        window.addEventListener('scroll', hideSpinner);
-        
-        // Hide on input (but not the specific keypress that sends messages)
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.addEventListener('input', hideSpinner);
         }
     </script>
 </body>
