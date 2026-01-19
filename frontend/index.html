@@ -38,11 +38,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 
     <!-- Libraries - Non-blocking load -->
-    <script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\" defer></script>
-    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
     
     <!-- Master AI System - Defer to prevent blocking -->
-    <script src=\"news-integration.js\" defer></script>
+    <script src="news-integration.js" defer></script>
     <script src="user-memory.js"></script>
     <script src="master-ai-engine.js"></script>
     <script src="web-search.js"></script>
@@ -527,33 +527,32 @@
             if (banner) banner.style.display = 'none';
         }
         
-        // ===== Hide spinner on any user interaction =====
+        // ===== Hide spinner on user interaction (safe version) =====
         function hideSpinner() {
             const spinner = document.getElementById('loadingSpinner');
-            if (spinner) {
+            if (spinner && !spinner.classList.contains('hidden')) {
                 spinner.classList.add('hidden');
                 spinner.style.display = 'none';
             }
-            // Remove listeners after first use
-            document.removeEventListener('click', hideSpinner, true);
-            document.removeEventListener('keypress', hideSpinner, true);
-            document.removeEventListener('touchstart', hideSpinner, true);
         }
         
-        // Hide on any interaction but exclude message input
-        document.addEventListener('click', function(e) {
-            if (e.target.id !== 'messageInput') {
-                hideSpinner();
-            }
-        }, true);
-        document.addEventListener('touchstart', hideSpinner, true);
-        // Only listen for Enter key on non-input elements
-        document.addEventListener('keypress', function(e) {
-            // Don't hide spinner on input/textarea - let them handle their own events
-            if (e.target !== document.getElementById('messageInput')) {
-                hideSpinner();
-            }
-        }, true);
+        // Hide spinner on safe interactions only - bubbling phase (not capture)
+        // This allows normal event handling to proceed
+        
+        // Hide on click (bubbling phase - safe)
+        document.addEventListener('click', hideSpinner, false);
+        
+        // Hide on touch (bubbling phase - safe)
+        document.addEventListener('touchstart', hideSpinner, false);
+        
+        // Hide on scroll
+        window.addEventListener('scroll', hideSpinner);
+        
+        // Hide on input (but not the specific keypress that sends messages)
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('input', hideSpinner);
+        }
     </script>
 </body>
 
