@@ -105,6 +105,17 @@ let lastQueryDate = localStorage.getItem('lastQueryDate') || new Date().toDateSt
 
 // ===== Initialize =====
 function init() {
+    console.log('🚀 JARVIS Initialization Starting...');
+    console.log('📱 Document ready state:', document.readyState);
+    
+    // Verify critical elements exist before proceeding
+    if (!document.getElementById('sendBtn')) {
+        console.error('❌ Critical error: sendBtn element not found in DOM!');
+    }
+    if (!document.getElementById('messageInput')) {
+        console.error('❌ Critical error: messageInput element not found in DOM!');
+    }
+    
     // Setup event listeners first (including sign out button)
     setupEventListeners();
     initSpeechRecognition();
@@ -117,6 +128,8 @@ function init() {
     initModeSelector();
     updateModeUI();
     initMobileBottomNav();
+    
+    console.log('✅ JARVIS Initialization Complete');
 
     // Wake up backend immediately
     wakeUpBackend();
@@ -655,9 +668,18 @@ function speak(text) {
 
 // ===== Event Listeners =====
 function setupEventListeners() {
+    console.log('🔌 Setting up event listeners...');
+    
+    // Verify elements object
+    console.log('📍 Elements object check:');
+    console.log('  - sendBtn:', elements.sendBtn ? '✅ Found' : '❌ NOT FOUND');
+    console.log('  - messageInput:', elements.messageInput ? '✅ Found' : '❌ NOT FOUND');
+    console.log('  - micBtn:', elements.micBtn ? '✅ Found' : '❌ NOT FOUND');
+    
     // Brain button - Triggers Voice Recognition (Ctrl+K)
     const brainBtn = document.getElementById('brainBtn');
     if (brainBtn) {
+        console.log('✅ Brain button found, attaching listener');
         brainBtn.addEventListener('click', () => {
             // Toggle voice recognition
             if (isListening) {
@@ -672,6 +694,8 @@ function setupEventListeners() {
             brainBtn.classList.add('active');
             setTimeout(() => brainBtn.classList.remove('active'), 300);
         });
+    } else {
+        console.warn('⚠️ Brain button not found');
     }
 
     // Ctrl+K keyboard shortcut - Voice Recognition
@@ -695,24 +719,37 @@ function setupEventListeners() {
 
     // Send message
     if (elements.sendBtn && elements.messageInput) {
-        elements.sendBtn.addEventListener('click', sendMessage);
+        console.log('✅ Send button listeners attached');
+        elements.sendBtn.addEventListener('click', () => {
+            console.log('🖱️ Send button clicked');
+            sendMessage();
+        });
         elements.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
+                console.log('⌨️ Enter key pressed');
                 e.preventDefault();
                 sendMessage();
             }
         });
+    } else {
+        console.error('❌ CRITICAL: Send button or message input not found!');
+        console.error('  - sendBtn:', elements.sendBtn);
+        console.error('  - messageInput:', elements.messageInput);
     }
 
     // Voice input
     if (elements.micBtn) {
+        console.log('✅ Mic button listeners attached');
         elements.micBtn.addEventListener('click', () => {
+            console.log('🎤 Mic button clicked');
             if (isListening) {
                 recognition.stop();
             } else {
                 startListening();
             }
         });
+    } else {
+        console.warn('⚠️ Mic button not found');
     }
 
     // Settings modal
@@ -891,10 +928,14 @@ function setupEventListeners() {
     }
 
     // ===== MODEL SELECTOR (Gemini-style) =====
+    console.log('🎯 Initializing model selector...');
     initModelSelector();
 
     // ===== PHOTO/CAMERA BUTTONS =====
+    console.log('📸 Initializing media buttons...');
     initMediaButtons();
+    
+    console.log('✅ All event listeners setup complete!');
 }
 
 // ===== Send Message =====
@@ -2435,9 +2476,15 @@ document.head.appendChild(toastStyles);
 
 // ===== Initialize App =====
 // Wait for DOM to be fully loaded before initializing
+// For module scripts, use DOMContentLoaded to ensure proper timing
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    console.log('⏳ DOM still loading, waiting for DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('✅ DOMContentLoaded fired');
+        init();
+    });
 } else {
+    console.log('⚡ DOM already loaded, initializing immediately...');
     init();
 }
 
