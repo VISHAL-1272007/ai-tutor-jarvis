@@ -752,12 +752,19 @@ function setupEventListeners() {
     if (elements.sendBtn && elements.messageInput) {
         console.log('✅ Send button listeners attached');
         elements.sendBtn.addEventListener('click', () => {
-            console.log('🖱️ Send button clicked');
+            console.log('🖱️ SEND BUTTON CLICKED!');
+            console.log('  - Current message:', elements.messageInput.value);
+            console.log('  - Message length:', elements.messageInput.value.length);
+            console.log('  - isTyping:', isTyping);
+            console.log('  - currentMode:', currentMode);
             sendMessage();
         });
         elements.messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
-                console.log('⌨️ Enter key pressed');
+                console.log('⌨️ ENTER KEY PRESSED!');
+                console.log('  - Current message:', elements.messageInput.value);
+                console.log('  - preventDefault called:', e.defaultPrevented);
+                console.log('  - Message ready to send:', !!elements.messageInput.value.trim());
                 e.preventDefault();
                 sendMessage();
             }
@@ -840,28 +847,59 @@ function setupEventListeners() {
         });
     }
 
+    // Sign In button in modal
+    const signinBtnModal = document.getElementById('signinBtnModal');
+    if (signinBtnModal) {
+        console.log('✅ Sign In button found, adding listener');
+        signinBtnModal.addEventListener('click', (e) => {
+            console.log('🔐 SIGN IN BUTTON CLICKED!');
+            console.log('  - Event type:', e.type);
+            console.log('  - Current user:', currentUser ? currentUser.email : 'null (guest)');
+            console.log('  - Button HTML:', signinBtnModal.innerHTML);
+            console.log('  - Button parent:', signinBtnModal.parentElement?.className);
+            console.log('  - Navigating to login.html');
+            e.preventDefault();
+            e.stopPropagation();
+            window.location.href = 'login.html';
+        });
+    } else {
+        console.warn('⚠️ Sign In button (signinBtnModal) not found in DOM');
+    }
+
     // Sign out button in modal
     const signoutBtnModal = document.getElementById('signoutBtnModal');
     if (signoutBtnModal) {
+        console.log('✅ Sign Out button found, adding listener');
         signoutBtnModal.addEventListener('click', async () => {
+            console.log('🚪 SIGN OUT BUTTON CLICKED!');
+            console.log('  - Current user:', currentUser?.email);
             try {
+                console.log('  - Calling signOut...');
                 await signOut(auth);
+                console.log('  - Sign out successful, reloading page');
                 window.location.reload();
             } catch (error) {
-                console.error('Sign out error:', error);
+                console.error('❌ Sign out error:', error);
             }
         });
+    } else {
+        console.warn('⚠️ Sign Out button (signoutBtnModal) not found in DOM');
     }
 
     // Sidebar account button (Sign In/Sign Out)
     const sidebarAccountBtn = document.getElementById('sidebarAccountBtn');
     if (sidebarAccountBtn) {
+        console.log('✅ Sidebar account button found, adding listener');
         sidebarAccountBtn.addEventListener('click', async () => {
+            console.log('👤 SIDEBAR ACCOUNT BUTTON CLICKED!');
+            console.log('  - currentUser:', currentUser ? currentUser.email : 'null (guest)');\n            console.log('  - isTyping:', isTyping);
             if (currentUser) {
                 // User is logged in - Sign out
                 try {
                     console.log('🚪 Signing out...');
+                    console.log('  - User email:', currentUser.email);
                     await signOut(auth);
+                    console.log('  - Sign out successful, reloading...');
                     window.location.reload();
                 } catch (error) {
                     console.error('❌ Sign out error:', error);
@@ -870,8 +908,8 @@ function setupEventListeners() {
             } else {
                 // Guest mode - Sign in with Google
                 try {
-                    console.log('🔐 Signing in with Google...');
-                    await signInWithPopup(auth, googleProvider);
+                    console.log('🔐 Signing in with Google from sidebar...');
+                    console.log('  - Opening popup...');\n                    await signInWithPopup(auth, googleProvider);
                     // Auth state listener will handle UI updates
                     console.log('✅ Signed in successfully!');
                 } catch (error) {
@@ -884,6 +922,8 @@ function setupEventListeners() {
                 }
             }
         });
+    } else {
+        console.warn('⚠️ Sidebar account button not found');
     }
 
     // Character count
