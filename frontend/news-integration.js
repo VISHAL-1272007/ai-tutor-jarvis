@@ -64,22 +64,36 @@ class NewsIntegration {
 
             const categories = this.categories.map(async (category) => {
                 try {
-                    const response = await fetch(
-                        `${this.sources.newsAPI}/top-headlines?category=${category}&language=en&apiKey=${apiKey}`,
-                        { signal: AbortSignal.timeout(5000) }
-                    );
-                    if (!response.ok) return []; // Silent failure
-                    const data = await response.json();
-                    return data.articles || [];
+                    const corsProxyUrl = 'https://api.allorigins.win/raw?url=';
+                    const apiUrl = `${this.sources.newsAPI}/top-headlines?category=${category}&language=en&apiKey=${apiKey}`;
+                    
+                    try {
+                        // Try direct request first
+                        const response = await fetch(apiUrl, { signal: AbortSignal.timeout(5000) });
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data.articles || [];
+                        }
+                    } catch (e) {
+                        // If direct fails, try with CORS proxy
+                        const response = await fetch(
+                            corsProxyUrl + encodeURIComponent(apiUrl),
+                            { signal: AbortSignal.timeout(5000) }
+                        );
+                        if (response.ok) {
+                            const data = await response.json();
+                            return data.articles || [];
+                        }
+                    }
+                    return [];
                 } catch (e) {
-                    return []; // Silent failure for individual categories
+                    return [];
                 }
             });
 
             const results = await Promise.all(categories);
             return results.flat().slice(0, 50);
         } catch (error) {
-            // Silent failure
             return [];
         }
     }
@@ -90,8 +104,12 @@ class NewsIntegration {
             if (!apiKey) return [];
 
             try {
+                // Use CORS proxy to bypass GNews CORS restrictions
+                const corsProxyUrl = 'https://api.allorigins.win/raw?url=';
+                const apiUrl = `${this.sources.gnews}/top-headlines?lang=en&max=50&apikey=${apiKey}`;
+                
                 const response = await fetch(
-                    `${this.sources.gnews}/top-headlines?lang=en&max=50&apikey=${apiKey}`,
+                    corsProxyUrl + encodeURIComponent(apiUrl),
                     { signal: AbortSignal.timeout(5000) }
                 );
                 if (!response.ok) return [];
@@ -123,18 +141,42 @@ class NewsIntegration {
 
     async parseRSSFeed(url) {
         try {
-            // Use RSS2JSON API for parsing
-            const response = await fetch(
-                `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=free`
-            );
-            const data = await response.json();
-            return (data.items || []).map(item => ({
-                title: item.title,
-                description: item.description,
-                url: item.link,
-                publishedAt: item.pubDate,
-                source: { name: data.feed?.title || 'RSS Feed' }
-            }));
+            // Use RSS2JSON API for parsing - with fallback for 422 errors
+            const rssApiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=';
+            
+            try {
+                const response = await fetch(
+                    `${rssApiUrl}${encodeURIComponent(url)}&api_key=free`,
+                    { signal: AbortSignal.timeout(5000) }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    return (data.items || []).map(item => ({
+                        title: item.title,
+                        description: item.description,
+                        url: item.link,
+                        publishedAt: item.pubDate,
+                        source: { name: data.feed?.title || 'RSS Feed' }
+                    }));
+                }
+            } catch (e) {
+                // Fallback: try without API key
+                const response = await fetch(
+                    `${rssApiUrl}${encodeURIComponent(url)}`,
+                    { signal: AbortSignal.timeout(5000) }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    return (data.items || []).map(item => ({
+                        title: item.title,
+                        description: item.description,
+                        url: item.link,
+                        publishedAt: item.pubDate,
+                        source: { name: data.feed?.title || 'RSS Feed' }
+                    }));
+                }
+            }
+            return [];
         } catch (error) {
             return [];
         }

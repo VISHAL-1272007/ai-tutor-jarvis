@@ -89,9 +89,12 @@ self.addEventListener('fetch', (event) => {
             .then((cachedResponse) => {
                 const fetchPromise = fetch(request)
                     .then((networkResponse) => {
-                        if (networkResponse && networkResponse.status === 200) {
+                        // Only cache http/https responses, not chrome-extension or other schemes
+                        if (networkResponse && networkResponse.status === 200 && 
+                            request.url.startsWith('http')) {
                             const clone = networkResponse.clone();
-                            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone));
+                            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, clone))
+                                .catch(() => {}); // Silently ignore cache errors
                         }
                         return networkResponse;
                     })
