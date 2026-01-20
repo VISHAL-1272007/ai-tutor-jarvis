@@ -892,7 +892,8 @@ function setupEventListeners() {
         console.log('✅ Sidebar account button found, adding listener');
         sidebarAccountBtn.addEventListener('click', async () => {
             console.log('👤 SIDEBAR ACCOUNT BUTTON CLICKED!');
-            console.log('  - currentUser:', currentUser ? currentUser.email : 'null (guest)');\n            console.log('  - isTyping:', isTyping);
+            console.log('  - currentUser:', currentUser ? currentUser.email : 'null (guest)');
+            console.log('  - isTyping:', isTyping);
             if (currentUser) {
                 // User is logged in - Sign out
                 try {
@@ -909,7 +910,8 @@ function setupEventListeners() {
                 // Guest mode - Sign in with Google
                 try {
                     console.log('🔐 Signing in with Google from sidebar...');
-                    console.log('  - Opening popup...');\n                    await signInWithPopup(auth, googleProvider);
+                    console.log('  - Opening popup...');
+                    await signInWithPopup(auth, googleProvider);
                     // Auth state listener will handle UI updates
                     console.log('✅ Signed in successfully!');
                 } catch (error) {
