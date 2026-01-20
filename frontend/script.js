@@ -39,25 +39,51 @@ let isVoiceEnabled = true;
 let currentLanguage = 'en-US';
 
 // ===== DOM Elements =====
-const elements = {
-    sidebar: document.getElementById('sidebar'),
-    sidebarOverlay: document.getElementById('sidebarOverlay'),
-    sidebarCloseBtn: document.getElementById('sidebarCloseBtn'),
-    newChatBtn: document.getElementById('newChatBtn'),
-    mobileMenuBtn: document.getElementById('mobileMenuBtn'),
-    chatContainer: document.getElementById('chatContainer'),
-    welcomeScreen: document.getElementById('welcomeScreen'),
-    developerCredit: document.querySelector('.developer-credit'),
-    messagesArea: document.getElementById('messagesArea'),
-    messageInput: document.getElementById('messageInput'),
-    sendBtn: document.getElementById('sendBtn'),
-    micBtn: document.getElementById('micBtn'),
-    charCount: document.getElementById('charCount'),
-    historyList: document.getElementById('historyList'),
-    languageSelector: document.getElementById('languageSelector'),
-    voiceToggleBtn: document.getElementById('voiceToggleBtn'),
-    jarvisOrb: document.getElementById('jarvisOrb')
+// NOTE: These will be re-initialized in init() function to ensure DOM is ready
+let elements = {
+    sidebar: null,
+    sidebarOverlay: null,
+    sidebarCloseBtn: null,
+    newChatBtn: null,
+    mobileMenuBtn: null,
+    chatContainer: null,
+    welcomeScreen: null,
+    developerCredit: null,
+    messagesArea: null,
+    messageInput: null,
+    sendBtn: null,
+    micBtn: null,
+    charCount: null,
+    historyList: null,
+    languageSelector: null,
+    voiceToggleBtn: null,
+    jarvisOrb: null
 };
+
+// Function to initialize DOM elements (call this after DOM is ready)
+function initializeElements() {
+    console.log('🎯 Re-initializing DOM elements after DOM is ready...');
+    elements = {
+        sidebar: document.getElementById('sidebar'),
+        sidebarOverlay: document.getElementById('sidebarOverlay'),
+        sidebarCloseBtn: document.getElementById('sidebarCloseBtn'),
+        newChatBtn: document.getElementById('newChatBtn'),
+        mobileMenuBtn: document.getElementById('mobileMenuBtn'),
+        chatContainer: document.getElementById('chatContainer'),
+        welcomeScreen: document.getElementById('welcomeScreen'),
+        developerCredit: document.querySelector('.developer-credit'),
+        messagesArea: document.getElementById('messagesArea'),
+        messageInput: document.getElementById('messageInput'),
+        sendBtn: document.getElementById('sendBtn'),
+        micBtn: document.getElementById('micBtn'),
+        charCount: document.getElementById('charCount'),
+        historyList: document.getElementById('historyList'),
+        languageSelector: document.getElementById('languageSelector'),
+        voiceToggleBtn: document.getElementById('voiceToggleBtn'),
+        jarvisOrb: document.getElementById('jarvisOrb')
+    };
+    console.log('✅ All DOM elements re-initialized');
+}
 
 // ===== State =====
 let currentChatId = null;
@@ -108,12 +134,17 @@ function init() {
     console.log('🚀 JARVIS Initialization Starting...');
     console.log('📱 Document ready state:', document.readyState);
     
+    // CRITICAL: Initialize DOM elements first (they may be null if called before DOM ready)
+    initializeElements();
+    
     // Verify critical elements exist before proceeding
-    if (!document.getElementById('sendBtn')) {
+    if (!elements.sendBtn) {
         console.error('❌ Critical error: sendBtn element not found in DOM!');
+        console.error('   sendBtn:', document.getElementById('sendBtn'));
     }
-    if (!document.getElementById('messageInput')) {
+    if (!elements.messageInput) {
         console.error('❌ Critical error: messageInput element not found in DOM!');
+        console.error('   messageInput:', document.getElementById('messageInput'));
     }
     
     // Setup event listeners first (including sign out button)
