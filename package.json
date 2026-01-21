@@ -2,10 +2,10 @@
   "name": "ai-tutor-vishal",
   "version": "1.0.0",
   "description": "AI Tutor JARVIS - Voice-enabled AI learning assistant",
-  "main": "backend/index.js",
+  "main": "backend/server-gemini.js",
   "scripts": {
-    "start": "cd backend && node index.js",
-    "dev": "cd backend && node index.js"
+    "start": "node backend/server-gemini.js",
+    "dev": "node backend/server-gemini.js"
   },
   "engines": {
     "node": ">=18.0.0"
