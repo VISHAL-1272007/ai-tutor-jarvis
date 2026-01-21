@@ -1147,6 +1147,27 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 ragPipelineUsed = false;
             }
         }
+        // ===== TAMIL NADU NEWS INJECTION =====
+        // Check if user is asking about Tamil Nadu news/events
+        const tamilNewsKeywords = ['tamil', 'tn', 'tamil nadu', 'recent news', 'latest news', 'news in tamil', 'தமிழ்'];
+        const isTamilNewsQuery = tamilNewsKeywords.some(kw => lowerQuestion.toLowerCase().includes(kw));
+        
+        let tamilNewsContext = '';
+        if (isTamilNewsQuery) {
+            try {
+                const latestNews = getLatestNews();
+                if (latestNews && latestNews.length > 0) {
+                    tamilNewsContext = `\n\n📰 **RECENT TAMIL NADU NEWS HEADLINES:**\n`;
+                    latestNews.slice(0, 10).forEach((item, i) => {
+                        tamilNewsContext += `${i + 1}. **${item.title}**\n   Source: ${item.source}\n`;
+                    });
+                    tamilNewsContext += `\nUse these actual news headlines to answer the user's query about recent Tamil Nadu news.\n`;
+                    console.log('✅ Tamil Nadu news data injected into context');
+                }
+            } catch (newsError) {
+                console.warn('⚠️ Could not fetch Tamil news:', newsError.message);
+            }
+        }
 
         // ===== FALLBACK: Standard Web Search (if RAG Pipeline not available or didn't trigger) =====
         if (!ragPipelineUsed) {
@@ -1192,7 +1213,10 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         let advancedSystemPrompt = generateCoTPrompt(question, queryType, history);
         
         // 🌐 ENHANCE prompt with web search context and citation instructions
-        if (webContext) {
+        if (tamilNewsContext) {
+            advancedSystemPrompt += tamilNewsContext;
+            advancedSystemPrompt += `\n\n⚠️ **IMPORTANT:** Use these real Tamil Nadu news headlines to provide specific, factual answers about recent events.`;
+        } else if (webContext) {
             advancedSystemPrompt += webContext;
             advancedSystemPrompt += `\n\n⚠️ **IMPORTANT:** When answering, naturally cite the sources above using markdown links when providing information from them.`;
         }
