@@ -1,20 +1,22 @@
 /**
  * WolframAlpha Integration for JARVIS
  * Perfect for: Math, Physics, Chemistry, Data Analysis, Factual Queries
- * Free: 2,000 queries/month per AppID (supports 3 AppIDs = 6,000 total)
+ * Free: 2,000 queries/month per AppID (supports 4 AppIDs = 8,000 total!)
  */
 
 const axios = require('axios');
 
 class WolframAlphaIntegration {
-  constructor(primaryAppId, secondaryAppId = null, tertiaryAppId = null) {
+  constructor(primaryAppId, secondaryAppId = null, tertiaryAppId = null, quaternaryAppId = null) {
     this.appIds = [primaryAppId];
     if (secondaryAppId) this.appIds.push(secondaryAppId);
     if (tertiaryAppId) this.appIds.push(tertiaryAppId);
+    if (quaternaryAppId) this.appIds.push(quaternaryAppId);
     
     this.primaryAppId = primaryAppId;
     this.secondaryAppId = secondaryAppId;
     this.tertiaryAppId = tertiaryAppId;
+    this.quaternaryAppId = quaternaryAppId;
     this.currentAppIdIndex = 0;
     this.baseURL = 'http://api.wolframalpha.com/v2/query';
     this.shortAnswerURL = 'http://api.wolframalpha.com/v1/simple';
@@ -26,7 +28,7 @@ class WolframAlphaIntegration {
       console.log(`   AppID ${idx + 1}: ${id}`);
     });
     if (this.appIds.length > 1) {
-      console.log(`   🔄 Load balancing ENABLED`);
+      console.log(`   🔄 Quad load balancing ENABLED - Ultimate redundancy!`);
     }
   }
 

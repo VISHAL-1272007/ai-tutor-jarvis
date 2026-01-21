@@ -49,10 +49,11 @@ class JARVISFullPower {
     this.wolfram = new WolframAlphaIntegration(
       apiKeys.wolframAppId, 
       apiKeys.wolframAppIdSecondary,
-      apiKeys.wolframAppIdTertiary
+      apiKeys.wolframAppIdTertiary,
+      apiKeys.wolframAppIdQuaternary
     );
 
-    console.log('✅ JARVIS Full Power initialized with ALL AI models + WolframAlpha x3!');
+    console.log('✅ JARVIS Full Power initialized with ALL AI models + WolframAlpha x4 (8,000 queries/month)!');
   }
 
   /**
