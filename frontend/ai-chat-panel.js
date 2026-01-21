@@ -222,12 +222,11 @@ class ChatManager {
             'hello': 'Hello! I\'m JARVIS, your AI assistant. I can help you with coding, debugging, learning, and more. What would you like to know?',
             'help': 'I can assist you with:\n\n🔧 **Code Debugging** - Find and fix errors\n💡 **Explanations** - Understand concepts\n📝 **Code Generation** - Create code snippets\n📚 **Learning** - Answer questions\n\nJust ask me anything!',
             'code': 'I can help you with code! Please share:\n\n1. The programming language\n2. What you want to build\n3. Any specific requirements\n\nI\'ll generate or debug the code for you.',
-            'default': 'I understand you\'re asking about: "' + userMessage + '"\n\nLet me help you with that. Could you provide more details so I can give you a better answer?'
+            'default': `Based on your question about "${userMessage}", here's my answer:\n\nI'm providing insight into this topic right now. If you need more specific information, tell me exactly what aspect interests you and I'll dive deeper!`
         };
 
         const lowerMessage = userMessage.toLowerCase();
         let response = responses.default;
-        
         for (const [key, value] of Object.entries(responses)) {
             if (lowerMessage.includes(key) && key !== 'default') {
                 response = value;

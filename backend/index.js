@@ -12,6 +12,7 @@ const FunctionCallingEngine = require('./function-calling-engine');
 const JARVISOmniscientLite = require('../jarvis-omniscient-lite');
 const JARVISOmniscientFull = require('../jarvis-omniscient-full');
 const JARVISFullPower = require('../jarvis-full-power');
+const { JARVIS_AGGRESSIVE_PROMPT } = require('./jarvis-aggressive-prompt');
 
 // Ensure we load .env from backend directory even if process started elsewhere
 require('dotenv').config({ path: path.join(__dirname, '.env') });
