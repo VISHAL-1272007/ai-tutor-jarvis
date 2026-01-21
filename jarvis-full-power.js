@@ -16,6 +16,7 @@
 
 const { GoogleGenerativeAI } = require('google-generativeai');
 const axios = require('axios');
+const WolframAlphaIntegration = require('./backend/wolfram-alpha-integration');
 
 class JARVISFullPower {
   constructor(apiKeys) {
@@ -44,7 +45,10 @@ class JARVISFullPower {
     // ⭐ Jina AI
     this.jina = apiKeys.jina;
 
-    console.log('✅ JARVIS Full Power initialized with ALL AI models!');
+    // ⭐ WolframAlpha (Math, Physics, Chemistry, Data Analysis)
+    this.wolfram = new WolframAlphaIntegration(apiKeys.wolframAppId);
+
+    console.log('✅ JARVIS Full Power initialized with ALL AI models + WolframAlpha!');
   }
 
   /**
@@ -303,6 +307,158 @@ class JARVISFullPower {
     }
 
     return scores;
+  }
+
+  /**
+   * ====== WOLFRAM ALPHA INTEGRATION ======
+   * For math, physics, chemistry, and data analysis
+   */
+
+  // Direct WolframAlpha query
+  async queryWolfram(question) {
+    try {
+      console.log(`[JARVIS] WolframAlpha Query: ${question}`);
+      const result = await this.wolfram.intelligentQuery(question);
+      return result;
+    } catch (error) {
+      console.error('[JARVIS] WolframAlpha Error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Solve math problems with step-by-step
+  async solveMath(problem) {
+    try {
+      console.log(`[JARVIS] Math Problem: ${problem}`);
+      
+      // Get WolframAlpha solution
+      const wolframResult = await this.wolfram.solveMathProblem(problem);
+      
+      // Also get AI explanation
+      const aiExplanation = await this.queryGemini(
+        `Explain this math problem clearly: ${problem}`,
+        'Be concise and educational'
+      );
+
+      return {
+        problem: problem,
+        wolfram: wolframResult,
+        explanation: aiExplanation,
+        source: 'JARVIS Math Solver'
+      };
+    } catch (error) {
+      console.error('[JARVIS] Math Error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Solve physics problems
+  async solvePhysics(problem) {
+    try {
+      console.log(`[JARVIS] Physics Problem: ${problem}`);
+      
+      const wolframResult = await this.wolfram.solvePhysicsProblem(problem);
+      const aiExplanation = await this.queryGemini(
+        `Explain this physics problem: ${problem}`,
+        'Include formulas and physical intuition'
+      );
+
+      return {
+        problem: problem,
+        wolfram: wolframResult,
+        explanation: aiExplanation,
+        source: 'JARVIS Physics Solver'
+      };
+    } catch (error) {
+      console.error('[JARVIS] Physics Error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Solve chemistry problems
+  async solveChemistry(problem) {
+    try {
+      console.log(`[JARVIS] Chemistry Problem: ${problem}`);
+      
+      const wolframResult = await this.wolfram.solveChemistryProblem(problem);
+      const aiExplanation = await this.queryGemini(
+        `Explain this chemistry problem: ${problem}`,
+        'Include molecular structure and reactions'
+      );
+
+      return {
+        problem: problem,
+        wolfram: wolframResult,
+        explanation: aiExplanation,
+        source: 'JARVIS Chemistry Solver'
+      };
+    } catch (error) {
+      console.error('[JARVIS] Chemistry Error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Data analysis with WolframAlpha
+  async analyzeData(query) {
+    try {
+      console.log(`[JARVIS] Data Analysis: ${query}`);
+      return await this.wolfram.analyzeData(query);
+    } catch (error) {
+      console.error('[JARVIS] Data Analysis Error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Conversion queries
+  async convert(from, to) {
+    try {
+      console.log(`[JARVIS] Convert: ${from} to ${to}`);
+      return await this.wolfram.convert(from, to);
+    } catch (error) {
+      console.error('[JARVIS] Conversion Error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Factual queries
+  async queryFact(question) {
+    try {
+      console.log(`[JARVIS] Fact Query: ${question}`);
+      return await this.wolfram.queryFact(question);
+    } catch (error) {
+      console.error('[JARVIS] Fact Query Error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Hybrid: WolframAlpha + AI explanation
+  async hybridQuery(question) {
+    try {
+      console.log(`[JARVIS] Hybrid Query: ${question}`);
+      
+      // Get WolframAlpha answer
+      const wolframResult = await this.wolfram.intelligentQuery(question);
+      
+      // Get AI explanation
+      const aiExplanation = await this.queryGemini(
+        question,
+        'Provide clear, helpful explanation'
+      );
+
+      // Get fast answer from Groq
+      const groqAnswer = await this.queryGroq(question, 'Be concise');
+
+      return {
+        question: question,
+        wolfram: wolframResult,
+        ai_explanation: aiExplanation,
+        fast_answer: groqAnswer,
+        source: 'JARVIS Hybrid'
+      };
+    } catch (error) {
+      console.error('[JARVIS] Hybrid Query Error:', error.message);
+      return { success: false, error: error.message };
+    }
   }
 }
 

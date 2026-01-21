@@ -182,4 +182,168 @@ app.post('/full-power/smart-claude', async (req, res) => {
   }
 });
 
+// ====== WOLFRAM ALPHA ENDPOINTS ======
+
+// 8. WolframAlpha Query (Math, Physics, Chemistry, Data)
+app.post('/full-power/wolfram', async (req, res) => {
+  try {
+    const { question } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    console.log(`🧮 JARVIS: WolframAlpha Query - "${question.substring(0, 50)}..."`);
+    const result = await jarvisFullPower.queryWolfram(question);
+    
+    res.json({
+      success: result.success,
+      data: result,
+      source: 'WolframAlpha',
+    });
+  } catch (error) {
+    console.error('❌ WolframAlpha error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9. Math Problem Solver
+app.post('/full-power/solve-math', async (req, res) => {
+  try {
+    const { problem } = req.body;
+    
+    if (!problem) {
+      return res.status(400).json({ error: 'Problem required' });
+    }
+
+    console.log(`📐 JARVIS: Math Problem - "${problem.substring(0, 50)}..."`);
+    const result = await jarvisFullPower.solveMath(problem);
+    
+    res.json({
+      success: true,
+      data: result,
+      category: 'mathematics',
+    });
+  } catch (error) {
+    console.error('❌ Math solver error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 10. Physics Problem Solver
+app.post('/full-power/solve-physics', async (req, res) => {
+  try {
+    const { problem } = req.body;
+    
+    if (!problem) {
+      return res.status(400).json({ error: 'Problem required' });
+    }
+
+    console.log(`⚡ JARVIS: Physics Problem - "${problem.substring(0, 50)}..."`);
+    const result = await jarvisFullPower.solvePhysics(problem);
+    
+    res.json({
+      success: true,
+      data: result,
+      category: 'physics',
+    });
+  } catch (error) {
+    console.error('❌ Physics solver error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11. Chemistry Problem Solver
+app.post('/full-power/solve-chemistry', async (req, res) => {
+  try {
+    const { problem } = req.body;
+    
+    if (!problem) {
+      return res.status(400).json({ error: 'Problem required' });
+    }
+
+    console.log(`🧪 JARVIS: Chemistry Problem - "${problem.substring(0, 50)}..."`);
+    const result = await jarvisFullPower.solveChemistry(problem);
+    
+    res.json({
+      success: true,
+      data: result,
+      category: 'chemistry',
+    });
+  } catch (error) {
+    console.error('❌ Chemistry solver error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 12. Unit Conversion
+app.post('/full-power/convert', async (req, res) => {
+  try {
+    const { from, to } = req.body;
+    
+    if (!from || !to) {
+      return res.status(400).json({ error: 'From and To required' });
+    }
+
+    console.log(`🔄 JARVIS: Convert ${from} to ${to}`);
+    const result = await jarvisFullPower.convert(from, to);
+    
+    res.json({
+      success: result.success,
+      data: result,
+      conversion: `${from} = ${result.answer}`,
+    });
+  } catch (error) {
+    console.error('❌ Conversion error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 13. Hybrid Query (WolframAlpha + AI Explanation)
+app.post('/full-power/hybrid-query', async (req, res) => {
+  try {
+    const { question } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    console.log(`🚀 JARVIS: Hybrid Query - "${question.substring(0, 50)}..."`);
+    const result = await jarvisFullPower.hybridQuery(question);
+    
+    res.json({
+      success: true,
+      data: result,
+      sources: ['WolframAlpha', 'Gemini', 'Groq'],
+    });
+  } catch (error) {
+    console.error('❌ Hybrid query error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 14. Factual Query
+app.post('/full-power/query-fact', async (req, res) => {
+  try {
+    const { question } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    console.log(`📚 JARVIS: Factual Query - "${question.substring(0, 50)}..."`);
+    const result = await jarvisFullPower.queryFact(question);
+    
+    res.json({
+      success: result.success,
+      data: result,
+      accuracy: 'High',
+    });
+  } catch (error) {
+    console.error('❌ Factual query error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 console.log(`✅ JARVIS Full Power endpoints loaded!`);
+
