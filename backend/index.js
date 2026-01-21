@@ -503,41 +503,55 @@ function buildRagPrompt(originalQuestion, contextResults) {
         day: 'numeric' 
     });
 
-    // Format context data as JSON for strictest adherence
+    // Format context data as JSON with source hierarchy
     const serperData = contextResults.length > 0 
         ? contextResults.map(r => ({
             title: r.title,
             source: r.source,
             date: r.date,
             snippet: r.snippet,
-            link: r.link
+            link: r.link,
+            sourceType: classifySource(r.source) // official, tier1, tier2
           }))
         : [];
 
-    const ragSystemPrompt = `# STRICT IDENTITY:
-You are JARVIS. Today is ${today}.
+    const ragSystemPrompt = `# STRICT IDENTITY: 
+You are JARVIS, a High-Precision Web Intelligence Agent. Today is ${today}.
 
 # DATA SOURCE (THE ONLY TRUTH):
 ${JSON.stringify(serperData, null, 2)}
 
-# MANDATORY RULES:
-- PRIORITIZE the DATA SOURCE over your internal training.
-- If something is trending TODAY, mention it clearly.
-- DO NOT mention dates before 2026 or outdated information.
-- CITE sources from DATA SOURCE for all factual claims.
-- When DATA SOURCE contradicts training data, ALWAYS use DATA SOURCE.
-- If DATA SOURCE is empty, acknowledge and use training data with disclaimer.
+# MANDATORY OPERATIONAL RULES:
+1. VERIFIED SEARCH ONLY: Prioritize the provided DATA SOURCE over internal training. Do not hallucinate facts.
+2. SOURCE HIERARCHY: Trust official documentation, gov portals, and tier-1 tech news first.
+3. CITATION MANDATE: Every factual claim must include a source link from the DATA SOURCE in brackets. [e.g., source: example.com]
+4. TIMELINE INTEGRITY: It is 2026. Discard outdated 2023/2024 release dates or news. Focus on TRENDING TODAY.
+5. CONTEXT AWARENESS: Remember the user's Roadmap Plan starts in February 2026. Align technical advice with this timeline.
 
-# RESPONSE FORMAT:
-1. Lead with DATA SOURCE findings if available
-2. Include source citations: [Source: title | Date: date]
-3. Distinguish real-time vs historical facts
-4. Be precise, factual, and date-aware
+# RESPONSE STRUCTURE:
+- Executive Summary (Brief and high-energy)
+- Verified Findings (Bullet points with source citations)
+- Technical Risk Assessment (If applicable)
+- Confidence Score (0-100% based on data quality)
 
 # USER QUESTION:
 ${originalQuestion}`;
 
     return ragSystemPrompt;
+}
+
+/**
+ * Classify source reliability for SOURCE HIERARCHY
+ */
+function classifySource(source) {
+    const official = ['gov', 'official', 'openai.com', 'anthropic.com', 'google.com', 'microsoft.com', 'meta.com', 'apple.com'];
+    const tier1 = ['techcrunch', 'wired', 'verge', 'arstechnica', 'thehackernews', 'medium.com/@official'];
+    
+    const sourceLower = source.toLowerCase();
+    
+    if (official.some(o => sourceLower.includes(o))) return 'official';
+    if (tier1.some(t => sourceLower.includes(t))) return 'tier1';
+    return 'tier2';
 }
 
 /**
