@@ -76,7 +76,6 @@ if (process.env.GEMINI_API_KEY) {
     console.log('âœ… Google Gemini initialized as backup');
 }
 
-
 // ===== JARVIS 5.2 ADVANCED AI ENGINE =====
 console.log('ðŸ§  Initializing JARVIS 5.2 Advanced AI Engine...');
 
@@ -3274,12 +3273,4 @@ app.post('/omniscient/learning-path', apiLimiter, async (req, res) => {
 
 startServer(BASE_PORT);
 
-// 📰 Start daily news training system
-console.log('\n📰 Initializing Daily News Training System...');
-try {
-    startDailyUpdates();
-    console.log('✅ Daily news system initialized successfully');
-} catch (err) {
-    console.error('⚠️ Daily news system error (non-blocking):', err.message);
-}
 
