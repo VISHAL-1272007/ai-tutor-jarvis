@@ -1,17 +1,42 @@
 /**
  * WolframAlpha Integration for JARVIS
  * Perfect for: Math, Physics, Chemistry, Data Analysis, Factual Queries
- * Free: 2,000 queries/month
+ * Free: 2,000 queries/month per AppID (supports 2 AppIDs = 4,000 total)
  */
 
 const axios = require('axios');
 
 class WolframAlphaIntegration {
-  constructor(appId) {
-    this.appId = appId;
+  constructor(primaryAppId, secondaryAppId = null) {
+    this.primaryAppId = primaryAppId;
+    this.secondaryAppId = secondaryAppId;
+    this.currentAppId = primaryAppId;
+    this.appIdIndex = 0; // 0 = primary, 1 = secondary
     this.baseURL = 'http://api.wolframalpha.com/v2/query';
     this.shortAnswerURL = 'http://api.wolframalpha.com/v1/simple';
     this.fullResultsURL = 'http://api.wolframalpha.com/v2/query';
+    this.queryCount = 0;
+    
+    console.log(`✅ WolframAlpha initialized with:`);
+    console.log(`   Primary: ${primaryAppId}`);
+    if (secondaryAppId) console.log(`   Secondary: ${secondaryAppId} (Load balancing enabled - 4,000 queries/month!)`);
+  }
+
+  /**
+   * Get next App ID (load balancing between multiple IDs)
+   */
+  getNextAppId() {
+    if (!this.secondaryAppId) return this.primaryAppId;
+    
+    this.appIdIndex = (this.appIdIndex + 1) % 2;
+    this.currentAppId = this.appIdIndex === 0 ? this.primaryAppId : this.secondaryAppId;
+    
+    this.queryCount++;
+    if (this.queryCount % 10 === 0) {
+      console.log(`📊 WolframAlpha queries: ${this.queryCount} | Using AppID ${this.appIdIndex + 1}`);
+    }
+    
+    return this.currentAppId;
   }
 
   /**
@@ -20,10 +45,11 @@ class WolframAlphaIntegration {
   async getQuickAnswer(query) {
     try {
       console.log(`[WolframAlpha] Quick Query: ${query}`);
+      const appId = this.getNextAppId();
       
       const response = await axios.get(this.shortAnswerURL, {
         params: {
-          appid: this.appId,
+          appid: appId,
           i: query,
           timeout: 5
         },
@@ -52,10 +78,11 @@ class WolframAlphaIntegration {
   async getDetailedResults(query) {
     try {
       console.log(`[WolframAlpha] Detailed Query: ${query}`);
+      const appId = this.getNextAppId();
       
       const response = await axios.get(this.baseURL, {
         params: {
-          appid: this.appId,
+          appid: appId,
           input: query,
           output: 'json',
           timeout: 5,
