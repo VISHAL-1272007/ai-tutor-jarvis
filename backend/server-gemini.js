@@ -12,7 +12,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { GoogleGenerativeAI } = require('@google/generativeai');
+const { GoogleGenerativeAI } = require('google-generativeai');
 
 // ===== CONFIGURATION =====
 const app = express();
