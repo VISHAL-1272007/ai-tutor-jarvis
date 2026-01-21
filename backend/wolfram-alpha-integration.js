@@ -1,42 +1,50 @@
 /**
  * WolframAlpha Integration for JARVIS
  * Perfect for: Math, Physics, Chemistry, Data Analysis, Factual Queries
- * Free: 2,000 queries/month per AppID (supports 2 AppIDs = 4,000 total)
+ * Free: 2,000 queries/month per AppID (supports 3 AppIDs = 6,000 total)
  */
 
 const axios = require('axios');
 
 class WolframAlphaIntegration {
-  constructor(primaryAppId, secondaryAppId = null) {
+  constructor(primaryAppId, secondaryAppId = null, tertiaryAppId = null) {
+    this.appIds = [primaryAppId];
+    if (secondaryAppId) this.appIds.push(secondaryAppId);
+    if (tertiaryAppId) this.appIds.push(tertiaryAppId);
+    
     this.primaryAppId = primaryAppId;
     this.secondaryAppId = secondaryAppId;
-    this.currentAppId = primaryAppId;
-    this.appIdIndex = 0; // 0 = primary, 1 = secondary
+    this.tertiaryAppId = tertiaryAppId;
+    this.currentAppIdIndex = 0;
     this.baseURL = 'http://api.wolframalpha.com/v2/query';
     this.shortAnswerURL = 'http://api.wolframalpha.com/v1/simple';
     this.fullResultsURL = 'http://api.wolframalpha.com/v2/query';
     this.queryCount = 0;
     
-    console.log(`✅ WolframAlpha initialized with:`);
-    console.log(`   Primary: ${primaryAppId}`);
-    if (secondaryAppId) console.log(`   Secondary: ${secondaryAppId} (Load balancing enabled - 4,000 queries/month!)`);
+    console.log(`✅ WolframAlpha initialized with ${this.appIds.length} App IDs (${this.appIds.length * 2000} queries/month):`);
+    this.appIds.forEach((id, idx) => {
+      console.log(`   AppID ${idx + 1}: ${id}`);
+    });
+    if (this.appIds.length > 1) {
+      console.log(`   🔄 Load balancing ENABLED`);
+    }
   }
 
   /**
    * Get next App ID (load balancing between multiple IDs)
    */
   getNextAppId() {
-    if (!this.secondaryAppId) return this.primaryAppId;
+    if (this.appIds.length === 1) return this.appIds[0];
     
-    this.appIdIndex = (this.appIdIndex + 1) % 2;
-    this.currentAppId = this.appIdIndex === 0 ? this.primaryAppId : this.secondaryAppId;
+    this.currentAppIdIndex = (this.currentAppIdIndex + 1) % this.appIds.length;
+    const currentAppId = this.appIds[this.currentAppIdIndex];
     
     this.queryCount++;
     if (this.queryCount % 10 === 0) {
-      console.log(`📊 WolframAlpha queries: ${this.queryCount} | Using AppID ${this.appIdIndex + 1}`);
+      console.log(`📊 WolframAlpha queries: ${this.queryCount} | Using AppID ${this.currentAppIdIndex + 1} of ${this.appIds.length}`);
     }
     
-    return this.currentAppId;
+    return currentAppId;
   }
 
   /**

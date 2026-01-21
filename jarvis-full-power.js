@@ -46,9 +46,13 @@ class JARVISFullPower {
     this.jina = apiKeys.jina;
 
     // ⭐ WolframAlpha (Math, Physics, Chemistry, Data Analysis)
-    this.wolfram = new WolframAlphaIntegration(apiKeys.wolframAppId, apiKeys.wolframAppIdSecondary);
+    this.wolfram = new WolframAlphaIntegration(
+      apiKeys.wolframAppId, 
+      apiKeys.wolframAppIdSecondary,
+      apiKeys.wolframAppIdTertiary
+    );
 
-    console.log('✅ JARVIS Full Power initialized with ALL AI models + WolframAlpha x2!');
+    console.log('✅ JARVIS Full Power initialized with ALL AI models + WolframAlpha x3!');
   }
 
   /**

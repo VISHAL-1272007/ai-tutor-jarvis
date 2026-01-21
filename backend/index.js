@@ -16,7 +16,7 @@ const JARVISFullPower = require('../jarvis-full-power');
 // Ensure we load .env from backend directory even if process started elsewhere
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-// ⭐ Initialize JARVIS Full Power with WolframAlpha Load Balancing
+// ⭐ Initialize JARVIS Full Power with WolframAlpha Triple Load Balancing
 console.log('🚀 Initializing JARVIS Full Power with ALL APIs...');
 let jarvisFullPower;
 try {
@@ -28,8 +28,9 @@ try {
     jina: process.env.JINA_API_KEY,
     wolframAppId: process.env.WOLFRAM_APP_ID,
     wolframAppIdSecondary: process.env.WOLFRAM_APP_ID_SECONDARY,
+    wolframAppIdTertiary: process.env.WOLFRAM_APP_ID_TERTIARY,
   });
-  console.log('✅ JARVIS Full Power initialized successfully with dual WolframAlpha IDs!');
+  console.log('✅ JARVIS Full Power initialized successfully with triple WolframAlpha IDs (6,000 queries/month)!');
 } catch (error) {
   console.error('⚠️ JARVIS Full Power initialization error:', error.message);
 }
