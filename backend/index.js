@@ -9,8 +9,15 @@ const { startDailyUpdates, getLatestNews } = require('./daily-news-trainer');
 const { queryWolframAlpha, getDirectAnswer } = require('./wolfram-simple');
 const AutonomousRAGPipeline = require('./autonomous-rag-pipeline');
 const FunctionCallingEngine = require('./function-calling-engine');
+const JARVISOmniscientLite = require('../jarvis-omniscient-lite');
+
 // Ensure we load .env from backend directory even if process started elsewhere
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// ⭐ Initialize JARVIS Omniscient Lite
+console.log('🧠 Initializing JARVIS Omniscient Lite...');
+const jarvisOmniscient = new JARVISOmniscientLite(process.env.GEMINI_API_KEY);
+console.log('✅ JARVIS Omniscient Lite ready!');
 
 // Initialize Google Gemini AI
 let geminiModel = null;
@@ -2860,7 +2867,140 @@ function startServer(port, attempts = 0) {
     });
 }
 
+// ⭐ JARVIS OMNISCIENT ENDPOINTS
+// ================================
+
+// 1. Omniscient Query - Maximum Intelligence
+app.post('/omniscient/query', apiLimiter, async (req, res) => {
+  try {
+    const { question, context = '', domain = 'general' } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    console.log(`🧠 JARVIS Omniscient: ${question.substring(0, 60)}...`);
+    const result = await jarvisOmniscient.omniscientQuery(question, context, domain);
+    
+    res.json({
+      success: true,
+      data: {
+        answer: result.answer,
+        model: result.model,
+        depth: result.depth,
+        thinking: result.thinking,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Omniscient error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Fast Query - Quick Response
+app.post('/omniscient/fast', apiLimiter, async (req, res) => {
+  try {
+    const { question, context = '', domain = 'general' } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    console.log(`⚡ JARVIS Fast: ${question.substring(0, 60)}...`);
+    const result = await jarvisOmniscient.standardQuery(question, context, domain);
+    
+    res.json({
+      success: true,
+      data: {
+        answer: result.answer,
+        model: result.model,
+        depth: result.depth,
+      },
+    });
+  } catch (error) {
+    console.error('❌ Fast query error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Code Analysis
+app.post('/omniscient/analyze-code', apiLimiter, async (req, res) => {
+  try {
+    const { code, language = 'javascript' } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: 'Code required' });
+    }
+
+    console.log(`📊 JARVIS: Analyzing ${language} code...`);
+    const result = await jarvisOmniscient.analyzeCode(code, language);
+    
+    res.json({
+      success: true,
+      data: {
+        analysis: result.response.text(),
+      },
+    });
+  } catch (error) {
+    console.error('❌ Code analysis error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Deep Dive - Research Level
+app.post('/omniscient/deep-dive', apiLimiter, async (req, res) => {
+  try {
+    const { topic } = req.body;
+    
+    if (!topic) {
+      return res.status(400).json({ error: 'Topic required' });
+    }
+
+    console.log(`📚 JARVIS: Deep dive into "${topic}"...`);
+    const result = await jarvisOmniscient.deepDive(topic);
+    
+    res.json({
+      success: true,
+      data: {
+        deepDive: result.response.text(),
+      },
+    });
+  } catch (error) {
+    console.error('❌ Deep dive error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Learning Path - Personalized Guidance
+app.post('/omniscient/learning-path', apiLimiter, async (req, res) => {
+  try {
+    const { goal, currentLevel, timeline } = req.body;
+    
+    if (!goal) {
+      return res.status(400).json({ error: 'Goal required' });
+    }
+
+    console.log(`🎯 JARVIS: Generating learning path for "${goal}"...`);
+    const result = await jarvisOmniscient.generateLearningPath(
+      goal,
+      currentLevel || 'beginner',
+      timeline || 'May 2027'
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        learningPath: result.response.text(),
+      },
+    });
+  } catch (error) {
+    console.error('❌ Learning path error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 startServer(BASE_PORT);
+
 
 // 📰 Start daily news training system
 console.log('\n📰 Initializing Daily News Training System...');
