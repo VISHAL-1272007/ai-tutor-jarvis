@@ -401,6 +401,18 @@ function getNextGeminiKey() {
 
 // ===== WEB SEARCH APIs =====
 const SEARCH_APIS = {
+    serper: {
+        enabled: !!process.env.SERPER_API_KEY,
+        keys: [
+            process.env.SERPER_API_KEY,
+            process.env.SERPER_API_KEY_2,
+            process.env.SERPER_API_KEY_3,
+            process.env.SERPER_API_KEY_4,
+            process.env.SERPER_API_KEY_5,
+            process.env.SERPER_API_KEY_6
+        ].filter(Boolean),
+        endpoint: 'https://google.serper.dev/news'
+    },
     jina: {
         enabled: !!process.env.JINA_API_KEY,
         key: process.env.JINA_API_KEY,
@@ -423,6 +435,145 @@ const SEARCH_APIS = {
         endpoint: 'https://serpapi.com/search'
     }
 };
+
+// ===== RAG PIPELINE - Context-Aware Query Handler =====
+/**
+ * Step 1: Extract keywords from user prompt
+ * Identifies main topics to search for
+ */
+function extractKeywords(query) {
+    // Remove common stop words and extract meaningful terms
+    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'is', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can']);
+    
+    const words = query.toLowerCase()
+        .split(/\s+/)
+        .filter(word => !stopWords.has(word) && word.length > 2)
+        .slice(0, 5); // Top 5 keywords
+    
+    return words.join(' ') || query.substring(0, 30);
+}
+
+/**
+ * Step 2: Fetch latest context from Serper API
+ * Retrieves 5 most recent and relevant results
+ */
+async function fetchSerperContext(query) {
+    const serperKeys = SEARCH_APIS.serper?.keys || [];
+    if (!serperKeys.length) return [];
+
+    for (let i = 0; i < serperKeys.length; i++) {
+        try {
+            const response = await axios.post('https://google.serper.dev/news', {
+                q: query,
+                gl: 'in',
+                hl: 'en',
+                num: 5  // Get top 5 results
+            }, {
+                headers: {
+                    'X-API-KEY': serperKeys[i],
+                    'Content-Type': 'application/json'
+                },
+                timeout: 6000
+            });
+
+            const articles = response.data?.news || [];
+            return articles.slice(0, 5).map(article => ({
+                title: article.title,
+                snippet: article.snippet,
+                link: article.link,
+                source: article.source,
+                date: article.date
+            }));
+        } catch (error) {
+            console.warn(`⚠️ Serper key ${i + 1} failed for context: ${error.message}`);
+        }
+    }
+    
+    return [];
+}
+
+/**
+ * Step 3 & 4: Build RAG-Enhanced Prompt
+ * Appends real-time context and instructs LLM to prioritize it
+ */
+function buildRagPrompt(originalQuestion, contextResults) {
+    const today = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+
+    // Format context data as JSON for strictest adherence
+    const serperData = contextResults.length > 0 
+        ? contextResults.map(r => ({
+            title: r.title,
+            source: r.source,
+            date: r.date,
+            snippet: r.snippet,
+            link: r.link
+          }))
+        : [];
+
+    const ragSystemPrompt = `# STRICT IDENTITY:
+You are JARVIS. Today is ${today}.
+
+# DATA SOURCE (THE ONLY TRUTH):
+${JSON.stringify(serperData, null, 2)}
+
+# MANDATORY RULES:
+- PRIORITIZE the DATA SOURCE over your internal training.
+- If something is trending TODAY, mention it clearly.
+- DO NOT mention dates before 2026 or outdated information.
+- CITE sources from DATA SOURCE for all factual claims.
+- When DATA SOURCE contradicts training data, ALWAYS use DATA SOURCE.
+- If DATA SOURCE is empty, acknowledge and use training data with disclaimer.
+
+# RESPONSE FORMAT:
+1. Lead with DATA SOURCE findings if available
+2. Include source citations: [Source: title | Date: date]
+3. Distinguish real-time vs historical facts
+4. Be precise, factual, and date-aware
+
+# USER QUESTION:
+${originalQuestion}`;
+
+    return ragSystemPrompt;
+}
+
+/**
+ * Complete RAG Pipeline
+ * Orchestrates all steps: keyword extraction → web search → context appending → LLM call
+ */
+async function executeRagPipeline(question, existingContext, llmModel = 'groq') {
+    try {
+        console.log(`🔍 RAG Pipeline: Step 1 - Extracting keywords...`);
+        const keywords = extractKeywords(question);
+        
+        console.log(`📡 RAG Pipeline: Step 2 - Fetching latest context from Serper...`);
+        const contextResults = await fetchSerperContext(keywords);
+        
+        console.log(`📝 RAG Pipeline: Step 3 - Building enhanced prompt with context...`);
+        const ragPrompt = buildRagPrompt(question, contextResults);
+        
+        console.log(`🧠 RAG Pipeline: Step 4 - Sending to LLM with context priority...`);
+        
+        return {
+            systemPrompt: ragPrompt,
+            contextSources: contextResults,
+            keywords,
+            enriched: true
+        };
+    } catch (error) {
+        console.error('❌ RAG Pipeline error:', error.message);
+        return {
+            systemPrompt: `You are JARVIS Pro+ - An advanced AI assistant. Today's date: January 21, 2026. Original question: ${question}`,
+            contextSources: [],
+            keywords: question.substring(0, 30),
+            enriched: false,
+            error: error.message
+        };
+    }
+}
 
 // ===== Initialize Autonomous RAG Pipeline =====
 let ragPipeline = null;
@@ -508,7 +659,7 @@ async function searchWeb(query, mode = 'all') {
                 {
                     params: {
                         q: query,
-                        limit: 10
+                        limit: 100000
                     },
                     headers: {
                         'Authorization': `Bearer ${SEARCH_APIS.jina.key}`,
@@ -2344,6 +2495,75 @@ app.get('/api/news/latest', apiLimiter, async (req, res) => {
     }
 });
 
+// 9.5 Serper News Search - Real-time news with Serper.dev (Dual Key Support)
+app.post('/api/news/serper', apiLimiter, async (req, res) => {
+    try {
+        const { query = 'India news', language = 'ta' } = req.body;
+        
+        const serperKeys = SEARCH_APIS.serper?.keys || [];
+        if (!serperKeys.length) {
+            return res.status(503).json({ error: 'Serper API not configured' });
+        }
+
+        let lastError = null;
+        for (let i = 0; i < serperKeys.length; i++) {
+            try {
+                const response = await axios.post('https://google.serper.dev/news', {
+                    q: query,
+                    gl: 'in',  // India
+                    hl: language === 'ta' ? 'ta' : 'en'  // Tamil or English
+                }, {
+                    headers: {
+                        'X-API-KEY': serperKeys[i],
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 8000
+                });
+
+                const articles = response.data?.news || [];
+                
+                // Map Serper response to unified frontend format
+                const mapped = articles.map(article => ({
+                    title: article.title,
+                    description: article.snippet || article.description,
+                    url: article.link || article.url,
+                    source: article.source || 'Serper',
+                    image: article.imageUrl || article.image,
+                    date: article.date || new Date().toISOString(),
+                    relevance: 'high'
+                }));
+
+                return res.json({
+                    success: true,
+                    query,
+                    language,
+                    results: mapped,
+                    total: mapped.length,
+                    source: 'Serper.dev',
+                    keyIndex: i + 1,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                lastError = error;
+                console.warn(`⚠️ Serper key ${i + 1} failed: ${error.message}`);
+                if (i < serperKeys.length - 1) {
+                    console.log(`🔄 Trying backup Serper key ${i + 2}...`);
+                }
+            }
+        }
+
+        // All keys failed
+        throw lastError || new Error('All Serper keys exhausted');
+    } catch (error) {
+        console.error('❌ Serper News API error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch news from Serper',
+            message: error.message
+        });
+    }
+});
+
 // 10. General Chat API - For Project Generator and other tools
 app.post('/api/chat', apiLimiter, async (req, res) => {
     try {
@@ -2953,6 +3173,78 @@ function startServer(port, attempts = 0) {
 // ================================
 
 // 1. Omniscient Query - Maximum Intelligence
+// ⭐ NEW RAG-ENHANCED QUERY ENDPOINT (2026 PRODUCTION)
+// ===================================================
+// 1. OMNISCIENT RAG QUERY - Real-time context aware responses
+app.post('/omniscient/rag-query', apiLimiter, async (req, res) => {
+  try {
+    const { question, context = '', domain = 'general', useRag = true } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    console.log(`🚀 JARVIS RAG Query: ${question.substring(0, 60)}...`);
+    
+    // Step 1-4: Execute RAG Pipeline
+    const ragData = await executeRagPipeline(question, context);
+    
+    // Combine existing context with RAG context
+    const enrichedContext = context + '\n' + ragData.systemPrompt;
+    
+    // Call LLM with RAG-enhanced prompt
+    let result;
+    try {
+      result = await jarvisOmniscient.omniscientQuery(question, enrichedContext, domain);
+    } catch (llmError) {
+      console.warn('⚠️ Primary LLM failed, trying Groq directly...');
+      // Fallback to Groq
+      const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+        model: 'mixtral-8x7b-32768',
+        messages: [
+          { role: 'system', content: ragData.systemPrompt },
+          { role: 'user', content: question }
+        ],
+        temperature: 0.3,
+        max_tokens: 1500
+      }, {
+        headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
+        timeout: 15000
+      });
+      
+      result = {
+        answer: groqResponse.data?.choices?.[0]?.message?.content || 'No response',
+        model: 'groq-rag-fallback',
+        depth: 'high',
+        thinking: 'Used RAG context with Groq fallback'
+      };
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        answer: result.answer,
+        model: result.model,
+        depth: result.depth,
+        thinking: result.thinking,
+        ragEnhanced: true,
+        contextSources: ragData.contextSources,
+        keywords: ragData.keywords,
+        ragStatus: ragData.enriched ? '✅ Active' : '⚠️ Fallback',
+        sourceCount: ragData.contextSources.length
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        pipeline: 'RAG-Enhanced-2026'
+      }
+    });
+  } catch (error) {
+    console.error('❌ RAG Query error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 1. Original Query Endpoint
 app.post('/omniscient/query', apiLimiter, async (req, res) => {
   try {
     const { question, context = '', domain = 'general' } = req.body;
@@ -3549,22 +3841,76 @@ app.post('/full-power/consensus', async (req, res) => {
 // 2. Real-time Search
 app.post('/full-power/search', async (req, res) => {
     try {
-        const { query } = req.body;
+        const { query, type = 'news' } = req.body;
         if (!query) {
             return res.status(400).json({ error: 'Query required' });
         }
 
-        console.log(`🔍 JARVIS: Real-time search for "${query}"...`);
-        const results = await jarvisFullPower.realtimeSearch(query);
+        console.log(`🔍 JARVIS: Real-time search for "${query}" (${type})...`);
         
-        res.json({
-            success: true,
-            data: {
-                results,
-                query,
-                timestamp: new Date(),
-            },
-        });
+        // Try Serper first if configured (with dual key support)
+        const serperKeys = SEARCH_APIS.serper?.keys || [];
+        if (serperKeys.length > 0 && (type === 'news' || type === 'all')) {
+            for (let i = 0; i < serperKeys.length; i++) {
+                try {
+                    const response = await axios.post('https://google.serper.dev/news', {
+                        q: query,
+                        gl: 'in',
+                        hl: 'ta'
+                    }, {
+                        headers: {
+                            'X-API-KEY': serperKeys[i],
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 8000
+                    });
+
+                    const articles = response.data?.news || [];
+                    const mapped = articles.map(article => ({
+                        title: article.title,
+                        description: article.snippet,
+                        url: article.link,
+                        source: article.source,
+                        image: article.imageUrl,
+                        date: article.date,
+                        type: 'news'
+                    }));
+
+                    return res.json({
+                        success: true,
+                        data: {
+                            results: mapped,
+                            query,
+                            timestamp: new Date(),
+                            source: 'serper-news',
+                            count: mapped.length,
+                            keyUsed: i + 1
+                        },
+                    });
+                } catch (serperError) {
+                    console.warn(`⚠️ Serper key ${i + 1} failed: ${serperError.message}`);
+                    if (i < serperKeys.length - 1) {
+                        console.log(`🔄 Trying backup Serper key...`);
+                    }
+                }
+            }
+        }
+
+        // Fallback to jarvisFullPower if available
+        if (jarvisFullPower && jarvisFullPower.realtimeSearch) {
+            const results = await jarvisFullPower.realtimeSearch(query);
+            return res.json({
+                success: true,
+                data: {
+                    results,
+                    query,
+                    timestamp: new Date(),
+                    source: 'jarvis-fallback'
+                },
+            });
+        }
+
+        throw new Error('No search service available');
     } catch (error) {
         console.error('❌ Search error:', error.message);
         res.status(500).json({ success: false, error: error.message });
