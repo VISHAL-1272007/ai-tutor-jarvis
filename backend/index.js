@@ -1,47 +1,65 @@
-﻿const express = require('express');
+const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
-const { startDailyUpdates, getLatestNews } = require('./daily-news-trainer');
-const { queryWolframAlpha, getDirectAnswer } = require('./wolfram-simple');
-const AutonomousRAGPipeline = require('./autonomous-rag-pipeline');
-const FunctionCallingEngine = require('./function-calling-engine');
-const JARVISOmniscientLite = require('../jarvis-omniscient-lite');
-const JARVISOmniscientFull = require('../jarvis-omniscient-full');
-const JARVISFullPower = require('../jarvis-full-power');
-const { JARVIS_AGGRESSIVE_PROMPT } = require('./jarvis-aggressive-prompt');
-const { JARVIS_PRO_PLUS_SYSTEM, JARVIS_PRO_PLUS_CODING, JARVIS_PRO_PLUS_MATH, JARVIS_PRO_PLUS_DSA } = require('./jarvis-pro-plus-system');
 
-// Ensure we load .env from backend directory even if process started elsewhere
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-
-// â­ Initialize JARVIS Full Power with WolframAlpha Quad Load Balancing
-console.log('ðŸš€ Initializing JARVIS Full Power with ALL APIs...');
-let jarvisFullPower;
-try {
-  jarvisFullPower = new JARVISFullPower({
-    gemini: process.env.GEMINI_API_KEY,
-    groq: process.env.GROQ_API_KEY,
-    openrouter: process.env.OPENROUTER_API_KEY,
-    huggingface: process.env.HUGGINGFACE_API_KEY,
-    jina: process.env.JINA_API_KEY,
-    wolframAppId: process.env.WOLFRAM_APP_ID,
-    wolframAppIdSecondary: process.env.WOLFRAM_APP_ID_SECONDARY,
-    wolframAppIdTertiary: process.env.WOLFRAM_APP_ID_TERTIARY,
-    wolframAppIdQuaternary: process.env.WOLFRAM_APP_ID_QUATERNARY,
-  });
-  console.log('âœ… JARVIS Full Power initialized successfully with QUAD WolframAlpha IDs (8,000 queries/month - ULTIMATE POWER!)');
-} catch (error) {
-  console.error('âš ï¸ JARVIS Full Power initialization error:', error.message);
+// Safely require modules with error handling
+function safeRequire(modulePath, moduleName) {
+  try {
+    return require(modulePath);
+  } catch (err) {
+    console.warn(`⚠️ Optional module ${moduleName} failed to load: ${err.message}`);
+    return null;
+  }
 }
 
-// â­ Initialize JARVIS Omniscient (Full Power if all keys available)
-console.log('ðŸ§  Initializing JARVIS Omniscient...');
+const dailyNews = safeRequire('./daily-news-trainer', 'daily-news-trainer');
+const wolframSimple = safeRequire('./wolfram-simple', 'wolfram-simple');
+const AutonomousRAGPipeline = safeRequire('./autonomous-rag-pipeline', 'autonomous-rag-pipeline');
+const FunctionCallingEngine = safeRequire('./function-calling-engine', 'function-calling-engine');
+const JARVISOmniscientLite = safeRequire('../jarvis-omniscient-lite', 'jarvis-omniscient-lite');
+const JARVISOmniscientFull = safeRequire('../jarvis-omniscient-full', 'jarvis-omniscient-full');
+const JARVISFullPower = safeRequire('../jarvis-full-power', 'jarvis-full-power');
+const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggressive-prompt');
+const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
 
-let jarvisOmniscient;
+const startDailyUpdates = dailyNews?.startDailyUpdates || (() => {});
+const getLatestNews = dailyNews?.getLatestNews || (() => {});
+const { queryWolframAlpha, getDirectAnswer } = wolframSimple || {};
+const { JARVIS_AGGRESSIVE_PROMPT } = aggressivePrompt || {};
+const { JARVIS_PRO_PLUS_SYSTEM, JARVIS_PRO_PLUS_CODING, JARVIS_PRO_PLUS_MATH, JARVIS_PRO_PLUS_DSA } = proPlus || {};
+
+// Ensure we load .env from backend directory
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// ⭐ Initialize JARVIS Full Power with WolframAlpha Quad Load Balancing
+console.log('🚀 Initializing JARVIS Full Power with ALL APIs...');
+let jarvisFullPower = null;
+try {
+  if (JARVISFullPower) {
+    jarvisFullPower = new JARVISFullPower({
+      gemini: process.env.GEMINI_API_KEY,
+      groq: process.env.GROQ_API_KEY,
+      openrouter: process.env.OPENROUTER_API_KEY,
+      huggingface: process.env.HUGGINGFACE_API_KEY,
+      jina: process.env.JINA_API_KEY,
+      wolframAppId: process.env.WOLFRAM_APP_ID,
+      wolframAppIdSecondary: process.env.WOLFRAM_APP_ID_SECONDARY,
+      wolframAppIdTertiary: process.env.WOLFRAM_APP_ID_TERTIARY,
+      wolframAppIdQuaternary: process.env.WOLFRAM_APP_ID_QUATERNARY,
+    });
+    console.log('✅ JARVIS Full Power initialized with QUAD WolframAlpha IDs');
+  }
+} catch (error) {
+  console.warn('⚠️ JARVIS Full Power initialization warning:', error.message);
+}
+
+// ⭐ Initialize JARVIS Omniscient
+console.log('🧠 Initializing JARVIS Omniscient...');
+let jarvisOmniscient = null;
 
 const allKeysAvailable = 
   process.env.GEMINI_API_KEY &&
@@ -51,33 +69,45 @@ const allKeysAvailable =
   process.env.WOLFRAM_API_KEY &&
   process.env.BRAVE_API_KEY;
 
-if (allKeysAvailable) {
-  console.log('âœ¨ FULL POWER MODE - All APIs available!');
-  jarvisOmniscient = new JARVISOmniscientFull({
-    gemini: process.env.GEMINI_API_KEY,
-    claude: process.env.CLAUDE_API_KEY,
-    groq: process.env.GROQ_API_KEY,
-    perplexity: process.env.PERPLEXITY_API_KEY,
-    wolfram: process.env.WOLFRAM_API_KEY,
-    brave: process.env.BRAVE_API_KEY,
-  });
-} else {
-  console.log('âš¡ LITE MODE - Using Gemini only');
-  jarvisOmniscient = new JARVISOmniscientLite(process.env.GEMINI_API_KEY);
+try {
+  if (allKeysAvailable && JARVISOmniscientFull) {
+    console.log('✨ FULL POWER MODE - All APIs available!');
+    jarvisOmniscient = new JARVISOmniscientFull({
+      gemini: process.env.GEMINI_API_KEY,
+      claude: process.env.CLAUDE_API_KEY,
+      groq: process.env.GROQ_API_KEY,
+      perplexity: process.env.PERPLEXITY_API_KEY,
+      wolfram: process.env.WOLFRAM_API_KEY,
+      brave: process.env.BRAVE_API_KEY,
+    });
+  } else if (JARVISOmniscientLite) {
+    console.log('⚡ LITE MODE - Using Gemini only');
+    jarvisOmniscient = new JARVISOmniscientLite(process.env.GEMINI_API_KEY);
+  }
+  if (jarvisOmniscient) {
+    console.log('✅ JARVIS Omniscient initialized!');
+  }
+} catch (error) {
+  console.warn('⚠️ JARVIS Omniscient initialization warning:', error.message);
 }
-
-console.log('âœ… JARVIS Omniscient initialized!');
 
 // Initialize Google Gemini AI
 let geminiModel = null;
-if (process.env.GEMINI_API_KEY) {
+try {
+  if (process.env.GEMINI_API_KEY) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    console.log('âœ… Google Gemini initialized as backup');
+    console.log('✅ Google Gemini initialized');
+  } else {
+    console.warn('⚠️ GEMINI_API_KEY not configured');
+  }
+} catch (error) {
+  console.warn('⚠️ Gemini initialization warning:', error.message);
 }
 
+
 // ===== JARVIS 5.2 ADVANCED AI ENGINE =====
-console.log('ðŸ§  Initializing JARVIS 5.2 Advanced AI Engine...');
+console.log('🧠 Initializing JARVIS 5.2 Advanced AI Engine...');
 
 // Expert Personas for specialized responses
 const EXPERT_PERSONAS = {
@@ -144,14 +174,14 @@ function detectQueryType(question) {
 function generateCoTPrompt(question, queryType, conversationHistory) {
     const persona = EXPERT_PERSONAS[queryType];
     const historyContext = conversationHistory?.length > 0
-        ? `\n\nðŸ“œ **Archives (History):**\n${conversationHistory.slice(-6).map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}`
+        ? `\n\n📜 **Archives (History):**\n${conversationHistory.slice(-6).map(m => `${m.role}: ${m.content.substring(0, 200)}`).join('\n')}`
         : '';
 
     return `You are JARVIS - an ultra-intelligent, empathetic AI thought partner and peer-level mentor for 30,000+ students.
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-ðŸŽ¯ **CORE PERSONALITY TRAITS**
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+═══════════════════════════════════════════════════════════════
+🎯 **CORE PERSONALITY TRAITS**
+═══════════════════════════════════════════════════════════════
 
 1. **Direct & Efficient**
    - For factual questions (e.g., "min value of short in Java?"), give the answer immediately.
@@ -173,21 +203,21 @@ function generateCoTPrompt(question, queryType, conversationHistory) {
    - Provide practical, actionable guidance.
    - Consider real-world applications alongside theory.
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-ðŸ“‹ **RESPONSE RULES**
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+═══════════════════════════════════════════════════════════════
+📋 **RESPONSE RULES**
+═══════════════════════════════════════════════════════════════
 
 - **NO FILLER:** Avoid generic phrases like "Sir, your query requires clarification" or "Could you provide more details?"
 - **FORMATTING:** Use Markdown strategically (bold, lists, code blocks) to make answers scannable and clear.
 - **DEEP DIVES:** After the direct answer, briefly explain the "why" to help the student learn (not just memorize).
-  Example: "Short is 16-bit signed â†’ explains why range is -32,768 to 32,767 (use 1 bit for sign, 15 for magnitude)"
+  Example: "Short is 16-bit signed → explains why range is -32,768 to 32,767 (use 1 bit for sign, 15 for magnitude)"
 - **MULTI-LINGUAL:** If user speaks Tamil/Tanglish, respond in the same style to maintain natural flow.
 - **CODE EXAMPLES:** Always include working code snippets for technical questions.
 - **PRECISION:** For math/coding, be exact - no approximations unless explicitly asked.
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-âœ… **SAFETY & ACCURACY CONSTRAINTS**
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+═══════════════════════════════════════════════════════════════
+✅ **SAFETY & ACCURACY CONSTRAINTS**
+═══════════════════════════════════════════════════════════════
 
 - Always prioritize accuracy in coding and mathematics.
 - Cite sources when providing real-time information (news, current events).
@@ -195,14 +225,14 @@ function generateCoTPrompt(question, queryType, conversationHistory) {
 - For uncertain information, state clearly: "I'm not 100% sure about X, but based on Y..."
 - Never hallucinate code or facts.
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-ðŸ§  **YOUR INTERNAL THINKING PROCESS** (Hidden from user)
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+═══════════════════════════════════════════════════════════════
+🧠 **YOUR INTERNAL THINKING PROCESS** (Hidden from user)
+═══════════════════════════════════════════════════════════════
 
 <thought>
 **Step 1: Understand the Question**
-- Is this a factual/straightforward question? â†’ Answer directly.
-- Is this ambiguous or empty? â†’ Ask for clarification only then.
+- Is this a factual/straightforward question? → Answer directly.
+- Is this ambiguous or empty? → Ask for clarification only then.
 - What is the student's underlying goal?
 
 **Step 2: Respond with Conviction**
@@ -220,17 +250,17 @@ function generateCoTPrompt(question, queryType, conversationHistory) {
 - Should I provide multiple approaches?
 </thought>
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-ðŸ“š **EXPERT ROUTING BY DOMAIN**
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+═══════════════════════════════════════════════════════════════
+📚 **EXPERT ROUTING BY DOMAIN**
+═══════════════════════════════════════════════════════════════
 
 ${persona.expertise}
 
 **Response Style:** ${persona.style}
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-ðŸš€ **NOW PROVIDE YOUR RESPONSE BELOW**
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+═══════════════════════════════════════════════════════════════
+🚀 **NOW PROVIDE YOUR RESPONSE BELOW**
+═══════════════════════════════════════════════════════════════
 
 ${historyContext}
 
@@ -283,7 +313,7 @@ function generateFollowUpSuggestions(question, answer, queryType) {
     return typeSuggestions.slice(0, 3);
 }
 
-console.log('âœ… JARVIS 5.2 Engine ready with expert personas!');
+console.log('✅ JARVIS 5.2 Engine ready with expert personas!');
 
 // Initialize multiple AI APIs for load balancing
 const AI_APIS = [
@@ -402,9 +432,9 @@ if (process.env.GROQ_API_KEY) {
         process.env.GEMINI_API_KEY,
         SEARCH_APIS
     );
-    console.log('ðŸ§  Autonomous RAG Pipeline initialized');
+    console.log('🧠 Autonomous RAG Pipeline initialized');
 } else {
-    console.warn('âš ï¸ GROQ_API_KEY not found - RAG Pipeline disabled');
+    console.warn('⚠️ GROQ_API_KEY not found - RAG Pipeline disabled');
 }
 
 // ===== Initialize Function Calling Engine =====
@@ -414,11 +444,11 @@ if (process.env.GROQ_API_KEY) {
         process.env.GROQ_API_KEY,
         process.env.GEMINI_API_KEY
     );
-    console.log('ðŸ”§ Function Calling Engine initialized with 10 tools');
+    console.log('🔧 Function Calling Engine initialized with 10 tools');
 } else {
-    console.warn('âš ï¸ GROQ_API_KEY not found - Function Calling Engine disabled');
+    console.warn('⚠️ GROQ_API_KEY not found - Function Calling Engine disabled');
 }
-// ðŸ§  Smart Detection: Determine if web search is needed
+// 🧠 Smart Detection: Determine if web search is needed
 function detectWebSearchNeeded(question) {
     const lowerQuestion = question.toLowerCase().trim();
     
@@ -467,12 +497,12 @@ function detectWebSearchNeeded(question) {
 
 // Web Search Function with Multiple API Support
 async function searchWeb(query, mode = 'all') {
-    console.log(`ðŸ” Searching web for: "${query}" [Mode: ${mode}]`);
+    console.log(`🔍 Searching web for: "${query}" [Mode: ${mode}]`);
 
-    // Try Jina AI first (HIGHEST free tier - 10K/month) ðŸ”¥
+    // Try Jina AI first (HIGHEST free tier - 10K/month) 🔥
     if (SEARCH_APIS.jina.enabled) {
         try {
-            console.log('ðŸ”¥ Using Jina AI Search (10K/month free)...');
+            console.log('🔥 Using Jina AI Search (10K/month free)...');
             const response = await axios.get(
                 'https://api.jina.ai/v1/search',
                 {
@@ -495,7 +525,7 @@ async function searchWeb(query, mode = 'all') {
                 // Format results
                 const summary = await generateSearchSummary(query, topResults, mode);
 
-                console.log('âœ… Jina AI search successful!');
+                console.log('✅ Jina AI search successful!');
                 return {
                     answer: summary,
                     citations: topResults.map(r => r.url || r.link),
@@ -508,14 +538,14 @@ async function searchWeb(query, mode = 'all') {
                 };
             }
         } catch (error) {
-            console.error('âš ï¸ Jina AI error:', error.message);
+            console.error('⚠️ Jina AI error:', error.message);
         }
     }
 
     // Try Perplexity API second (best quality with citations)
     if (SEARCH_APIS.perplexity.enabled) {
         try {
-            console.log('ðŸŒ Using Perplexity API...');
+            console.log('🌐 Using Perplexity API...');
             const response = await axios.post(
                 SEARCH_APIS.perplexity.endpoint,
                 {
@@ -547,7 +577,7 @@ async function searchWeb(query, mode = 'all') {
             const answer = response.data.choices[0].message.content;
             const citations = response.data.citations || [];
 
-            console.log('âœ… Perplexity search successful!');
+            console.log('✅ Perplexity search successful!');
             return {
                 answer,
                 citations,
@@ -555,14 +585,14 @@ async function searchWeb(query, mode = 'all') {
                 searchEngine: 'Perplexity AI'
             };
         } catch (error) {
-            console.error('âŒ Perplexity API error:', error.message);
+            console.error('❌ Perplexity API error:', error.message);
         }
     }
 
     // Fallback to Brave Search API
     if (SEARCH_APIS.brave.enabled) {
         try {
-            console.log('ðŸ¦ Using Brave Search API...');
+            console.log('🦁 Using Brave Search API...');
             const response = await axios.get(SEARCH_APIS.brave.endpoint, {
                 params: {
                     q: query,
@@ -581,7 +611,7 @@ async function searchWeb(query, mode = 'all') {
             // Format results with AI
             const summary = await generateSearchSummary(query, topResults, mode);
 
-            console.log('âœ… Brave search successful!');
+            console.log('✅ Brave search successful!');
             return {
                 answer: summary,
                 citations: topResults.map(r => r.url),
@@ -593,13 +623,13 @@ async function searchWeb(query, mode = 'all') {
                 searchEngine: 'Brave Search'
             };
         } catch (error) {
-            console.error('âŒ Brave Search API error:', error.message);
+            console.error('❌ Brave Search API error:', error.message);
         }
     }
 
     // Fallback to DuckDuckGo (no API key needed)
     try {
-        console.log('ðŸ¦† Using DuckDuckGo search...');
+        console.log('🦆 Using DuckDuckGo search...');
         const response = await axios.get('https://api.duckduckgo.com/', {
             params: {
                 q: query,
@@ -624,7 +654,7 @@ async function searchWeb(query, mode = 'all') {
                 .join('\n\n');
         }
 
-        console.log('âœ… DuckDuckGo search successful!');
+        console.log('✅ DuckDuckGo search successful!');
         return {
             answer: summary || null, // Return null instead of error message
             citations: relatedTopics.filter(t => t.FirstURL).map(t => t.FirstURL).slice(0, 5),
@@ -635,11 +665,11 @@ async function searchWeb(query, mode = 'all') {
             searchEngine: 'DuckDuckGo'
         };
     } catch (error) {
-        console.error('âŒ DuckDuckGo search error:', error.message);
+        console.error('❌ DuckDuckGo search error:', error.message);
     }
 
     // All search methods failed
-    console.log('âš ï¸ All search APIs failed, returning AI-only response');
+    console.log('⚠️ All search APIs failed, returning AI-only response');
     return null;
 }
 
@@ -696,22 +726,22 @@ async function generateSearchSummary(query, results, mode) {
 }
 
 const enabledAPIs = AI_APIS.filter(api => api.enabled);
-console.log(`ðŸš€ Enabled AI APIs: ${enabledAPIs.map(api => `${api.name} (${api.rateLimit} RPM)`).join(', ')}`);
-console.log(`ðŸ’ª Total capacity: ${enabledAPIs.reduce((sum, api) => sum + api.rateLimit, 0)} requests/minute`);
-console.log(`ðŸ”‘ Groq Keys: ${GROQ_KEYS.length} | AIML Keys: ${AIML_KEYS.length} | Gemini Keys: ${GEMINI_KEYS.length}`);
-console.log(`ðŸ“ˆ Scaled capacity: ${GROQ_KEYS.length * 30 + AIML_KEYS.length * 50 + GEMINI_KEYS.length * 15} requests/minute`);
+console.log(`🚀 Enabled AI APIs: ${enabledAPIs.map(api => `${api.name} (${api.rateLimit} RPM)`).join(', ')}`);
+console.log(`💪 Total capacity: ${enabledAPIs.reduce((sum, api) => sum + api.rateLimit, 0)} requests/minute`);
+console.log(`🔑 Groq Keys: ${GROQ_KEYS.length} | AIML Keys: ${AIML_KEYS.length} | Gemini Keys: ${GEMINI_KEYS.length}`);
+console.log(`📈 Scaled capacity: ${GROQ_KEYS.length * 30 + AIML_KEYS.length * 50 + GEMINI_KEYS.length * 15} requests/minute`);
 
 // FREE Self-Hosted API endpoint (Hugging Face Spaces)
 const FREE_API_URL = process.env.FREE_API_URL || null;
 if (FREE_API_URL) {
-    console.log(`ðŸ†“ FREE Self-Hosted API: ${FREE_API_URL} (UNLIMITED capacity!)`);
+    console.log(`🆓 FREE Self-Hosted API: ${FREE_API_URL} (UNLIMITED capacity!)`);
 }
 
 // CUSTOM JARVIS AI - Your Own Trained Model!
 const CUSTOM_JARVIS_MODEL = "aijarvis2025/jarvis-edu-ai";
 const CUSTOM_JARVIS_TOKEN = process.env.HF_CUSTOM_TOKEN;
 if (CUSTOM_JARVIS_TOKEN) {
-    console.log(`ðŸŽ“ Custom JARVIS AI: ${CUSTOM_JARVIS_MODEL} (Educational Specialist)`);
+    console.log(`🎓 Custom JARVIS AI: ${CUSTOM_JARVIS_MODEL} (Educational Specialist)`);
 }
 
 // Helper function to call Groq API with key rotation - JARVIS 5.2 Enhanced
@@ -891,8 +921,8 @@ async function callHuggingFaceAPI(systemPrompt, history, question) {
 
 // Only log in development
 if (process.env.NODE_ENV !== 'production') {
-    console.log('ðŸ”‘ GOOGLE_CLIENT_ID =', process.env.GOOGLE_CLIENT_ID);
-    console.log('ðŸ”‘ GOOGLE_CLIENT_SECRET =', process.env.GOOGLE_CLIENT_SECRET);
+    console.log('🔑 GOOGLE_CLIENT_ID =', process.env.GOOGLE_CLIENT_ID);
+    console.log('🔑 GOOGLE_CLIENT_SECRET =', process.env.GOOGLE_CLIENT_SECRET);
 }
 
 const session = require('express-session');
@@ -926,8 +956,8 @@ passport.deserializeUser((obj, done) => done(null, obj));
 // Google Strategy - will be initialized after port is determined
 const hasGoogleCreds = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET;
 if (!hasGoogleCreds) {
-    console.warn("âš ï¸ Google OAuth credentials missing. GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set. Google login disabled.");
-    console.warn("ðŸ‘‰ Add them to .env and restart. Callback URL: http://localhost:" + BASE_PORT + "/auth/google/callback");
+    console.warn("⚠️ Google OAuth credentials missing. GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set. Google login disabled.");
+    console.warn("👉 Add them to .env and restart. Callback URL: http://localhost:" + BASE_PORT + "/auth/google/callback");
 }
 
 // Function to initialize Google Strategy with correct port
@@ -949,7 +979,7 @@ function initGoogleStrategy(port) {
             return done(null, profile);
         }));
 
-        console.log(`ðŸ”— Google OAuth callback set to: ${baseUrl}/auth/google/callback`);
+        console.log(`🔗 Google OAuth callback set to: ${baseUrl}/auth/google/callback`);
     }
 }
 
@@ -967,7 +997,7 @@ const apiLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 25, // Limit to 25 requests per minute (buffer under 30)
     message: {
-        answer: 'âš ï¸ Too many requests. Wait a moment and try again. ðŸŽ¯\n\n**Rate Limit Info:**\n- Free tier allows 30 requests per minute\n- You\'ve hit the limit\n- Wait 60 seconds and try again'
+        answer: '⚠️ Too many requests. Wait a moment and try again. 🎯\n\n**Rate Limit Info:**\n- Free tier allows 30 requests per minute\n- You\'ve hit the limit\n- Wait 60 seconds and try again'
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -1009,7 +1039,7 @@ app.post('/vision', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Image data required' });
         }
         
-        console.log('ðŸ”® [Vision] Analyzing image...');
+        console.log('🔮 [Vision] Analyzing image...');
         
         // Use Gemini Vision API
         const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDqTVxM_Uh-pKXqj6H8NfzC6gV_YQwKxLk';
@@ -1044,14 +1074,14 @@ app.post('/vision', apiLimiter, async (req, res) => {
         
         if (response.data.candidates && response.data.candidates[0]?.content?.parts?.[0]?.text) {
             const answer = response.data.candidates[0].content.parts[0].text;
-            console.log('âœ… [Vision] Image analyzed successfully');
+            console.log('✅ [Vision] Image analyzed successfully');
             res.json({ answer, success: true });
         } else {
             throw new Error('Invalid response from Gemini Vision');
         }
         
     } catch (error) {
-        console.error('âŒ [Vision] Error:', error.message);
+        console.error('❌ [Vision] Error:', error.message);
         res.status(500).json({ 
             error: 'Failed to analyze image', 
             details: error.message 
@@ -1070,9 +1100,9 @@ app.post('/ask', apiLimiter, async (req, res) => {
 
         // Log for debugging
         if (process.env.NODE_ENV !== 'production') {
-            console.log('ðŸ” Question:', lowerQuestion);
-            console.log('ðŸŽ¯ Mode:', mode);
-            console.log('ðŸŒ Web Search:', enableWebSearch);
+            console.log('🔍 Question:', lowerQuestion);
+            console.log('🎯 Mode:', mode);
+            console.log('🌐 Web Search:', enableWebSearch);
         }
 
         const developerKeywords = [
@@ -1086,42 +1116,42 @@ app.post('/ask', apiLimiter, async (req, res) => {
 
         if (isDeveloperQuestion) {
             if (process.env.NODE_ENV !== 'production') {
-                console.log('âœ¨ Returning VISHAL developer response');
+                console.log('✨ Returning VISHAL developer response');
             }
             return res.json({
-                answer: `# ðŸ‘¨â€ðŸ’» My Developer
+                answer: `# 👨‍💻 My Developer
 
-I was developed by **VISHAL** - a talented and passionate developer who brought me to life! ðŸš€
+I was developed by **VISHAL** - a talented and passionate developer who brought me to life! 🚀
 
-## ðŸŽ¯ About My Creation:
+## 🎯 About My Creation:
 - **Developer:** **VISHAL**
 - **Technology Stack:** Node.js, Express.js, Groq AI API
 - **Frontend:** HTML5, CSS3, JavaScript with real-time typing effects
 - **Features:** 
-  - ðŸŽ¤ Voice recognition (multi-language)
-  - ðŸ—£ï¸ Text-to-speech responses
-  - ðŸ’¬ Real-time chat with markdown formatting
-  - ðŸ“ Code syntax highlighting
-  - ðŸŒ Multi-language support (English, Tamil, Hindi)
-  - ðŸ’¾ Chat history management
-  - ðŸ” Google OAuth authentication
-  - ðŸ” Web search with Perplexity-style citations
+  - 🎤 Voice recognition (multi-language)
+  - 🗣️ Text-to-speech responses
+  - 💬 Real-time chat with markdown formatting
+  - 📝 Code syntax highlighting
+  - 🌐 Multi-language support (English, Tamil, Hindi)
+  - 💾 Chat history management
+  - 🔐 Google OAuth authentication
+  - 🔍 Web search with Perplexity-style citations
 
-## ðŸ’¡ VISHAL's Vision:
+## 💡 VISHAL's Vision:
 To create an intelligent, accessible AI assistant that democratizes advanced AI technology for everyone - from students to professionals!
 
 VISHAL designed me to be more than just a chatbot - I'm your intelligent companion, ready to help with:
-- ðŸ’» Coding & debugging
-- ðŸ“š Learning & education  
-- ðŸ§  Problem-solving
-- âœï¸ Creative writing
-- ðŸ“Š Data analysis
+- 💻 Coding & debugging
+- 📚 Learning & education  
+- 🧠 Problem-solving
+- ✍️ Creative writing
+- 📊 Data analysis
 - And much more!
 
-### ðŸŒŸ Special Thanks:
+### 🌟 Special Thanks:
 **A huge shoutout to VISHAL** for the countless hours of development, testing, and refining to make me the best AI assistant I can be!
 
-**Developed with â¤ï¸ by VISHAL** ðŸ˜Šâœ¨`
+**Developed with ❤️ by VISHAL** 😊✨`
             });
         }
 
@@ -1136,7 +1166,7 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
 
         // Generate image if requested
         if (needsImage) {
-            console.log('ðŸŽ¨ Image generation requested...');
+            console.log('🎨 Image generation requested...');
             try {
                 // Extract the prompt (remove the command words)
                 let imagePrompt = question;
@@ -1149,15 +1179,15 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 const seed = Date.now();
                 const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux&seed=${seed}`;
 
-                console.log('âœ… Image generated successfully!');
+                console.log('✅ Image generated successfully!');
                 return res.json({
-                    answer: `ðŸŽ¨ **Image Generated!**\n\n![${imagePrompt}](${imageUrl})\n\n**Prompt:** ${imagePrompt}\n\n*Generated using Pollinations AI (Flux Model)*`,
+                    answer: `🎨 **Image Generated!**\n\n![${imagePrompt}](${imageUrl})\n\n**Prompt:** ${imagePrompt}\n\n*Generated using Pollinations AI (Flux Model)*`,
                     imageUrl: imageUrl,
                     imageGenerated: true,
                     prompt: imagePrompt
                 });
             } catch (imageError) {
-                console.error('âŒ Image generation failed:', imageError.message);
+                console.error('❌ Image generation failed:', imageError.message);
                 // Continue to regular response if image fails
             }
         }
@@ -1168,12 +1198,12 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         let toolResults = '';
 
         if (functionCallingEngine) {
-            console.log('ðŸ”§ Checking if Function Calling is needed...');
+            console.log('🔧 Checking if Function Calling is needed...');
             try {
                 const toolAnalysis = await functionCallingEngine.determineToolsNeeded(question);
                 
                 if (toolAnalysis.needsTools && toolAnalysis.toolCalls && toolAnalysis.toolCalls.length > 0) {
-                    console.log('âœ… Function Calling TRIGGERED - Executing tools...');
+                    console.log('✅ Function Calling TRIGGERED - Executing tools...');
                     
                     // Execute the determined tools
                     const execResults = await functionCallingEngine.executeToolCalls(toolAnalysis.toolCalls);
@@ -1181,13 +1211,13 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                     // Integrate tool results
                     functionCallingResult = await functionCallingEngine.integrateToolResults(question, execResults);
                     
-                    toolResults = `\n\nðŸ”§ **TOOLS USED:** ${functionCallingResult.toolsUsed.join(', ')}\n`;
+                    toolResults = `\n\n🔧 **TOOLS USED:** ${functionCallingResult.toolsUsed.join(', ')}\n`;
                     functionCallingUsed = true;
                     
-                    console.log(`âœ… Function Calling Complete - Tools: ${functionCallingResult.toolsUsed.join(', ')}`);
+                    console.log(`✅ Function Calling Complete - Tools: ${functionCallingResult.toolsUsed.join(', ')}`);
                 }
             } catch (fcError) {
-                console.warn(`âš ï¸ Function Calling error: ${fcError.message}, continuing without tools`);
+                console.warn(`⚠️ Function Calling error: ${fcError.message}, continuing without tools`);
                 functionCallingUsed = false;
             }
         }
@@ -1201,23 +1231,23 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         const useRagPipeline = enableWebSearch !== false && ragPipeline && detectWebSearchNeeded(question);
 
         if (useRagPipeline) {
-            console.log('ðŸš€ Activating Autonomous RAG Pipeline...');
+            console.log('🚀 Activating Autonomous RAG Pipeline...');
             try {
                 const ragResult = await ragPipeline.executePipeline(question, mode || 'general');
                 
                 if (ragResult.type === 'SUCCESS') {
                     // High-confidence response with sources
-                    webContext = `\n\nðŸ“Š **ADVANCED RETRIEVED CONTEXT:**\n\n${ragResult.response}\n\n`;
+                    webContext = `\n\n📊 **ADVANCED RETRIEVED CONTEXT:**\n\n${ragResult.response}\n\n`;
                     webSearchResults = {
                         sources: ragResult.sources,
                         answer: ragResult.response,
                         searchEngine: 'Autonomous RAG Pipeline'
                     };
                     ragPipelineUsed = true;
-                    console.log(`âœ… RAG Pipeline: High confidence response generated`);
+                    console.log(`✅ RAG Pipeline: High confidence response generated`);
                 } else if (ragResult.type === 'CLARIFICATION') {
                     // Low confidence - asking for clarification
-                    console.log(`âš ï¸ RAG Pipeline: Requesting user clarification`);
+                    console.log(`⚠️ RAG Pipeline: Requesting user clarification`);
                     return res.json({
                         answer: ragResult.response,
                         type: 'CLARIFICATION_NEEDED',
@@ -1228,13 +1258,13 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                     });
                 }
             } catch (ragError) {
-                console.warn(`âš ï¸ RAG Pipeline error: ${ragError.message}, falling back to standard search`);
+                console.warn(`⚠️ RAG Pipeline error: ${ragError.message}, falling back to standard search`);
                 ragPipelineUsed = false;
             }
         }
         // ===== TAMIL NADU NEWS INJECTION =====
         // Check if user is asking about Tamil Nadu news/events
-        const tamilNewsKeywords = ['tamil', 'tn', 'tamil nadu', 'recent news', 'latest news', 'news in tamil', 'à®¤à®®à®¿à®´à¯'];
+        const tamilNewsKeywords = ['tamil', 'tn', 'tamil nadu', 'recent news', 'latest news', 'news in tamil', 'தமிழ்'];
         const isTamilNewsQuery = tamilNewsKeywords.some(kw => lowerQuestion.toLowerCase().includes(kw));
         
         let tamilNewsContext = '';
@@ -1242,15 +1272,15 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             try {
                 const latestNews = getLatestNews();
                 if (latestNews && latestNews.length > 0) {
-                    tamilNewsContext = `\n\nðŸ“° **RECENT TAMIL NADU NEWS HEADLINES:**\n`;
+                    tamilNewsContext = `\n\n📰 **RECENT TAMIL NADU NEWS HEADLINES:**\n`;
                     latestNews.slice(0, 10).forEach((item, i) => {
                         tamilNewsContext += `${i + 1}. **${item.title}**\n   Source: ${item.source}\n`;
                     });
                     tamilNewsContext += `\nUse these actual news headlines to answer the user's query about recent Tamil Nadu news.\n`;
-                    console.log('âœ… Tamil Nadu news data injected into context');
+                    console.log('✅ Tamil Nadu news data injected into context');
                 }
             } catch (newsError) {
-                console.warn('âš ï¸ Could not fetch Tamil news:', newsError.message);
+                console.warn('⚠️ Could not fetch Tamil news:', newsError.message);
             }
         }
 
@@ -1259,12 +1289,12 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             const shouldSearchWeb = detectWebSearchNeeded(question);
             
             if (shouldSearchWeb && enableWebSearch !== false) {
-                console.log('ðŸŒ Standard web search auto-detected...');
+                console.log('🌐 Standard web search auto-detected...');
                 try {
                     webSearchResults = await searchWeb(question, mode || 'all');
                     
                     if (webSearchResults && webSearchResults.sources && webSearchResults.sources.length > 0) {
-                        webContext = `\n\nðŸ“š **REAL-TIME CONTEXT FROM WEB SEARCH:**\n\n`;
+                        webContext = `\n\n📚 **REAL-TIME CONTEXT FROM WEB SEARCH:**\n\n`;
                         webContext += `${webSearchResults.answer || ''}\n\n`;
                         webContext += `**Sources Used:**\n`;
                         webSearchResults.sources.forEach((source, i) => {
@@ -1273,10 +1303,10 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                             }
                         });
                         webContext += `\n(Reference these sources in your response when relevant)`;
-                        console.log(`âœ… Web context prepared with ${webSearchResults.sources.length} sources`);
+                        console.log(`✅ Web context prepared with ${webSearchResults.sources.length} sources`);
                     }
                 } catch (error) {
-                    console.log('âš ï¸ Web search failed, continuing with AI knowledge:', error.message);
+                    console.log('⚠️ Web search failed, continuing with AI knowledge:', error.message);
                 }
             }
         }
@@ -1286,31 +1316,31 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
 
         if (!apiKey) {
             return res.json({
-                answer: 'âš ï¸ Please add your Groq API key to .env file!\n\nGet it FREE from: https://console.groq.com/keys'
+                answer: '⚠️ Please add your Groq API key to .env file!\n\nGet it FREE from: https://console.groq.com/keys'
             });
         }
 
-        // ðŸ§  Detect query type for expert routing
+        // 🧠 Detect query type for expert routing
         const queryType = detectQueryType(question);
-        console.log(`ðŸŽ¯ Query type detected: ${queryType.toUpperCase()}`);
+        console.log(`🎯 Query type detected: ${queryType.toUpperCase()}`);
 
-        // ðŸ§  Generate advanced Chain-of-Thought prompt
+        // 🧠 Generate advanced Chain-of-Thought prompt
         let advancedSystemPrompt = generateCoTPrompt(question, queryType, history);
         
-        // ðŸŒ ENHANCE prompt with web search context and citation instructions
+        // 🌐 ENHANCE prompt with web search context and citation instructions
         if (tamilNewsContext) {
             advancedSystemPrompt += tamilNewsContext;
-            advancedSystemPrompt += `\n\nâš ï¸ **IMPORTANT:** Use these real Tamil Nadu news headlines to provide specific, factual answers about recent events.`;
+            advancedSystemPrompt += `\n\n⚠️ **IMPORTANT:** Use these real Tamil Nadu news headlines to provide specific, factual answers about recent events.`;
         } else if (webContext) {
             advancedSystemPrompt += webContext;
-            advancedSystemPrompt += `\n\nâš ï¸ **IMPORTANT:** When answering, naturally cite the sources above using markdown links when providing information from them.`;
+            advancedSystemPrompt += `\n\n⚠️ **IMPORTANT:** When answering, naturally cite the sources above using markdown links when providing information from them.`;
         }
         
         const finalSystemPrompt = systemPrompt || advancedSystemPrompt;
 
         if (process.env.NODE_ENV !== 'production') {
-            console.log('ðŸ¤– JARVIS 5.2 processing with', EXPERT_PERSONAS[queryType].name);
-            if (webContext) console.log('ðŸ“Š Web search context included in prompt');
+            console.log('🤖 JARVIS 5.2 processing with', EXPERT_PERSONAS[queryType].name);
+            if (webContext) console.log('📊 Web search context included in prompt');
         }
 
         // Construct messages array with enhanced context
@@ -1333,7 +1363,7 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         let usedAPI = 'Unknown';
 
         // Try APIs in priority order with automatic failover
-        // GROQ FIRST - Best quality & speed for users! âš¡
+        // GROQ FIRST - Best quality & speed for users! ⚡
         const apiAttempts = [
             {
                 name: 'Groq',
@@ -1375,15 +1405,15 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         // Try each enabled API until one succeeds
         for (const api of apiAttempts.filter(a => a.enabled)) {
             try {
-                console.log(`ðŸ¤– Trying ${api.name}...`);
+                console.log(`🤖 Trying ${api.name}...`);
 
                 answer = await api.call();
                 usedAPI = api.name;
 
-                console.log(`âœ… Got answer from ${api.name}!`);
+                console.log(`✅ Got answer from ${api.name}!`);
                 break; // Success! Stop trying other APIs
             } catch (error) {
-                console.log(`âš ï¸ ${api.name} failed:`, error.message);
+                console.log(`⚠️ ${api.name} failed:`, error.message);
                 // Continue to next API
             }
         }
@@ -1391,7 +1421,7 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         // If all APIs failed, try simple Groq call directly (last resort)
         if (!answer && process.env.GROQ_API_KEY) {
             try {
-                console.log('ðŸ”„ Last resort: Direct Groq API call...');
+                console.log('🔄 Last resort: Direct Groq API call...');
                 const response = await axios.post(
                     'https://api.groq.com/openai/v1/chat/completions',
                     {
@@ -1413,9 +1443,9 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 );
                 answer = response.data.choices[0].message.content;
                 usedAPI = 'Groq (Direct)';
-                console.log('âœ… Direct Groq call succeeded!');
+                console.log('✅ Direct Groq call succeeded!');
             } catch (error) {
-                console.log('âŒ Direct Groq also failed:', error.message);
+                console.log('❌ Direct Groq also failed:', error.message);
             }
         }
 
@@ -1423,21 +1453,21 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         if (!answer) {
             // Return a helpful error message instead of throwing
             return res.json({
-                answer: `âš ï¸ **Service Temporarily Unavailable**
+                answer: `⚠️ **Service Temporarily Unavailable**
 
 I'm having trouble connecting to the AI service right now.
 
-ðŸ”§ **Quick Fixes:**
+🔧 **Quick Fixes:**
 1. **Wait 30 seconds** and try again
 2. Check your internet connection
 3. Backend might be waking up (Render free tier sleeps after inactivity)
 
-ðŸ’¡ **Why this happens:**
+💡 **Why this happens:**
 - Backend on Render free tier goes to sleep after 15 minutes
 - First request after sleep takes 30-60 seconds to wake up
 - All AI APIs are busy/rate limited
 
-ðŸš€ **What to do:**
+🚀 **What to do:**
 - Try again in 30-60 seconds
 - Backend is waking up...
 
@@ -1445,12 +1475,12 @@ I'm having trouble connecting to the AI service right now.
             });
         }
 
-        // ðŸ§  Generate smart follow-up suggestions
+        // 🧠 Generate smart follow-up suggestions
         const followUpSuggestions = generateFollowUpSuggestions(question, answer, queryType);
 
         // Add follow-up section to response
-        if (followUpSuggestions.length > 0 && !answer.includes('ðŸ’¡ **Follow-up')) {
-            answer += `\n\n---\n\nðŸ’¡ **Follow-up Questions:**\n${followUpSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+        if (followUpSuggestions.length > 0 && !answer.includes('💡 **Follow-up')) {
+            answer += `\n\n---\n\n💡 **Follow-up Questions:**\n${followUpSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
         }
 
         // Add API source to response (for debugging)
@@ -1458,7 +1488,7 @@ I'm having trouble connecting to the AI service right now.
             answer += `\n\n_[JARVIS 5.2 | ${EXPERT_PERSONAS[queryType].name} | ${usedAPI}]_`;
         }
 
-        // ðŸŒ Include web search metadata in response
+        // 🌐 Include web search metadata in response
         const responseObject = {
             answer,
             queryType,
@@ -1484,7 +1514,7 @@ I'm having trouble connecting to the AI service right now.
         res.json(responseObject);
 
     } catch (error) {
-        console.error('âŒ ERROR:', error.response?.data || error.message);
+        console.error('❌ ERROR:', error.response?.data || error.message);
 
         // Log full error details for debugging
         if (error.response?.data) {
@@ -1492,27 +1522,27 @@ I'm having trouble connecting to the AI service right now.
         }
 
         if (error.response?.status === 401) {
-            res.json({ answer: 'âš ï¸ Invalid API key! Please check your API key in .env file.' });
+            res.json({ answer: '⚠️ Invalid API key! Please check your API key in .env file.' });
         } else if (error.response?.status === 429) {
             res.json({
-                answer: `âš ï¸ **Rate Limit Exceeded!**
+                answer: `⚠️ **Rate Limit Exceeded!**
 
 The AI service has received too many requests. This is a **Groq API limitation**, not your fault.
 
-ðŸ• **What to do:**
+🕐 **What to do:**
 1. Wait **1-2 minutes**
 2. Try your question again
 3. The limit resets automatically
 
-ðŸ’¡ **Why this happens:**
+💡 **Why this happens:**
 - Free tier allows 30 requests per minute
 - Multiple users may be using the service
 - Heavy testing can trigger this
 
-ðŸš€ **Pro Tip:** Try again in a moment - it'll work! âœ¨`
+🚀 **Pro Tip:** Try again in a moment - it'll work! ✨`
             });
         } else if (error.response?.status === 400) {
-            res.json({ answer: `âš ï¸ Bad request to API. Error: ${error.response?.data?.error?.message || error.message}` });
+            res.json({ answer: `⚠️ Bad request to API. Error: ${error.response?.data?.error?.message || error.message}` });
         } else {
             res.json({ answer: `Error: ${error.message}` });
         }
@@ -1528,13 +1558,13 @@ app.post('/image', async (req, res) => {
             return res.status(400).json({ error: 'Image prompt required' });
         }
 
-        console.log('ðŸŽ¨ Generating image for prompt:', prompt);
+        console.log('🎨 Generating image for prompt:', prompt);
 
         // Use Pollinations.AI as primary (faster, unique images with seed)
         try {
             const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&seed=${Date.now()}`;
 
-            console.log('âœ… Image URL generated via Pollinations.AI');
+            console.log('✅ Image URL generated via Pollinations.AI');
             return res.json({
                 imageUrl: pollinationsUrl,
                 prompt: prompt,
@@ -1542,7 +1572,7 @@ app.post('/image', async (req, res) => {
                 message: 'Image generated successfully'
             });
         } catch (pollinationsError) {
-            console.error('âŒ Pollinations.AI error:', pollinationsError.message);
+            console.error('❌ Pollinations.AI error:', pollinationsError.message);
 
             // Fallback to Hugging Face Stable Diffusion
             try {
@@ -1563,7 +1593,7 @@ app.post('/image', async (req, res) => {
                 const base64Image = Buffer.from(response.data, 'binary').toString('base64');
                 const imageUrl = `data:image/png;base64,${base64Image}`;
 
-                console.log('âœ… Image generated successfully via Hugging Face');
+                console.log('✅ Image generated successfully via Hugging Face');
                 return res.json({
                     imageUrl: imageUrl,
                     prompt: prompt,
@@ -1572,7 +1602,7 @@ app.post('/image', async (req, res) => {
                 });
 
             } catch (hfError) {
-                console.error('âŒ Hugging Face error:', hfError.message);
+                console.error('❌ Hugging Face error:', hfError.message);
                 throw new Error('All image generation services failed');
             }
         }
@@ -1592,11 +1622,11 @@ app.post('/video', async (req, res) => {
             return res.status(400).json({ error: 'Video topic required' });
         }
 
-        console.log('ðŸŽ¥ Searching videos for topic:', topic);
+        console.log('🎥 Searching videos for topic:', topic);
 
         // Try Pexels API (Free, high-quality stock videos)
         try {
-            console.log('ðŸ” Querying Pexels API...');
+            console.log('🔍 Querying Pexels API...');
             const response = await axios.get(
                 `https://api.pexels.com/videos/search?query=${encodeURIComponent(topic)}&per_page=5`,
                 {
@@ -1607,14 +1637,14 @@ app.post('/video', async (req, res) => {
                 }
             );
 
-            console.log(`ðŸ“Š Pexels returned ${response.data.videos?.length || 0} videos`);
+            console.log(`📊 Pexels returned ${response.data.videos?.length || 0} videos`);
 
             if (response.data.videos && response.data.videos.length > 0) {
                 // Get random video from results
                 const randomVideo = response.data.videos[Math.floor(Math.random() * response.data.videos.length)];
                 const videoFile = randomVideo.video_files.find(file => file.quality === 'hd' || file.quality === 'sd') || randomVideo.video_files[0];
 
-                console.log(`âœ… Video found: "${randomVideo.user.name}" - ${videoFile.quality}`);
+                console.log(`✅ Video found: "${randomVideo.user.name}" - ${videoFile.quality}`);
                 return res.json({
                     videoUrl: videoFile.link,
                     thumbnail: randomVideo.image,
@@ -1629,7 +1659,7 @@ app.post('/video', async (req, res) => {
             }
 
         } catch (pexelsError) {
-            console.error('âŒ Pexels API error:', pexelsError.message);
+            console.error('❌ Pexels API error:', pexelsError.message);
 
             // Fallback to Pixabay API
             try {
@@ -1642,7 +1672,7 @@ app.post('/video', async (req, res) => {
                     const randomVideo = response.data.hits[Math.floor(Math.random() * response.data.hits.length)];
                     const videoFile = randomVideo.videos.medium || randomVideo.videos.small;
 
-                    console.log('âœ… Video found via Pixabay API');
+                    console.log('✅ Video found via Pixabay API');
                     return res.json({
                         videoUrl: videoFile.url,
                         thumbnail: randomVideo.userImageURL,
@@ -1652,11 +1682,11 @@ app.post('/video', async (req, res) => {
                     });
                 }
             } catch (pixabayError) {
-                console.error('âŒ Pixabay API error:', pixabayError.message);
+                console.error('❌ Pixabay API error:', pixabayError.message);
             }
 
             // Final fallback
-            console.log('âš ï¸ Using placeholder video');
+            console.log('⚠️ Using placeholder video');
             return res.json({
                 videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
                 topic: topic,
@@ -1682,7 +1712,7 @@ app.post('/generate-image', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Image prompt required' });
         }
 
-        console.log('ðŸŽ¨ Generating image for:', prompt);
+        console.log('🎨 Generating image for:', prompt);
 
         if (!process.env.STABILITY_API_KEY) {
             return res.status(503).json({
@@ -1723,7 +1753,7 @@ app.post('/generate-image', apiLimiter, async (req, res) => {
             const imageBase64 = Buffer.from(response.data).toString('base64');
             const imageUrl = `data:image/png;base64,${imageBase64}`;
 
-            console.log('âœ… Image generated successfully');
+            console.log('✅ Image generated successfully');
             return res.json({
                 success: true,
                 imageUrl: imageUrl,
@@ -1735,7 +1765,7 @@ app.post('/generate-image', apiLimiter, async (req, res) => {
         }
 
     } catch (error) {
-        console.error('âŒ Stability AI error:', error.message);
+        console.error('❌ Stability AI error:', error.message);
         res.status(500).json({
             error: 'Failed to generate image',
             placeholder: 'https://via.placeholder.com/512x512.png?text=Generation+Failed'
@@ -1752,7 +1782,7 @@ app.post('/search-videos', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Search query required' });
         }
 
-        console.log('ðŸ” Searching YouTube for:', query);
+        console.log('🔍 Searching YouTube for:', query);
 
         if (!process.env.YOUTUBE_API_KEY) {
             return res.status(503).json({
@@ -1787,7 +1817,7 @@ app.post('/search-videos', apiLimiter, async (req, res) => {
                 watchUrl: `https://www.youtube.com/watch?v=${item.id.videoId}`
             }));
 
-            console.log(`âœ… Found ${videos.length} videos`);
+            console.log(`✅ Found ${videos.length} videos`);
             return res.json({
                 success: true,
                 videos: videos,
@@ -1802,7 +1832,7 @@ app.post('/search-videos', apiLimiter, async (req, res) => {
         }
 
     } catch (error) {
-        console.error('âŒ YouTube API error:', error.message);
+        console.error('❌ YouTube API error:', error.message);
         res.status(500).json({
             error: 'Failed to search videos',
             message: error.response?.data?.error?.message || error.message
@@ -1819,7 +1849,7 @@ app.post('/generate-lesson', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Topic required' });
         }
 
-        console.log(`ðŸ“š Generating lesson: ${topic} (${difficulty || 'Beginner'}) - Lesson ${lessonNumber || 1}`);
+        console.log(`📚 Generating lesson: ${topic} (${difficulty || 'Beginner'}) - Lesson ${lessonNumber || 1}`);
 
         if (!geminiModel) {
             return res.status(503).json({
@@ -1844,7 +1874,7 @@ Make it engaging, clear, and educational!`;
         const result = await geminiModel.generateContent(prompt);
         const content = result.response.text();
 
-        console.log('âœ… Lesson generated successfully');
+        console.log('✅ Lesson generated successfully');
         return res.json({
             success: true,
             lesson: {
@@ -1857,7 +1887,7 @@ Make it engaging, clear, and educational!`;
         });
 
     } catch (error) {
-        console.error('âŒ Lesson generation error:', error.message);
+        console.error('❌ Lesson generation error:', error.message);
         res.status(500).json({
             error: 'Failed to generate lesson',
             message: error.message
@@ -1874,7 +1904,7 @@ app.post('/generate-quiz', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Topic required' });
         }
 
-        console.log(`â“ Generating ${questionCount} quiz questions on: ${topic}`);
+        console.log(`❓ Generating ${questionCount} quiz questions on: ${topic}`);
 
         if (!geminiModel) {
             return res.status(503).json({
@@ -1910,7 +1940,7 @@ Make questions educational, clear, and appropriate for the difficulty level.`;
         if (jsonMatch) {
             const questions = JSON.parse(jsonMatch[0]);
 
-            console.log(`âœ… Generated ${questions.length} quiz questions`);
+            console.log(`✅ Generated ${questions.length} quiz questions`);
             return res.json({
                 success: true,
                 questions: questions,
@@ -1923,7 +1953,7 @@ Make questions educational, clear, and appropriate for the difficulty level.`;
         }
 
     } catch (error) {
-        console.error('âŒ Quiz generation error:', error.message);
+        console.error('❌ Quiz generation error:', error.message);
         res.status(500).json({
             error: 'Failed to generate quiz',
             message: error.message
@@ -1940,7 +1970,7 @@ app.post('/explain', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Concept to explain required' });
         }
 
-        console.log(`ðŸ’¡ Generating explanation for: ${concept}`);
+        console.log(`💡 Generating explanation for: ${concept}`);
 
         if (!geminiModel) {
             return res.status(503).json({
@@ -1964,7 +1994,7 @@ Use clear language, avoid jargon, and make it engaging!`;
         const result = await geminiModel.generateContent(prompt);
         const explanation = result.response.text();
 
-        console.log('âœ… Explanation generated');
+        console.log('✅ Explanation generated');
         return res.json({
             success: true,
             concept: concept,
@@ -1973,7 +2003,7 @@ Use clear language, avoid jargon, and make it engaging!`;
         });
 
     } catch (error) {
-        console.error('âŒ Explanation error:', error.message);
+        console.error('❌ Explanation error:', error.message);
         res.status(500).json({
             error: 'Failed to generate explanation',
             message: error.message
@@ -1990,11 +2020,11 @@ app.post('/api/tts', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Text required' });
         }
 
-        console.log(`ðŸŽ¤ Generating TTS with: ${voice}...`);
+        console.log(`🎤 Generating TTS with: ${voice}...`);
 
-        // Try Edge TTS first (UNLIMITED FREE!) ðŸ”¥
+        // Try Edge TTS first (UNLIMITED FREE!) 🔥
         try {
-            console.log('ðŸŽµ Using Edge TTS (Unlimited free)...');
+            console.log('🎵 Using Edge TTS (Unlimited free)...');
             
             // Use Node.js to call Python edge-tts
             const { exec } = require('child_process');
@@ -2015,7 +2045,7 @@ asyncio.run(tts())
             // For simpler approach, use edge-tts CLI if available
             return exec(`npx edge-tts --text "${text.replace(/"/g, '\\"')}" --voice "${voice}" --output "${tmpFile}"`, async (error, stdout, stderr) => {
                 if (error) {
-                    console.error('âš ï¸ Edge TTS CLI error, falling back to ElevenLabs...');
+                    console.error('⚠️ Edge TTS CLI error, falling back to ElevenLabs...');
                     // Fallback to ElevenLabs
                     return handleElevenLabsTTS(text, req, res);
                 }
@@ -2028,13 +2058,13 @@ asyncio.run(tts())
                     res.setHeader('X-TTS-Provider', 'Edge TTS');
                     return res.send(audioData);
                 } catch (err) {
-                    console.error('âŒ Edge TTS file error:', err.message);
+                    console.error('❌ Edge TTS file error:', err.message);
                     return handleElevenLabsTTS(text, req, res);
                 }
             });
 
         } catch (edgeError) {
-            console.error('âš ï¸ Edge TTS error:', edgeError.message);
+            console.error('⚠️ Edge TTS error:', edgeError.message);
             // Fallback to ElevenLabs
         }
 
@@ -2042,7 +2072,7 @@ asyncio.run(tts())
         return handleElevenLabsTTS(text, req, res);
 
     } catch (error) {
-        console.error('âŒ TTS error:', error.message);
+        console.error('❌ TTS error:', error.message);
         res.status(500).json({
             error: 'Failed to generate speech',
             message: error.message
@@ -2064,7 +2094,7 @@ async function handleElevenLabsTTS(text, req, res) {
         // Default JARVIS voice ID (George or custom)
         const voiceId = process.env.ELEVENLABS_VOICE_ID || 'pNInz6obpgnuM07QD9MC';
 
-        console.log(`ðŸ—£ï¸ JARVIS generating speech for: "${text.substring(0, 30)}..."`);
+        console.log(`🗣️ JARVIS generating speech for: "${text.substring(0, 30)}..."`);
 
         const response = await axios.post(
             `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -2090,7 +2120,7 @@ async function handleElevenLabsTTS(text, req, res) {
         const audioBase64 = Buffer.from(response.data).toString('base64');
         const audioUrl = `data:audio/mpeg;base64,${audioBase64}`;
 
-        console.log('âœ… JARVIS speech generated successfully');
+        console.log('✅ JARVIS speech generated successfully');
         return res.json({
             success: true,
             audioUrl: audioUrl,
@@ -2098,7 +2128,7 @@ async function handleElevenLabsTTS(text, req, res) {
         });
 
     } catch (error) {
-        console.error('âŒ ElevenLabs error:', error.response?.data || error.message);
+        console.error('❌ ElevenLabs error:', error.response?.data || error.message);
         res.status(500).json({
             error: 'Failed to generate speech',
             message: error.message
@@ -2106,7 +2136,7 @@ async function handleElevenLabsTTS(text, req, res) {
     }
 }
 
-// 7. Deepgram API - Speech-to-Text (Voice Input) ðŸŽ¤
+// 7. Deepgram API - Speech-to-Text (Voice Input) 🎤
 app.post('/api/stt', apiLimiter, async (req, res) => {
     try {
         const { audioBuffer, mimeType = 'audio/wav' } = req.body;
@@ -2123,7 +2153,7 @@ app.post('/api/stt', apiLimiter, async (req, res) => {
             });
         }
 
-        console.log('ðŸŽ¤ Converting speech to text using Deepgram...');
+        console.log('🎤 Converting speech to text using Deepgram...');
 
         // Convert base64 to buffer
         const buffer = Buffer.from(audioBuffer, 'base64');
@@ -2153,7 +2183,7 @@ app.post('/api/stt', apiLimiter, async (req, res) => {
             });
         }
 
-        console.log(`âœ… Speech recognized: "${transcript}" (Confidence: ${(confidence * 100).toFixed(0)}%)`);
+        console.log(`✅ Speech recognized: "${transcript}" (Confidence: ${(confidence * 100).toFixed(0)}%)`);
 
         return res.json({
             success: true,
@@ -2163,7 +2193,7 @@ app.post('/api/stt', apiLimiter, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('âŒ Deepgram STT error:', error.response?.data || error.message);
+        console.error('❌ Deepgram STT error:', error.response?.data || error.message);
         res.status(500).json({
             error: 'Failed to convert speech to text',
             message: error.message
@@ -2181,7 +2211,7 @@ app.get('/api/github/repos', apiLimiter, async (req, res) => {
             });
         }
 
-        console.log('ðŸ™ Fetching GitHub repositories...');
+        console.log('🐙 Fetching GitHub repositories...');
 
         const response = await axios.get('https://api.github.com/user/repos', {
             headers: {
@@ -2205,7 +2235,7 @@ app.get('/api/github/repos', apiLimiter, async (req, res) => {
             updated_at: repo.updated_at
         }));
 
-        console.log(`âœ… Found ${repos.length} repositories`);
+        console.log(`✅ Found ${repos.length} repositories`);
         return res.json({
             success: true,
             repos: repos,
@@ -2213,7 +2243,7 @@ app.get('/api/github/repos', apiLimiter, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('âŒ GitHub API error:', error.message);
+        console.error('❌ GitHub API error:', error.message);
         res.status(500).json({
             error: 'Failed to fetch repositories',
             message: error.message
@@ -2236,7 +2266,7 @@ app.post('/api/github/content', apiLimiter, async (req, res) => {
             });
         }
 
-        console.log(`ðŸ™ Fetching content for ${repo}/${path}...`);
+        console.log(`🐙 Fetching content for ${repo}/${path}...`);
 
         const response = await axios.get(`https://api.github.com/repos/${repo}/contents/${path}`, {
             headers: {
@@ -2255,7 +2285,7 @@ app.post('/api/github/content', apiLimiter, async (req, res) => {
                 url: file.html_url
             }));
 
-            console.log(`âœ… Directory listed: ${files.length} items`);
+            console.log(`✅ Directory listed: ${files.length} items`);
             return res.json({
                 success: true,
                 content: files, // Return array of files
@@ -2267,7 +2297,7 @@ app.post('/api/github/content', apiLimiter, async (req, res) => {
         else if (response.data.content) {
             const content = Buffer.from(response.data.content, 'base64').toString('utf-8');
 
-            console.log('âœ… Content fetched successfully');
+            console.log('✅ Content fetched successfully');
             return res.json({
                 success: true,
                 content: content,
@@ -2279,7 +2309,7 @@ app.post('/api/github/content', apiLimiter, async (req, res) => {
         }
 
     } catch (error) {
-        console.error('âŒ GitHub API error:', error.message);
+        console.error('❌ GitHub API error:', error.message);
         res.status(500).json({
             error: 'Failed to fetch content',
             message: error.message
@@ -2306,7 +2336,7 @@ app.get('/api/news/latest', apiLimiter, async (req, res) => {
             lastUpdate: new Date().toISOString()
         });
     } catch (error) {
-        console.error('âŒ News API error:', error.message);
+        console.error('❌ News API error:', error.message);
         res.status(500).json({
             error: 'Failed to fetch news',
             message: error.message
@@ -2323,7 +2353,7 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Message required' });
         }
 
-        console.log('ðŸ’¬ Chat request:', message.substring(0, 50) + '...');
+        console.log('💬 Chat request:', message.substring(0, 50) + '...');
 
         // Get mode-specific system prompt (from frontend)
         const finalSystemPrompt = systemPrompt || `You are JARVIS - A friendly and helpful AI assistant.`;
@@ -2339,6 +2369,10 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
         // Add conversation history if provided
         if (history && Array.isArray(history)) {
             messages.push(...history);
+            messages.forEach(msg,index=>{}
+
+
+            )
         }
 
         // Add current message
@@ -2380,18 +2414,18 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
         for (const api of apiAttempts.filter(a => a.enabled)) {
             try {
                 if (process.env.NODE_ENV !== 'production') {
-                    console.log(`ðŸ¤– Trying ${api.name}...`);
+                    console.log(`🤖 Trying ${api.name}...`);
                 }
 
                 response = await api.call();
                 usedAPI = api.name;
 
                 if (process.env.NODE_ENV !== 'production') {
-                    console.log(`âœ… Got response from ${api.name}!`);
+                    console.log(`✅ Got response from ${api.name}!`);
                 }
                 break; // Success! Stop trying other APIs
             } catch (error) {
-                console.log(`âš ï¸ ${api.name} failed:`, error.message);
+                console.log(`⚠️ ${api.name} failed:`, error.message);
                 // Continue to next API
             }
         }
@@ -2401,27 +2435,27 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
             throw new Error('All AI APIs failed. Please try again later.');
         }
 
-        // ðŸ” Enhance with Wolfram Alpha knowledge if available
+        // 🔍 Enhance with Wolfram Alpha knowledge if available
         let wolframEnhancement = null;
         try {
             // Detect if this is a factual/computational question
             if (message.match(/(calculate|solve|what is|define|convert|how much|how many|who|when|where|fact|explain|find|derive)/i)) {
-                console.log('ðŸ” Checking Wolfram Alpha for enhanced answer...');
+                console.log('🔍 Checking Wolfram Alpha for enhanced answer...');
                 const wolframResult = await queryWolframAlpha(message);
                 if (wolframResult && wolframResult.success && wolframResult.answer) {
                     wolframEnhancement = wolframResult.answer;
-                    console.log('ðŸ“š Enhanced with Wolfram Alpha knowledge');
+                    console.log('📚 Enhanced with Wolfram Alpha knowledge');
                 }
             }
         } catch (error) {
-            console.log('âš ï¸ Wolfram Alpha enhancement failed (non-blocking):', error.message);
+            console.log('⚠️ Wolfram Alpha enhancement failed (non-blocking):', error.message);
         }
 
-        console.log('âœ… Chat response generated successfully');
+        console.log('✅ Chat response generated successfully');
         
         let finalResponse = response;
         if (wolframEnhancement) {
-            finalResponse = `${response}\n\nðŸ“š **Verified by Wolfram Alpha:**\n${wolframEnhancement}`;
+            finalResponse = `${response}\n\n📚 **Verified by Wolfram Alpha:**\n${wolframEnhancement}`;
         }
 
         return res.json({
@@ -2432,7 +2466,7 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('âŒ Chat API error:', error.message);
+        console.error('❌ Chat API error:', error.message);
         res.status(500).json({
             error: 'Failed to generate response',
             message: error.message
@@ -2440,7 +2474,7 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
     }
 });
 
-// ðŸ” Wolfram Alpha Query API
+// 🔍 Wolfram Alpha Query API
 app.get('/api/wolfram/query', apiLimiter, async (req, res) => {
     try {
         const { q } = req.query;
@@ -2449,7 +2483,7 @@ app.get('/api/wolfram/query', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Query required' });
         }
 
-        console.log(`ðŸ” Wolfram Alpha query: ${q.substring(0, 50)}...`);
+        console.log(`🔍 Wolfram Alpha query: ${q.substring(0, 50)}...`);
 
         const result = await queryWolframAlpha(q);
 
@@ -2471,7 +2505,7 @@ app.get('/api/wolfram/query', apiLimiter, async (req, res) => {
         }
 
     } catch (error) {
-        console.error('âŒ Wolfram Alpha query error:', error.message);
+        console.error('❌ Wolfram Alpha query error:', error.message);
         res.status(500).json({
             error: 'Failed to query Wolfram Alpha',
             message: error.message
@@ -2479,7 +2513,7 @@ app.get('/api/wolfram/query', apiLimiter, async (req, res) => {
     }
 });
 
-// ðŸ“Š Wolfram Alpha Health Check
+// 📊 Wolfram Alpha Health Check
 app.get('/api/wolfram/health', apiLimiter, async (req, res) => {
     try {
         res.json({
@@ -2489,7 +2523,7 @@ app.get('/api/wolfram/health', apiLimiter, async (req, res) => {
             message: 'Ready for queries'
         });
     } catch (error) {
-        console.error('âŒ Wolfram health check error:', error.message);
+        console.error('❌ Wolfram health check error:', error.message);
         res.status(500).json({
             error: 'Wolfram Alpha health check failed',
             message: error.message
@@ -2516,7 +2550,7 @@ app.post('/generate-simple-image', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Prompt required' });
         }
 
-        console.log('ðŸŽ¨ Generating image for:', prompt);
+        console.log('🎨 Generating image for:', prompt);
 
         // Try multiple free image generation APIs
         const encodedPrompt = encodeURIComponent(prompt);
@@ -2623,12 +2657,12 @@ app.post('/api/generate-file', async (req, res) => {
             });
         }
 
-        console.log(`ðŸ“„ Generating ${type} file: ${filename}`);
+        console.log(`📄 Generating ${type} file: ${filename}`);
 
         // Generate file
         const result = await fileGenerator.generateFile(type, content, filename, projectType);
 
-        console.log(`âœ… File generated: ${result.filename} (${result.size} bytes)`);
+        console.log(`✅ File generated: ${result.filename} (${result.size} bytes)`);
 
         res.json(result);
     } catch (error) {
@@ -2702,7 +2736,7 @@ app.post('/api/assignments', (req, res) => {
 
         assignments.push(newAssignment);
 
-        console.log(`âœ… Assignment created: ${title}`);
+        console.log(`✅ Assignment created: ${title}`);
 
         res.json({
             success: true,
@@ -2792,7 +2826,7 @@ app.post('/api/submissions', (req, res) => {
             assignment.submissions = (assignment.submissions || 0) + 1;
         }
 
-        console.log(`âœ… Assignment submitted: ${assignmentId}`);
+        console.log(`✅ Assignment submitted: ${assignmentId}`);
 
         res.json({
             success: true,
@@ -2866,7 +2900,7 @@ app.get('/api/students/:studentId/submissions', (req, res) => {
     }
 });
 
-console.log('âœ… Assignment System API endpoints loaded');
+console.log('✅ Assignment System API endpoints loaded');
 
 function startServer(port, attempts = 0) {
     const server = app.listen(port, () => {
@@ -2876,21 +2910,21 @@ function startServer(port, attempts = 0) {
         initGoogleStrategy(port);
 
         if (process.env.NODE_ENV !== 'production') {
-            console.log(`\nâœ… AI TUTOR SERVER RUNNING!`);
-            console.log(`ðŸŒ Open: http://localhost:${port}`);
+            console.log(`\n✅ AI TUTOR SERVER RUNNING!`);
+            console.log(`🌐 Open: http://localhost:${port}`);
 
             const perplexityKey = process.env.PERPLEXITY_API_KEY;
             const usePerplexity = perplexityKey && perplexityKey !== 'your_perplexity_api_key_here';
 
             if (usePerplexity) {
-                console.log(`ðŸ¤– Using Perplexity API (with Web Search! ðŸŒ)`);
+                console.log(`🤖 Using Perplexity API (with Web Search! 🌐)`);
             } else {
-                console.log(`ðŸ¤– Using FREE Groq API (ChatGPT-like AI)`);
+                console.log(`🤖 Using FREE Groq API (ChatGPT-like AI)`);
             }
 
-            console.log(`ðŸ”’ Google OAuth: ${hasGoogleCreds ? 'ENABLED' : 'DISABLED (missing creds)'}`);
+            console.log(`🔒 Google OAuth: ${hasGoogleCreds ? 'ENABLED' : 'DISABLED (missing creds)'}`);
             if (hasGoogleCreds) {
-                console.log(`\nðŸ“‹ IMPORTANT: Add this URL to your Google Cloud Console:`);
+                console.log(`\n📋 IMPORTANT: Add this URL to your Google Cloud Console:`);
                 console.log(`   Authorized redirect URI: http://localhost:${port}/auth/google/callback`);
             }
             console.log(`\n`);
@@ -2902,20 +2936,20 @@ function startServer(port, attempts = 0) {
         if (err.code === 'EADDRINUSE') {
             if (attempts < 5) {
                 const newPort = port + 1;
-                console.warn(`âš ï¸ Port ${port} in use. Retrying on ${newPort}...`);
+                console.warn(`⚠️ Port ${port} in use. Retrying on ${newPort}...`);
                 startServer(newPort, attempts + 1);
             } else {
-                console.error('âŒ Unable to find a free port after multiple attempts. Please free ports starting at', BASE_PORT);
+                console.error('❌ Unable to find a free port after multiple attempts. Please free ports starting at', BASE_PORT);
                 process.exit(1);
             }
         } else {
-            console.error('âŒ Server error:', err);
+            console.error('❌ Server error:', err);
             process.exit(1);
         }
     });
 }
 
-// â­ JARVIS OMNISCIENT ENDPOINTS
+// ⭐ JARVIS OMNISCIENT ENDPOINTS
 // ================================
 
 // 1. Omniscient Query - Maximum Intelligence
@@ -2927,7 +2961,7 @@ app.post('/omniscient/query', apiLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Question required' });
     }
 
-    console.log(`ðŸ§  JARVIS Omniscient: ${question.substring(0, 60)}...`);
+    console.log(`🧠 JARVIS Omniscient: ${question.substring(0, 60)}...`);
     const result = await jarvisOmniscient.omniscientQuery(question, context, domain);
     
     res.json({
@@ -2940,7 +2974,7 @@ app.post('/omniscient/query', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Omniscient error:', error.message);
+    console.error('❌ Omniscient error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2954,7 +2988,7 @@ app.post('/omniscient/fast', apiLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Question required' });
     }
 
-    console.log(`âš¡ JARVIS Fast: ${question.substring(0, 60)}...`);
+    console.log(`⚡ JARVIS Fast: ${question.substring(0, 60)}...`);
     const result = await jarvisOmniscient.standardQuery(question, context, domain);
     
     res.json({
@@ -2966,7 +3000,187 @@ app.post('/omniscient/fast', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Fast query error:', error.message);
+    console.error('❌ Fast query error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ⭐ SEQUENTIAL AUTO-FALLBACK SYSTEM
+// =====================================
+// Helper: Score confidence of response
+function scoreConfidence(response, model) {
+  let score = 0;
+  
+  if (!response) return 0;
+  
+  const text = typeof response === 'string' ? response : 
+               response.answer || response.text || JSON.stringify(response);
+  
+  // Length check (longer = more confident usually)
+  if (text.length > 100) score += 30;
+  else if (text.length > 50) score += 15;
+  
+  // Uncertainty phrases (negative indicators)
+  const uncertaintyPhrases = [
+    "i'm not sure", "i don't know", "unclear", "uncertain",
+    "cannot determine", "insufficient", "unable to", "not enough",
+    "no information", "unaware", "unprepared"
+  ];
+  const hasUncertainty = uncertaintyPhrases.some(phrase => 
+    text.toLowerCase().includes(phrase)
+  );
+  if (hasUncertainty) score -= 50;
+  
+  // Confidence phrases (positive indicators)
+  const confidencePhrases = [
+    "definitely", "certainly", "clearly", "exactly", "precisely",
+    "confirmed", "verified", "proven", "absolutely", "without doubt",
+    "in summary", "to conclude", "therefore", "hence"
+  ];
+  const hasConfidence = confidencePhrases.some(phrase => 
+    text.toLowerCase().includes(phrase)
+  );
+  if (hasConfidence) score += 25;
+  
+  // Specific model bonuses
+  if (model === 'groq') score += 10; // Already fast, boost confidence
+  if (model === 'claude') score += 15; // Claude is very reliable
+  
+  return Math.max(0, Math.min(100, score));
+}
+
+// Helper: Try API with fallback
+async function tryAPISequentially(question, context, domain, models = ['groq', 'claude', 'openrouter', 'huggingface']) {
+  const results = [];
+  
+  for (const model of models) {
+    try {
+      let response = null;
+      let confidence = 0;
+      
+      switch(model) {
+        case 'groq':
+          if (process.env.GROQ_API_KEY) {
+            response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+              model: 'mixtral-8x7b-32768',
+              messages: [{ role: 'user', content: question }],
+              temperature: 0.3,
+              max_tokens: 1000
+            }, {
+              headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
+              timeout: 10000
+            });
+            response = response.data?.choices?.[0]?.message?.content || response.data;
+            confidence = scoreConfidence(response, 'groq');
+          }
+          break;
+          
+        case 'claude':
+          if (process.env.CLAUDE_API_KEY) {
+            response = await axios.post('https://api.anthropic.com/v1/messages', {
+              model: 'claude-3-opus-20240229',
+              max_tokens: 1024,
+              messages: [{ role: 'user', content: question }]
+            }, {
+              headers: { 'x-api-key': process.env.CLAUDE_API_KEY },
+              timeout: 10000
+            });
+            response = response.data?.content?.[0]?.text || response.data;
+            confidence = scoreConfidence(response, 'claude');
+          }
+          break;
+          
+        case 'openrouter':
+          if (process.env.OPENROUTER_API_KEY) {
+            response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+              model: 'claude-3-opus',
+              messages: [{ role: 'user', content: question }],
+              temperature: 0.3
+            }, {
+              headers: { 'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}` },
+              timeout: 10000
+            });
+            response = response.data?.choices?.[0]?.message?.content || response.data;
+            confidence = scoreConfidence(response, 'openrouter');
+          }
+          break;
+          
+        case 'huggingface':
+          if (process.env.HUGGINGFACE_API_KEY) {
+            response = await axios.post(
+              'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
+              { inputs: question },
+              { headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` }, timeout: 10000 }
+            );
+            response = response.data?.[0]?.generated_text || response.data;
+            confidence = scoreConfidence(response, 'huggingface');
+          }
+          break;
+      }
+      
+      if (response && confidence > 0) {
+        results.push({
+          model,
+          answer: response,
+          confidence,
+          timestamp: new Date().toISOString()
+        });
+        
+        // If confidence is high (>65%), stop searching
+        if (confidence > 65) {
+          break;
+        }
+      }
+    } catch (err) {
+      // Silent fail - continue to next API
+    }
+  }
+  
+  return results;
+}
+
+// 2.5 AUTO-FALLBACK ENDPOINT - Try multiple APIs until confident
+app.post('/omniscient/auto-fallback', apiLimiter, async (req, res) => {
+  try {
+    const { question, context = '', domain = 'general', minConfidence = 50 } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ error: 'Question required' });
+    }
+
+    const results = await tryAPISequentially(question, context, domain);
+    
+    if (!results.length) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'All APIs failed to respond',
+        attempts: 0
+      });
+    }
+    
+    // Find best answer by confidence
+    const best = results.reduce((prev, current) => 
+      (prev.confidence > current.confidence) ? prev : current
+    );
+    
+    res.json({
+      success: true,
+      data: {
+        answer: best.answer,
+        model: best.model,
+        confidence: best.confidence,
+        minConfidenceRequired: minConfidence,
+        allAttempts: results.map(r => ({
+          model: r.model,
+          confidence: r.confidence
+        })),
+        warning: best.confidence < minConfidence ? 
+          `Low confidence (${best.confidence}%). Consider asking for clarification.` : 
+          null
+      }
+    });
+  } catch (error) {
+    console.error('❌ Auto-fallback error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -2980,7 +3194,7 @@ app.post('/omniscient/analyze-code', apiLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Code required' });
     }
 
-    console.log(`ðŸ“Š JARVIS: Analyzing ${language} code...`);
+    console.log(`📊 JARVIS: Analyzing ${language} code...`);
     const result = await jarvisOmniscient.analyzeCode(code, language);
     
     res.json({
@@ -2990,25 +3204,24 @@ app.post('/omniscient/analyze-code', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Code analysis error:', error.message);
+    console.error('❌ Code analysis error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// â­ FULL POWER ENDPOINTS (Only if all APIs available)
+// ⭐ FULL POWER ENDPOINTS (Only if all APIs available)
 // ================================
-
 // 1. Multi-AI Consensus
 app.post('/omniscient/consensus', apiLimiter, async (req, res) => {
   try {
-    if (!jarvisOmniscient.multiAIConsensus) {
+    if (!jarvisOmniscient || !jarvisOmniscient.multiAIConsensus) {
       return res.status(400).json({ 
         error: 'Multi-AI consensus requires all API keys. Add them to .env file.' 
       });
     }
 
     const { question, context = '' } = req.body;
-    console.log('ðŸŒ JARVIS: Multi-AI Consensus...');
+    console.log('🌐 JARVIS: Multi-AI Consensus...');
     const result = await jarvisOmniscient.multiAIConsensus(question, context);
     
     res.json({
@@ -3022,12 +3235,10 @@ app.post('/omniscient/consensus', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Consensus error:', error.message);
+    console.error('❌ Consensus error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
-});
-
-// 2. Real-time Intelligence
+}); // <--- Indha bracket and semicolon correct-ah irukanum// 2. Real-time Intelligence
 app.post('/omniscient/realtime', apiLimiter, async (req, res) => {
   try {
     if (!jarvisOmniscient.realtimeIntelligence) {
@@ -3037,7 +3248,7 @@ app.post('/omniscient/realtime', apiLimiter, async (req, res) => {
     }
 
     const { query } = req.body;
-    console.log('ðŸ” JARVIS: Real-time intelligence...');
+    console.log('🔍 JARVIS: Real-time intelligence...');
     const result = await jarvisOmniscient.realtimeIntelligence(query);
     
     res.json({
@@ -3045,7 +3256,7 @@ app.post('/omniscient/realtime', apiLimiter, async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error('âŒ Real-time intelligence error:', error.message);
+    console.error('❌ Real-time intelligence error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -3060,7 +3271,7 @@ app.post('/omniscient/wolfram', apiLimiter, async (req, res) => {
     }
 
     const { query } = req.body;
-    console.log('ðŸ”¢ JARVIS: Wolfram computation...');
+    console.log('🔢 JARVIS: Wolfram computation...');
     const result = await jarvisOmniscient.wolframComputation(query);
     
     res.json({
@@ -3068,7 +3279,7 @@ app.post('/omniscient/wolfram', apiLimiter, async (req, res) => {
       data: result,
     });
   } catch (error) {
-    console.error('âŒ Wolfram error:', error.message);
+    console.error('❌ Wolfram error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -3083,7 +3294,7 @@ app.post('/omniscient/experts', apiLimiter, async (req, res) => {
     }
 
     const { question } = req.body;
-    console.log('ðŸ‘¥ JARVIS: Expert consultation...');
+    console.log('👥 JARVIS: Expert consultation...');
     const result = await jarvisOmniscient.expertConsultation(question);
     
     res.json({
@@ -3094,7 +3305,7 @@ app.post('/omniscient/experts', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Expert consultation error:', error.message);
+    console.error('❌ Expert consultation error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -3109,7 +3320,7 @@ app.post('/omniscient/deep-reason', apiLimiter, async (req, res) => {
     }
 
     const { problem } = req.body;
-    console.log('ðŸ§  JARVIS: Deep reasoning...');
+    console.log('🧠 JARVIS: Deep reasoning...');
     const result = await jarvisOmniscient.deepReasoning(problem);
     
     res.json({
@@ -3121,7 +3332,7 @@ app.post('/omniscient/deep-reason', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Deep reasoning error:', error.message);
+    console.error('❌ Deep reasoning error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -3136,7 +3347,7 @@ app.post('/omniscient/generate-code', apiLimiter, async (req, res) => {
     }
 
     const { requirement, language = 'javascript' } = req.body;
-    console.log('ðŸ’» JARVIS: Generating pro code...');
+    console.log('💻 JARVIS: Generating pro code...');
     const result = await jarvisOmniscient.generateProCode(requirement, language);
     
     res.json({
@@ -3148,7 +3359,7 @@ app.post('/omniscient/generate-code', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Code generation error:', error.message);
+    console.error('❌ Code generation error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -3163,7 +3374,7 @@ app.post('/omniscient/adaptive-path', apiLimiter, async (req, res) => {
     }
 
     const { goal, level = 'beginner', timeline = 'May 2027' } = req.body;
-    console.log('ðŸŽ“ JARVIS: Creating adaptive path...');
+    console.log('🎓 JARVIS: Creating adaptive path...');
     const result = await jarvisOmniscient.adaptiveLearningPath(goal, level, timeline);
     
     res.json({
@@ -3175,15 +3386,14 @@ app.post('/omniscient/adaptive-path', apiLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('âŒ Adaptive path error:', error.message);
+    console.error('❌ Adaptive path error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-// Status endpoint
+// --- 1. Status Endpoint ---
 app.get('/omniscient/status', (req, res) => {
   const status = {
-    mode: allKeysAvailable ? 'FULL_POWER' : 'LITE_MODE',
+    mode: (typeof allKeysAvailable !== 'undefined' && allKeysAvailable) ? 'FULL_POWER' : 'LITE_MODE',
     apis: {
       gemini: !!process.env.GEMINI_API_KEY,
       claude: !!process.env.CLAUDE_API_KEY,
@@ -3192,85 +3402,210 @@ app.get('/omniscient/status', (req, res) => {
       wolfram: !!process.env.WOLFRAM_API_KEY,
       brave: !!process.env.BRAVE_API_KEY,
     },
-    endpoints: allKeysAvailable ? [
-      '/omniscient/query',
-      '/omniscient/consensus',
-      '/omniscient/realtime',
-      '/omniscient/wolfram',
-      '/omniscient/experts',
-      '/omniscient/deep-reason',
-      '/omniscient/generate-code',
-      '/omniscient/adaptive-path',
+    endpoints: (typeof allKeysAvailable !== 'undefined' && allKeysAvailable) ? [
+      '/omniscient/query', '/omniscient/consensus', '/omniscient/realtime',
+      '/omniscient/wolfram', '/omniscient/experts', '/omniscient/deep-reason',
+      '/omniscient/generate-code', '/omniscient/adaptive-path',
     ] : [
-      '/omniscient/query',
-      '/omniscient/fast',
+      '/omniscient/query', '/omniscient/fast',
     ],
   };
-  
   res.json({ success: true, status });
 });
-      data: {
-        analysis: result.response.text(),
-      },
-    });
-  } catch (error) {
-    console.error('âŒ Code analysis error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
-// 4. Deep Dive - Research Level
+// --- 2. Deep Dive Endpoint ---
 app.post('/omniscient/deep-dive', apiLimiter, async (req, res) => {
   try {
     const { topic } = req.body;
-    
-    if (!topic) {
-      return res.status(400).json({ error: 'Topic required' });
-    }
+    if (!topic) return res.status(400).json({ error: 'Topic required' });
 
-    console.log(`ðŸ“š JARVIS: Deep dive into "${topic}"...`);
+    console.log(`📚 JARVIS: Deep dive into "${topic}"...`);
     const result = await jarvisOmniscient.deepDive(topic);
     
+    // Safety check for Gemini response
+    const content = result.response ? await result.response.text() : result;
+
     res.json({
       success: true,
-      data: {
-        deepDive: result.response.text(),
-      },
+      data: { deepDive: content },
     });
   } catch (error) {
-    console.error('âŒ Deep dive error:', error.message);
+    console.error('❌ Deep dive error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// 5. Learning Path - Personalized Guidance
+// --- 3. Learning Path Endpoint ---
 app.post('/omniscient/learning-path', apiLimiter, async (req, res) => {
   try {
     const { goal, currentLevel, timeline } = req.body;
-    
-    if (!goal) {
-      return res.status(400).json({ error: 'Goal required' });
-    }
+    if (!goal) return res.status(400).json({ error: 'Goal required' });
 
-    console.log(`ðŸŽ¯ JARVIS: Generating learning path for "${goal}"...`);
+    console.log(`🎯 JARVIS: Generating learning path for "${goal}"...`);
     const result = await jarvisOmniscient.generateLearningPath(
       goal,
       currentLevel || 'beginner',
       timeline || 'May 2027'
     );
     
+    const content = result.response ? await result.response.text() : result;
+
     res.json({
       success: true,
-      data: {
-        learningPath: result.response.text(),
-      },
+      data: { learningPath: content },
     });
   } catch (error) {
-    console.error('âŒ Learning path error:', error.message);
+    console.error('❌ Learning path error:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-startServer(BASE_PORT);
+// --- FINAL STEP: SERVER STARTUP (Must be at the very bottom) ---
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`
+    ============================================
+    🚀  JARVIS SERVER IS NOW LIVE!
+    ============================================
+    🌐  URL: http://localhost:${PORT}
+    🎯  Mode: ${process.env.NODE_ENV || 'Development'}
+    ============================================
+    `);
+});
 
+// 📰 Start daily news training system
+console.log('\n📰 Initializing Daily News Training System...');
+try {
+    startDailyUpdates();
+    console.log('✅ Daily news system initialized successfully');
+} catch (err) {
+    console.error('⚠️ Daily news system error (non-blocking):', err.message);
+}
+/**
+ * JARVIS FULL POWER ENDPOINTS
+ * Add this to your backend/index.js before startServer()
+ */
 
+// 1. Multi-AI Consensus
+app.post('/full-power/consensus', async (req, res) => {
+    try {
+        const { question, context = '' } = req.body;
+        if (!question) {
+            return res.status(400).json({ error: 'Question required' });
+        }
+
+        console.log(`🤖 JARVIS Full Power: Multi-AI Consensus for "${question.substring(0, 50)}..."`);
+        // jarvisFullPower is your internal orchestration module
+        const result = await jarvisFullPower.multiAIConsensus(question, context);
+        
+        res.json({
+            success: true,
+            data: {
+                bestAnswer: result.bestAnswer,
+                consensus: result.allResponses,
+                bestAI: result.bestAI,
+                scores: result.scores,
+                reasoning: result.reasoning,
+            },
+        });
+    } catch (error) {
+        console.error('❌ Consensus error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 2. Real-time Search
+app.post('/full-power/search', async (req, res) => {
+    try {
+        const { query } = req.body;
+        if (!query) {
+            return res.status(400).json({ error: 'Query required' });
+        }
+
+        console.log(`🔍 JARVIS: Real-time search for "${query}"...`);
+        const results = await jarvisFullPower.realtimeSearch(query);
+        
+        res.json({
+            success: true,
+            data: {
+                results,
+                query,
+                timestamp: new Date(),
+            },
+        });
+    } catch (error) {
+        console.error('❌ Search error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 3. Image Generation (Stability AI)
+app.post('/full-power/generate-image', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt) {
+            return res.status(400).json({ error: 'Prompt required' });
+        }
+
+        console.log(`🎨 JARVIS: Generating image...`);
+        const result = await jarvisFullPower.generateImage(prompt, process.env.STABILITY_API_KEY);
+        
+        res.json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        console.error('❌ Image generation error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 4. Audio Generation (Text-to-Speech)
+app.post('/full-power/generate-audio', async (req, res) => {
+    try {
+        const { text } = req.body;
+        if (!text) {
+            return res.status(400).json({ error: 'Text required' });
+        }
+
+        console.log(`🔊 JARVIS: Generating audio...`);
+        const audioBuffer = await jarvisFullPower.generateAudio(text, process.env.ELEVENLABS_API_KEY);
+        
+        if (audioBuffer) {
+            res.set('Content-Type', 'audio/mpeg');
+            res.send(audioBuffer);
+        } else {
+            res.status(500).json({ success: false, error: 'Audio generation failed' });
+        }
+    } catch (error) {
+        console.error('❌ Audio generation error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 5. Fast Response (Groq)
+app.post('/full-power/fast-groq', async (req, res) => {
+    try {
+        const { question, context = '' } = req.body;
+        if (!question) {
+            return res.status(400).json({ error: 'Question required' });
+        }
+
+        console.log(`⚡ JARVIS Groq: Fastest response...`);
+        const answer = await jarvisFullPower.queryGroq(question, context);
+        
+        res.json({
+            success: true,
+            data: {
+                answer,
+                model: 'Groq (Mixtral 8x7B)',
+                speed: 'FASTEST',
+            },
+        });
+    } catch (error) {
+        console.error('❌ Groq error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+console.log(`✅ JARVIS Full Power endpoints loaded!`);
