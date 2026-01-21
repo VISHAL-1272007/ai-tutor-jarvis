@@ -10,14 +10,40 @@ const { queryWolframAlpha, getDirectAnswer } = require('./wolfram-simple');
 const AutonomousRAGPipeline = require('./autonomous-rag-pipeline');
 const FunctionCallingEngine = require('./function-calling-engine');
 const JARVISOmniscientLite = require('../jarvis-omniscient-lite');
+const JARVISOmniscientFull = require('../jarvis-omniscient-full');
 
 // Ensure we load .env from backend directory even if process started elsewhere
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-// ‚≠ê Initialize JARVIS Omniscient Lite
-console.log('üß† Initializing JARVIS Omniscient Lite...');
-const jarvisOmniscient = new JARVISOmniscientLite(process.env.GEMINI_API_KEY);
-console.log('‚úÖ JARVIS Omniscient Lite ready!');
+// ‚≠ê Initialize JARVIS Omniscient (Full Power if all keys available)
+console.log('üß† Initializing JARVIS Omniscient...');
+
+let jarvisOmniscient;
+
+const allKeysAvailable = 
+  process.env.GEMINI_API_KEY &&
+  process.env.CLAUDE_API_KEY &&
+  process.env.GROQ_API_KEY &&
+  process.env.PERPLEXITY_API_KEY &&
+  process.env.WOLFRAM_API_KEY &&
+  process.env.BRAVE_API_KEY;
+
+if (allKeysAvailable) {
+  console.log('‚ú® FULL POWER MODE - All APIs available!');
+  jarvisOmniscient = new JARVISOmniscientFull({
+    gemini: process.env.GEMINI_API_KEY,
+    claude: process.env.CLAUDE_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+    perplexity: process.env.PERPLEXITY_API_KEY,
+    wolfram: process.env.WOLFRAM_API_KEY,
+    brave: process.env.BRAVE_API_KEY,
+  });
+} else {
+  console.log('‚ö° LITE MODE - Using Gemini only');
+  jarvisOmniscient = new JARVISOmniscientLite(process.env.GEMINI_API_KEY);
+}
+
+console.log('‚úÖ JARVIS Omniscient initialized!');
 
 // Initialize Google Gemini AI
 let geminiModel = null;
@@ -2938,6 +2964,230 @@ app.post('/omniscient/analyze-code', apiLimiter, async (req, res) => {
     res.json({
       success: true,
       data: {
+        analysis: result.response?.text?.() || result.response?.text || result,
+      },
+    });
+  } catch (error) {
+    console.error('‚ùå Code analysis error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ‚≠ê FULL POWER ENDPOINTS (Only if all APIs available)
+// ================================
+
+// 1. Multi-AI Consensus
+app.post('/omniscient/consensus', apiLimiter, async (req, res) => {
+  try {
+    if (!jarvisOmniscient.multiAIConsensus) {
+      return res.status(400).json({ 
+        error: 'Multi-AI consensus requires all API keys. Add them to .env file.' 
+      });
+    }
+
+    const { question, context = '' } = req.body;
+    console.log('üåê JARVIS: Multi-AI Consensus...');
+    const result = await jarvisOmniscient.multiAIConsensus(question, context);
+    
+    res.json({
+      success: true,
+      data: {
+        bestAnswer: result.bestAnswer,
+        allAnswers: result.allAnswers,
+        scores: result.scores,
+        bestAI: result.bestAI,
+        reasoning: result.reasoning,
+      },
+    });
+  } catch (error) {
+    console.error('‚ùå Consensus error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 2. Real-time Intelligence
+app.post('/omniscient/realtime', apiLimiter, async (req, res) => {
+  try {
+    if (!jarvisOmniscient.realtimeIntelligence) {
+      return res.status(400).json({
+        error: 'Real-time intelligence requires all API keys.'
+      });
+    }
+
+    const { query } = req.body;
+    console.log('üîç JARVIS: Real-time intelligence...');
+    const result = await jarvisOmniscient.realtimeIntelligence(query);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('‚ùå Real-time intelligence error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3. Wolfram Alpha Computation
+app.post('/omniscient/wolfram', apiLimiter, async (req, res) => {
+  try {
+    if (!jarvisOmniscient.wolframComputation) {
+      return res.status(400).json({
+        error: 'Wolfram requires WOLFRAM_API_KEY in .env'
+      });
+    }
+
+    const { query } = req.body;
+    console.log('üî¢ JARVIS: Wolfram computation...');
+    const result = await jarvisOmniscient.wolframComputation(query);
+    
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('‚ùå Wolfram error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4. Expert Consultation
+app.post('/omniscient/experts', apiLimiter, async (req, res) => {
+  try {
+    if (!jarvisOmniscient.expertConsultation) {
+      return res.status(400).json({
+        error: 'Expert consultation requires all APIs'
+      });
+    }
+
+    const { question } = req.body;
+    console.log('üë• JARVIS: Expert consultation...');
+    const result = await jarvisOmniscient.expertConsultation(question);
+    
+    res.json({
+      success: true,
+      data: {
+        experts: result.experts,
+        consensus: result.consensus,
+      },
+    });
+  } catch (error) {
+    console.error('‚ùå Expert consultation error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Deep Reasoning
+app.post('/omniscient/deep-reason', apiLimiter, async (req, res) => {
+  try {
+    if (!jarvisOmniscient.deepReasoning) {
+      return res.status(400).json({
+        error: 'Deep reasoning requires GEMINI_API_KEY'
+      });
+    }
+
+    const { problem } = req.body;
+    console.log('üß† JARVIS: Deep reasoning...');
+    const result = await jarvisOmniscient.deepReasoning(problem);
+    
+    res.json({
+      success: true,
+      data: {
+        reasoning: result.reasoning,
+        model: result.model,
+        depth: result.depth,
+      },
+    });
+  } catch (error) {
+    console.error('‚ùå Deep reasoning error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Pro Code Generation
+app.post('/omniscient/generate-code', apiLimiter, async (req, res) => {
+  try {
+    if (!jarvisOmniscient.generateProCode) {
+      return res.status(400).json({
+        error: 'Code generation requires CLAUDE_API_KEY'
+      });
+    }
+
+    const { requirement, language = 'javascript' } = req.body;
+    console.log('üíª JARVIS: Generating pro code...');
+    const result = await jarvisOmniscient.generateProCode(requirement, language);
+    
+    res.json({
+      success: true,
+      data: {
+        code: result.code,
+        language: result.language,
+        quality: result.quality,
+      },
+    });
+  } catch (error) {
+    console.error('‚ùå Code generation error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Adaptive Learning Path
+app.post('/omniscient/adaptive-path', apiLimiter, async (req, res) => {
+  try {
+    if (!jarvisOmniscient.adaptiveLearningPath) {
+      return res.status(400).json({
+        error: 'Adaptive path requires GEMINI_API_KEY'
+      });
+    }
+
+    const { goal, level = 'beginner', timeline = 'May 2027' } = req.body;
+    console.log('üéì JARVIS: Creating adaptive path...');
+    const result = await jarvisOmniscient.adaptiveLearningPath(goal, level, timeline);
+    
+    res.json({
+      success: true,
+      data: {
+        learningPath: result.learningPath,
+        optimization: result.optimization,
+        timeline: result.timeline,
+      },
+    });
+  } catch (error) {
+    console.error('‚ùå Adaptive path error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Status endpoint
+app.get('/omniscient/status', (req, res) => {
+  const status = {
+    mode: allKeysAvailable ? 'FULL_POWER' : 'LITE_MODE',
+    apis: {
+      gemini: !!process.env.GEMINI_API_KEY,
+      claude: !!process.env.CLAUDE_API_KEY,
+      groq: !!process.env.GROQ_API_KEY,
+      perplexity: !!process.env.PERPLEXITY_API_KEY,
+      wolfram: !!process.env.WOLFRAM_API_KEY,
+      brave: !!process.env.BRAVE_API_KEY,
+    },
+    endpoints: allKeysAvailable ? [
+      '/omniscient/query',
+      '/omniscient/consensus',
+      '/omniscient/realtime',
+      '/omniscient/wolfram',
+      '/omniscient/experts',
+      '/omniscient/deep-reason',
+      '/omniscient/generate-code',
+      '/omniscient/adaptive-path',
+    ] : [
+      '/omniscient/query',
+      '/omniscient/fast',
+    ],
+  };
+  
+  res.json({ success: true, status });
+});
+      data: {
         analysis: result.response.text(),
       },
     });
@@ -3010,3 +3260,189 @@ try {
 } catch (err) {
     console.error('‚ö†Ô∏è Daily news system error (non-blocking):', err.message);
 }
+/ * *  
+   *   = = = = =   J A R V I S   F U L L   P O W E R   E N D P O I N T S   = = = = =  
+   *   A d d   t h i s   t o   y o u r   b a c k e n d / i n d e x . j s   a t   t h e   e n d   b e f o r e   s t a r t S e r v e r ( )  
+   * /  
+  
+ / /   ‚ ≠ ê   F U L L   P O W E R   E N D P O I N T S  
+  
+ / /   1 .   M u l t i - A I   C o n s e n s u s  
+ a p p . p o s t ( ' / f u l l - p o w e r / c o n s e n s u s ' ,   a s y n c   ( r e q ,   r e s )   = >   {  
+     t r y   {  
+         c o n s t   {   q u e s t i o n ,   c o n t e x t   =   ' '   }   =   r e q . b o d y ;  
+          
+         i f   ( ! q u e s t i o n )   {  
+             r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' Q u e s t i o n   r e q u i r e d '   } ) ;  
+         }  
+  
+         c o n s o l e . l o g ( `  xRê   J A R V I S   F u l l   P o w e r :   M u l t i - A I   C o n s e n s u s   f o r   " $ { q u e s t i o n . s u b s t r i n g ( 0 ,   5 0 ) } . . . " ` ) ;  
+         c o n s t   r e s u l t   =   a w a i t   j a r v i s F u l l P o w e r . m u l t i A I C o n s e n s u s ( q u e s t i o n ,   c o n t e x t ) ;  
+          
+         r e s . j s o n ( {  
+             s u c c e s s :   t r u e ,  
+             d a t a :   {  
+                 b e s t A n s w e r :   r e s u l t . b e s t A n s w e r ,  
+                 c o n s e n s u s :   r e s u l t . a l l R e s p o n s e s ,  
+                 b e s t A I :   r e s u l t . b e s t A I ,  
+                 s c o r e s :   r e s u l t . s c o r e s ,  
+                 r e a s o n i n g :   r e s u l t . r e a s o n i n g ,  
+             } ,  
+         } ) ;  
+     }   c a t c h   ( e r r o r )   {  
+         c o n s o l e . e r r o r ( ' ‚ ù R  C o n s e n s u s   e r r o r : ' ,   e r r o r . m e s s a g e ) ;  
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   e r r o r . m e s s a g e   } ) ;  
+     }  
+ } ) ;  
+  
+ / /   2 .   R e a l - t i m e   S e a r c h  
+ a p p . p o s t ( ' / f u l l - p o w e r / s e a r c h ' ,   a s y n c   ( r e q ,   r e s )   = >   {  
+     t r y   {  
+         c o n s t   {   q u e r y   }   =   r e q . b o d y ;  
+          
+         i f   ( ! q u e r y )   {  
+             r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' Q u e r y   r e q u i r e d '   } ) ;  
+         }  
+  
+         c o n s o l e . l o g ( `  x ç   J A R V I S :   R e a l - t i m e   s e a r c h   f o r   " $ { q u e r y } " . . . ` ) ;  
+         c o n s t   r e s u l t s   =   a w a i t   j a r v i s F u l l P o w e r . r e a l t i m e S e a r c h ( q u e r y ) ;  
+          
+         r e s . j s o n ( {  
+             s u c c e s s :   t r u e ,  
+             d a t a :   {  
+                 r e s u l t s ,  
+                 q u e r y ,  
+                 t i m e s t a m p :   n e w   D a t e ( ) ,  
+             } ,  
+         } ) ;  
+     }   c a t c h   ( e r r o r )   {  
+         c o n s o l e . e r r o r ( ' ‚ ù R  S e a r c h   e r r o r : ' ,   e r r o r . m e s s a g e ) ;  
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   e r r o r . m e s s a g e   } ) ;  
+     }  
+ } ) ;  
+  
+ / /   3 .   I m a g e   G e n e r a t i o n  
+ a p p . p o s t ( ' / f u l l - p o w e r / g e n e r a t e - i m a g e ' ,   a s y n c   ( r e q ,   r e s )   = >   {  
+     t r y   {  
+         c o n s t   {   p r o m p t   }   =   r e q . b o d y ;  
+          
+         i f   ( ! p r o m p t )   {  
+             r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' P r o m p t   r e q u i r e d '   } ) ;  
+         }  
+  
+         c o n s o l e . l o g ( `  x}®   J A R V I S :   G e n e r a t i n g   i m a g e . . . ` ) ;  
+         c o n s t   r e s u l t   =   a w a i t   j a r v i s F u l l P o w e r . g e n e r a t e I m a g e ( p r o m p t ,   p r o c e s s . e n v . S T A B I L I T Y _ A P I _ K E Y ) ;  
+          
+         r e s . j s o n ( {  
+             s u c c e s s :   t r u e ,  
+             d a t a :   r e s u l t ,  
+         } ) ;  
+     }   c a t c h   ( e r r o r )   {  
+         c o n s o l e . e r r o r ( ' ‚ ù R  I m a g e   g e n e r a t i o n   e r r o r : ' ,   e r r o r . m e s s a g e ) ;  
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   e r r o r . m e s s a g e   } ) ;  
+     }  
+ } ) ;  
+  
+ / /   4 .   A u d i o   G e n e r a t i o n   ( T e x t - t o - S p e e c h )  
+ a p p . p o s t ( ' / f u l l - p o w e r / g e n e r a t e - a u d i o ' ,   a s y n c   ( r e q ,   r e s )   = >   {  
+     t r y   {  
+         c o n s t   {   t e x t   }   =   r e q . b o d y ;  
+          
+         i f   ( ! t e x t )   {  
+             r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' T e x t   r e q u i r e d '   } ) ;  
+         }  
+  
+         c o n s o l e . l o g ( `  x `  J A R V I S :   G e n e r a t i n g   a u d i o . . . ` ) ;  
+         c o n s t   a u d i o B u f f e r   =   a w a i t   j a r v i s F u l l P o w e r . g e n e r a t e A u d i o ( t e x t ,   p r o c e s s . e n v . E L E V E N L A B S _ A P I _ K E Y ) ;  
+          
+         i f   ( a u d i o B u f f e r )   {  
+             r e s . s e t ( ' C o n t e n t - T y p e ' ,   ' a u d i o / m p e g ' ) ;  
+             r e s . s e n d ( a u d i o B u f f e r ) ;  
+         }   e l s e   {  
+             r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   ' A u d i o   g e n e r a t i o n   f a i l e d '   } ) ;  
+         }  
+     }   c a t c h   ( e r r o r )   {  
+         c o n s o l e . e r r o r ( ' ‚ ù R  A u d i o   g e n e r a t i o n   e r r o r : ' ,   e r r o r . m e s s a g e ) ;  
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   e r r o r . m e s s a g e   } ) ;  
+     }  
+ } ) ;  
+  
+ / /   5 .   S p e e c h - t o - T e x t   ( T r a n s c r i p t i o n )  
+ a p p . p o s t ( ' / f u l l - p o w e r / t r a n s c r i b e ' ,   a s y n c   ( r e q ,   r e s )   = >   {  
+     t r y   {  
+         c o n s t   {   a u d i o U r l   }   =   r e q . b o d y ;  
+          
+         i f   ( ! a u d i o U r l )   {  
+             r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' A u d i o   U R L   r e q u i r e d '   } ) ;  
+         }  
+  
+         c o n s o l e . l o g ( `  x}§   J A R V I S :   T r a n s c r i b i n g   a u d i o . . . ` ) ;  
+         c o n s t   t r a n s c r i p t   =   a w a i t   j a r v i s F u l l P o w e r . t r a n s c r i b e A u d i o ( a u d i o U r l ,   p r o c e s s . e n v . D E E P G R A M _ A P I _ K E Y ) ;  
+          
+         r e s . j s o n ( {  
+             s u c c e s s :   t r u e ,  
+             d a t a :   {  
+                 t r a n s c r i p t ,  
+                 a u d i o U r l ,  
+             } ,  
+         } ) ;  
+     }   c a t c h   ( e r r o r )   {  
+         c o n s o l e . e r r o r ( ' ‚ ù R  T r a n s c r i p t i o n   e r r o r : ' ,   e r r o r . m e s s a g e ) ;  
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   e r r o r . m e s s a g e   } ) ;  
+     }  
+ } ) ;  
+  
+ / /   6 .   G r o q   O n l y   ( F a s t e s t )  
+ a p p . p o s t ( ' / f u l l - p o w e r / f a s t - g r o q ' ,   a s y n c   ( r e q ,   r e s )   = >   {  
+     t r y   {  
+         c o n s t   {   q u e s t i o n ,   c o n t e x t   =   ' '   }   =   r e q . b o d y ;  
+          
+         i f   ( ! q u e s t i o n )   {  
+             r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' Q u e s t i o n   r e q u i r e d '   } ) ;  
+         }  
+  
+         c o n s o l e . l o g ( ` ‚ a°   J A R V I S   G r o q :   F a s t e s t   r e s p o n s e . . . ` ) ;  
+         c o n s t   a n s w e r   =   a w a i t   j a r v i s F u l l P o w e r . q u e r y G r o q ( q u e s t i o n ,   c o n t e x t ) ;  
+          
+         r e s . j s o n ( {  
+             s u c c e s s :   t r u e ,  
+             d a t a :   {  
+                 a n s w e r ,  
+                 m o d e l :   ' G r o q   ( M i x t r a l   8 x 7 B ) ' ,  
+                 s p e e d :   ' F A S T E S T ' ,  
+             } ,  
+         } ) ;  
+     }   c a t c h   ( e r r o r )   {  
+         c o n s o l e . e r r o r ( ' ‚ ù R  G r o q   e r r o r : ' ,   e r r o r . m e s s a g e ) ;  
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   e r r o r . m e s s a g e   } ) ;  
+     }  
+ } ) ;  
+  
+ / /   7 .   O p e n R o u t e r   C l a u d e   ( S m a r t e r )  
+ a p p . p o s t ( ' / f u l l - p o w e r / s m a r t - c l a u d e ' ,   a s y n c   ( r e q ,   r e s )   = >   {  
+     t r y   {  
+         c o n s t   {   q u e s t i o n ,   c o n t e x t   =   ' '   }   =   r e q . b o d y ;  
+          
+         i f   ( ! q u e s t i o n )   {  
+             r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' Q u e s t i o n   r e q u i r e d '   } ) ;  
+         }  
+  
+         c o n s o l e . l o g ( `  xß †   J A R V I S   C l a u d e :   S m a r t   r e s p o n s e . . . ` ) ;  
+         c o n s t   a n s w e r   =   a w a i t   j a r v i s F u l l P o w e r . q u e r y O p e n R o u t e r ( q u e s t i o n ,   c o n t e x t ,   ' c l a u d e ' ) ;  
+          
+         r e s . j s o n ( {  
+             s u c c e s s :   t r u e ,  
+             d a t a :   {  
+                 a n s w e r ,  
+                 m o d e l :   ' C l a u d e   3   O p u s ' ,  
+                 i n t e l l i g e n c e :   ' M A X I M U M ' ,  
+             } ,  
+         } ) ;  
+     }   c a t c h   ( e r r o r )   {  
+         c o n s o l e . e r r o r ( ' ‚ ù R  C l a u d e   e r r o r : ' ,   e r r o r . m e s s a g e ) ;  
+         r e s . s t a t u s ( 5 0 0 ) . j s o n ( {   s u c c e s s :   f a l s e ,   e r r o r :   e r r o r . m e s s a g e   } ) ;  
+     }  
+ } ) ;  
+  
+ c o n s o l e . l o g ( ` ‚ S&   J A R V I S   F u l l   P o w e r   e n d p o i n t s   l o a d e d ! ` ) ;  
+ 
