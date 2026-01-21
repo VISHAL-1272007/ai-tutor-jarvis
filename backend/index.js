@@ -3654,3 +3654,10 @@ try {
  c o n s o l e . l o g ( ` ï¿½ S&   J A R V I S   F u l l   P o w e r   e n d p o i n t s   l o a d e d ! ` ) ; 
  
  
+ 
+ / /   = = = = =   S T A R T   S E R V E R   = = = = =  
+ c o n s t   P O R T   =   p r o c e s s . e n v . P O R T   | |   3 0 0 0 ;  
+ a p p . l i s t e n ( P O R T ,   ( )   = >   {  
+     c o n s o l e . l o g ( \ =Ø€Þ  J A R V I S   P r o +   S e r v e r   r u n n i n g   o n   p o r t   \ \ ) ;  
+ } ) ;  
+ 
