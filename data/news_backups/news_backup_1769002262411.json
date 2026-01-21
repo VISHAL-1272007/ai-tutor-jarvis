@@ -1,334 +1,82 @@
 {
-  "lastUpdate": "2026-01-21T15:21:54.680Z",
+  "lastUpdate": "2026-01-21T13:21:44.069Z",
   "news": [
-    {
-      "title": "சென்னையில் மாபெரும் குப்பை சேகரிப்பு இயக்கமான குப்பைத் திருவிழா",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "என் உயிரில் பாதியாக இருந்த உன்னை கொன்று விட்டேனே.. மனைவியை கொன்று ஸ்டேட்டஸ் வைத்த கார் டிரைவர்",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "ராமதாஸ் பெறாத பிள்ளை திருமாவளவன்: அருள் எம்.எல்.ஏ. பேட்டி",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "பொதுமக்களை அச்சுறுத்தும் ஆடியோவை பரப்பினால் நடவடிக்கை: தூத்துக்குடி காவல்துறை எச்சரிக்கை",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "பொறியியல் பணி: சில ரெயில்கள் ரத்து; பல ரெயில்கள் வழித்தடம் மாற்றம்",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "படுக்கை அறையில் வெடித்த மோதல்...தூங்கிய கணவரை கழுத்தை இறுக்கி கொன்ற மனைவி",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "கல்லூரிகளின் ஆய்வகங்களை மேம்படுத்துவதற்கு ரூ.19.18 கோடி நிதி ஆணையினை வழங்கினார் கோவி. செழியன்",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "தொகுதிப் பங்கீடு குறித்து வெளியான தகவலுக்கு டிடிவி தினகரன் விளக்கம்",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "பிரதமர் மோடி தமிழகம் வருகை - பயண திட்டம் வெளியீடு",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "தூத்துக்குடியில் திருடப்பட்ட 2 பைக்குகள் மீட்பு: 2 பேர் கைது",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "அரசு பஸ்களை இயக்க பெண் ஓட்டுநர்களை நியமிக்க ஒடிசா அரசு முடிவு",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "பத்திர பதிவுத்துறை இணையதளம் நாளை செயல்படாது - அதிகாரி தகவல்",
-      "source": "Dailythanthi",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:48.182Z",
-      "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "தற்போதைய செய்தி",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:50.297Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "எடிட்டர் லைக்ஸ்",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:50.297Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "முந்தைய பதிப்புகள்",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:50.297Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "வெப் ஸ்டோரீஸ்",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:50.297Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "Our Apps Available On",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-21T15:21:50.297Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "Mic Check | &quot;அதிமுக விடுத்த அழைப்பு..&quot;ஓபிஎஸ்ஸை விட்டு விலகியது ஏன்? உடைத்து பேசிய வைத்திலிங்கம்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Uttarpradesh நடுவானில் திக்திக்... திடீரென குளத்தில் இறங்கிய  விமானப்படை விமானம் - பரபரப்பு காட்சி",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Breaking | Sasikala | திமுகவில் இணைந்த வைத்திலிங்கம் | சசிகலா காட்டம்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Today Headlines | மாலை 6 மணி தலைப்புச் செய்திகள் (21-01-2026) | 6 PM Headlines | Thanthi TV",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Today Headlines | இரவு 7 மணி தலைப்புச் செய்திகள் (21-01-2026) | 7PM Headlines | Thanthi TV",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Breaking | Sabarimala Gold Theft | சபரிமலை தங்கம் திருட்டு | சென்னையில் ED கையில் சிக்கிய தங்கம்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Minister Anbil Mahesh | &quot;விரைவில்..&quot; அமைச்சர் கொடுத்த முக்கிய அப்டேட்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "OPS | TN Politics | &quot;நாங்க அரசியல் கட்சி இல்ல.. &quot; ஏர்போர்ட்டில் இருந்து ஓபிஎஸ் சொன்ன வார்த்தை",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Madurai பக்கா பிளானோடு இறங்கி செய்த மாநகராட்சி - ஒரு நிமிஷம் அப்படியே நின்று வியந்த மதுரை மக்கள்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Premalatha | DMDK | ``கூட்டணி முடிவு செய்யவில்லை ஆனா முடிஞ்சுருக்கு..'' | ட்விஸ்ட் வைத்த பிரேமலதா",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Man with Uterus? | Sonography | ஆண் வயிற்றில் கர்ப்பப்பை.. அதிர்ச்சி தந்த மெடிக்கல் ரிப்போர்ட்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Kanchipuram Incident | வெறிநாய் கடித்ததை மறைத்த சிறுவனுக்கு நேர்ந்த சோகம்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T15:21:53.662Z",
-      "url": "https://www.thanthitv.com/news"
-    },
     {
       "title": "தூத்துக்குடியில் நாளை விவசாயிகள் குறை தீர்க்கும் கூட்டம்: கலெக்டர் தகவல்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.597Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "குடியரசு தினம்: திருச்சி விமான நிலையத்தில் 5 அடுக்கு பாதுகாப்பு",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "தனியார் காற்றாலை டவரை அகற்றக்கோரி ரேசன் கார்டை வீசி எறிந்து பொதுமக்கள் போராட்டம்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "ஜெயலலிதாவுக்கு எதிரான வழக்கு - வரி வசூலை நிறுத்தி வைக்க ஐகோர்ட்டு உத்தரவு",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "பியூஷ் கோயலுடன் ஓ.பன்னீர்செல்வம் மகன் திடீர் சந்திப்பு - அரசியலில் அடுத்தடுத்த பரபரப்பு",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "கோழி வளர்க்கும் விவசாயிகளுக்கு ஒரு கிலோவுக்கு ரூ.20 வழங்க நடவடிக்கை: தமிழ்நாடு விவசாயிகள் சங்கம் வலியுறுத்தல்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "சென்னையில் நாளை மறுநாள் மின் தடை ஏற்படும் இடங்கள்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "‘தி.மு.க. அரசு இந்துக்களுக்கு விரோதமானது’ - பியூஷ் கோயல்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "பிரதமர் மோடி பங்கேற்கும் பொதுக்கூட்ட ஏற்பாடுகளை பார்வையிட்ட பியூஷ் கோயல்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "இசை அமைப்பாளர் ஏ.ஆர். ரகுமானுக்கு எதிரான விமர்சனங்கள்; செல்வப்பெருந்தகை கண்டனம்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.089Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
     },
     {
       "title": "செங்கோட்டையனுடன் மனக்கசப்பா? ஆனந்த் பதில்",
       "source": "Dailythanthi",
       "category": "general",
-      "timestamp": "2026-01-21T13:30:58.090Z",
+      "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "BRICS | அமெரிக்காவுக்கு செக் வைக்க இந்தியா பிளான்?-உலக வர்த்தகத்தையே புரட்டி போடும் ஐடியா",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T13:31:01.401Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "TodayGoldRate | வரலாறு காணாத உச்சத்தை தொட்ட தங்கம்..அதிர்ச்சி மேல் அதிர்ச்சி கொடுக்கும் விலை நிலவரம்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T13:31:01.401Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Lightfestival | london | &quot;ஒருவழியா தொடங்கிடுச்சு..&quot; - திருவிழாவை பாக்கவே பயங்கரமா இருக்கே",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T13:31:01.401Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Breaking | Shimjitha | நாட்டையே உலுக்கிய இளைஞர் மரணம்.. கொடூர பெண் ஷிம்ஜிதா கைது",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T13:31:01.401Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Chennai | Sale | குடும்ப கஷ்டத்திற்காக பெற்ற குழந்தையை விற்ற பெற்றோர் - சென்னையில் பேரதிர்ச்சி",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T13:31:01.401Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Venezuela | Trump | டிரம்ப் மூலம் கிடைத்த லாபம்.. இத்தனை கோடியா..! - ஓப்பனாக சொன்ன வெனிசுலா",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T13:31:01.401Z",
-      "url": "https://www.thanthitv.com/news"
-    },
-    {
-      "title": "Puducherry | புதுச்சேரியில் பொதுமக்களுக்கு நலத் திட்ட உதவி வழங்கிய ல.ஜ.க. தலைவர்",
-      "source": "Thanthi TV",
-      "category": "tv",
-      "timestamp": "2026-01-21T13:31:01.401Z",
-      "url": "https://www.thanthitv.com/news"
     },
     {
       "title": "மாமல்லபுரத்தில் 25-ம் தேதி தவெகவின் செயல்வீரர்கள் கூட்டம்?",
@@ -336,6 +84,111 @@
       "category": "general",
       "timestamp": "2026-01-21T13:21:39.598Z",
       "url": "https://www.dailythanthi.com/News"
+    },
+    {
+      "title": "தற்போதைய செய்தி",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-21T13:21:41.447Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "எடிட்டர் லைக்ஸ்",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-21T13:21:41.447Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "முந்தைய பதிப்புகள்",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-21T13:21:41.447Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "வெப் ஸ்டோரீஸ்",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-21T13:21:41.447Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "Our Apps Available On",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-21T13:21:41.447Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "Premalatha | DMDK | ``கூட்டணி முடிவு செய்யவில்லை ஆனா முடிஞ்சுருக்கு..'' | ட்விஸ்ட் வைத்த பிரேமலதா",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "Man with Uterus? | Sonography | ஆண் வயிற்றில் கர்ப்பப்பை.. அதிர்ச்சி தந்த மெடிக்கல் ரிப்போர்ட்",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "Kanchipuram Incident | வெறிநாய் கடித்ததை மறைத்த சிறுவனுக்கு நேர்ந்த சோகம்",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "BRICS | அமெரிக்காவுக்கு செக் வைக்க இந்தியா பிளான்?-உலக வர்த்தகத்தையே புரட்டி போடும் ஐடியா",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "TodayGoldRate | வரலாறு காணாத உச்சத்தை தொட்ட தங்கம்..அதிர்ச்சி மேல் அதிர்ச்சி கொடுக்கும் விலை நிலவரம்",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "Lightfestival | london | &quot;ஒருவழியா தொடங்கிடுச்சு..&quot; - திருவிழாவை பாக்கவே பயங்கரமா இருக்கே",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "Breaking | Shimjitha | நாட்டையே உலுக்கிய இளைஞர் மரணம்.. கொடூர பெண் ஷிம்ஜிதா கைது",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "Chennai | Sale | குடும்ப கஷ்டத்திற்காக பெற்ற குழந்தையை விற்ற பெற்றோர் - சென்னையில் பேரதிர்ச்சி",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "Venezuela | Trump | டிரம்ப் மூலம் கிடைத்த லாபம்.. இத்தனை கோடியா..! - ஓப்பனாக சொன்ன வெனிசுலா",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
+    },
+    {
+      "title": "Puducherry | புதுச்சேரியில் பொதுமக்களுக்கு நலத் திட்ட உதவி வழங்கிய ல.ஜ.க. தலைவர்",
+      "source": "Thanthi TV",
+      "category": "tv",
+      "timestamp": "2026-01-21T13:21:43.018Z",
+      "url": "https://www.thanthitv.com/news"
     },
     {
       "title": "Karunas | Karthi | போனை போட்ட கருணாஸ்.. கார்த்தி செய்த பேருதவி.. ஒரு கிராமமே ஒன்று கூடி நன்றி",
@@ -1192,5 +1045,5 @@
       "url": "https://www.thanthitv.com/news"
     }
   ],
-  "trainingCount": 12
+  "trainingCount": 10
 }
