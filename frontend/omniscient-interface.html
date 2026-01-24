@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS - Omniscient Oracle Interface</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #16181d 100%);
+            color: #e7e9ea;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ================================================================ */
+        /* HEADER */
+        /* ================================================================ */
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #9ca3af;
+            font-size: 1.1em;
+        }
+
+        /* ================================================================ */
+        /* QUERY INPUT */
+        /* ================================================================ */
+
+        .query-section {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 40px;
+            animation: slideUp 0.6s ease-out 0.1s both;
+        }
+
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            gap: 10px;
+        }
+
+        .query-input {
+            flex: 1;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            color: #e7e9ea;
+            font-size: 1em;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .query-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .query-input::placeholder {
+            color: #6b7280;
+        }
+
+        .submit-btn {
+            padding: 16px 30px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        .submit-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* ================================================================ */
+        /* LOADING STATE */
+        /* ================================================================ */
+
+        .loading-container {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading-container.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(59, 130, 246, 0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #9ca3af;
+            font-size: 1.1em;
+        }
+
+        /* ================================================================ */
+        /* RESULTS SECTION */
+        /* ================================================================ */
+
+        .results-section {
+            display: grid;
+            gap: 30px;
+            animation: slideUp 0.6s ease-out 0.2s both;
+        }
+
+        .results-section.hidden {
+            display: none;
+        }
+
+        /* ================================================================ */
+        /* MAIN ANSWER CARD */
+        /* ================================================================ */
+
+        .answer-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .answer-card h2 {
+            color: #3b82f6;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .answer-text {
+            line-height: 1.8;
+            font-size: 1.05em;
+            color: #e7e9ea;
+            margin-bottom: 20px;
+        }
+
+        /* ================================================================ */
+        /* CONFIDENCE BADGE */
+        /* ================================================================ */
+
+        .confidence-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .confidence-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            font-size: 1.8em;
+            font-weight: 700;
+            background: conic-gradient(#3b82f6 var(--confidence), rgba(59, 130, 246, 0.1) 0);
+            border: 3px solid #3b82f6;
+        }
+
+        .confidence-info h4 {
+            color: #10b981;
+            margin-bottom: 5px;
+        }
+
+        .confidence-info p {
+            color: #9ca3af;
+            font-size: 0.9em;
+        }
+
+        .verification-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .verification-badge.verified {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .verification-badge.partial {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+            border: 1px solid #f59e0b;
+        }
+
+        .verification-badge.conflicting {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        /* ================================================================ */
+        /* SOURCES SECTION */
+        /* ================================================================ */
+
+        .sources-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .sources-section h3 {
+            color: #3b82f6;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        .source-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .source-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .source-item:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: #3b82f6;
+            transform: translateX(5px);
+        }
+
+        .source-title {
+            color: #e7e9ea;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .source-snippet {
+            color: #9ca3af;
+            font-size: 0.95em;
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .source-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .source-domain {
+            background: rgba(59, 130, 246, 0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            color: #3b82f6;
+        }
+
+        .source-type {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        /* ================================================================ */
+        /* REASONING TRACE */
+        /* ================================================================ */
+
+        .reasoning-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .reasoning-section h3 {
+            color: #3b82f6;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .reasoning-toggle {
+            background: none;
+            border: none;
+            color: #3b82f6;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+        }
+
+        .reasoning-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .reasoning-trace {
+            display: grid;
+            gap: 12px;
+        }
+
+        .reasoning-step {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            border-radius: 8px;
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            background: #3b82f6;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            color: #e7e9ea;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .step-description {
+            color: #9ca3af;
+            font-size: 0.95em;
+        }
+
+        /* ================================================================ */
+        /* METRICS */
+        /* ================================================================ */
+
+        .metrics-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .metric-value {
+            color: #3b82f6;
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #9ca3af;
+            font-size: 0.9em;
+        }
+
+        /* ================================================================ */
+        /* ERROR STATE */
+        /* ================================================================ */
+
+        .error-container {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            display: none;
+        }
+
+        .error-container.active {
+            display: block;
+        }
+
+        .error-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            color: #ef4444;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        /* ================================================================ */
+        /* ANIMATIONS */
+        /* ================================================================ */
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🧠 JARVIS - Omniscient Oracle</h1>
+            <p>World-Class AI Expert • Live Web Search • Transparent Reasoning • Verified Answers</p>
+        </div>
+
+        <!-- QUERY INPUT -->
+        <div class="query-section">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    class="query-input" 
+                    id="queryInput" 
+                    placeholder="Ask anything... (JARVIS will verify with web search if uncertain)"
+                    onkeypress="if(event.key==='Enter') submitQuery()"
+                >
+                <button class="submit-btn" id="submitBtn" onclick="submitQuery()">
+                    Search & Verify
+                </button>
+            </div>
+        </div>
+
+        <!-- LOADING STATE -->
+        <div class="loading-container" id="loadingContainer">
+            <div class="spinner"></div>
+            <p class="loading-text">🔍 Querying all AI models and searching for live information...</p>
+        </div>
+
+        <!-- ERROR STATE -->
+        <div class="error-container" id="errorContainer">
+            <div class="error-icon">⚠️</div>
+            <p class="error-message" id="errorMessage"></p>
+        </div>
+
+        <!-- RESULTS SECTION -->
+        <div class="results-section hidden" id="resultsSection">
+            
+            <!-- ANSWER CARD -->
+            <div class="answer-card">
+                <h2>✨ Answer</h2>
+                <p class="answer-text" id="answerText"></p>
+                
+                <div class="confidence-section">
+                    <div class="confidence-badge" id="confidenceBadge">
+                        <span id="confidenceScore">0</span>%
+                    </div>
+                    <div class="confidence-info">
+                        <h4>Confidence Level</h4>
+                        <p id="confidenceLevel">Loading...</p>
+                        <div id="verificationBadge"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOURCES CARD -->
+            <div class="sources-section" id="sourcesSection">
+                <h3>📚 Sources</h3>
+                <div class="source-list" id="sourceList"></div>
+            </div>
+
+            <!-- REASONING TRACE -->
+            <div class="reasoning-section">
+                <h3>
+                    🔬 Reasoning Process
+                    <button class="reasoning-toggle" id="reasoningToggle" onclick="toggleReasoning()">▼</button>
+                </h3>
+                <div class="reasoning-trace" id="reasoningTrace"></div>
+            </div>
+
+            <!-- METRICS -->
+            <div class="metrics-section">
+                <div class="metric-card">
+                    <div class="metric-value" id="executionTime">0ms</div>
+                    <div class="metric-label">Execution Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="modelsQueried">4</div>
+                    <div class="metric-label">AI Models Queried</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="sourcesCount">0</div>
+                    <div class="metric-label">Web Sources</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://ai-tutor-jarvis.onrender.com/api/oracle';
+
+        async function submitQuery() {
+            const query = document.getElementById('queryInput').value.trim();
+            
+            if (!query) {
+                alert('Please enter a question');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loadingContainer').classList.add('active');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('errorContainer').classList.remove('active');
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').classList.add('loading');
+
+            try {
+                const response = await fetch(`${API_URL}/query`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        query, 
+                        includeReasoning: true 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.message || 'Unknown error occurred');
+                }
+
+                displayResults(data);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loadingContainer').classList.remove('active');
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').classList.remove('loading');
+            }
+        }
+
+        function displayResults(data) {
+            // Answer
+            document.getElementById('answerText').textContent = data.answer;
+
+            // Confidence
+            const confidenceScore = Math.round(data.confidence.score);
+            document.getElementById('confidenceScore').textContent = confidenceScore;
+            document.getElementById('confidenceBadge').style.setProperty(
+                '--confidence', 
+                `${confidenceScore}%`
+            );
+            document.getElementById('confidenceLevel').textContent = 
+                `${data.confidence.level} (${confidenceScore}%)`;
+
+            // Verification Badge
+            const badge = document.getElementById('verificationBadge');
+            const badgeClass = `verification-badge ${data.verification.toLowerCase().replace(/_/g, '')}`;
+            badge.className = badgeClass;
+            badge.textContent = data.verification.replace(/_/g, ' ');
+
+            // Sources
+            if (data.sources && data.sources.length > 0) {
+                const sourceList = document.getElementById('sourceList');
+                sourceList.innerHTML = data.sources.map((source, idx) => `
+                    <div class="source-item" onclick="window.open('${source.url}', '_blank')">
+                        <div class="source-title">${idx + 1}. ${source.title}</div>
+                        <div class="source-snippet">${source.snippet}</div>
+                        <div class="source-meta">
+                            <span class="source-domain">${source.source}</span>
+                            <span class="source-type">${source.type}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Reasoning
+            if (data.reasoning && data.reasoning.length > 0) {
+                const reasoningTrace = document.getElementById('reasoningTrace');
+                reasoningTrace.innerHTML = data.reasoning.map((step, idx) => `
+                    <div class="reasoning-step">
+                        <div class="step-number">${idx + 1}</div>
+                        <div class="step-content">
+                            <div class="step-title">${step.step}</div>
+                            <div class="step-description">${step.description}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Metrics
+            document.getElementById('executionTime').textContent = `${data.executionTime}ms`;
+            document.getElementById('modelsQueried').textContent = data.aiModelsQueried;
+            document.getElementById('sourcesCount').textContent = data.sources?.length || 0;
+
+            // Show results
+            document.getElementById('resultsSection').classList.remove('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorContainer').classList.add('active');
+        }
+
+        function toggleReasoning() {
+            const toggle = document.getElementById('reasoningToggle');
+            const trace = document.getElementById('reasoningTrace');
+            
+            toggle.classList.toggle('expanded');
+            trace.style.display = trace.style.display === 'none' ? 'grid' : 'none';
+        }
+    </script>
+</body>
+</html>

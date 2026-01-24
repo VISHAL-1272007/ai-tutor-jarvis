@@ -5,6 +5,7 @@ const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
+const omniscientRoutes = require('./omniscient-oracle-routes');
 
 // Safely require modules with error handling
 function safeRequire(modulePath, moduleName) {
@@ -1178,6 +1179,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use('/api/oracle', omniscientRoutes);
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Rate Limiter - Prevent hitting Groq API limits
@@ -3955,12 +3957,36 @@ app.post('/full-power/fast-groq', async (req, res) => {
 // =========================================================
 // 🚀 THE BRIDGE: PYTHON JARVIS CONNECT
 // =========================================================
-app.post('/api/chat', (req, res) => {
+app.post('/api/chat', async (req, res) => {
     const { message } = req.body;
     const { spawn } = require('child_process');
+
+    // DEBUG: Terminal-la enna news irukku nu check panna
+    console.log("🔍 Checking News Database...");
     
-    // Inga 'python' use pannunga
-    const pythonProcess = spawn('python', ['jarvis_chat.py', message]);
+    let newsContext = "";
+    
+    // Inga unga news storage variable-a check pannuvom
+    // Unga code-la 'savedHeadlines' nu irundha adhai use pannunga
+    const dataSource = global.newsDatabase || global.allNews || global.savedHeadlines;
+
+    if (dataSource) {
+        const latestEntries = Object.values(dataSource).flat().slice(-20);
+        newsContext = latestEntries.map(n => n.title).join(" | ");
+        console.log(`✅ Found ${latestEntries.length} headlines to send to Python.`);
+    } else {
+        console.log("⚠️ WARNING: News Database is EMPTY or name is wrong!");
+    }
+
+    const superPrompt = `
+    IMPORTANT: You are JARVIS. Use these specific headlines to answer the user.
+    REAL-TIME DATA: ${newsContext}
+    
+    USER QUESTION: ${message}
+    If headlines are present, don't say you are an AI model. Directly answer the news.
+    `;
+
+    const pythonProcess = spawn('python', ['ai-tutor/backend/jarvis_chat.py', superPrompt]);
 
     let jarvisReply = "";
     pythonProcess.stdout.on('data', (data) => {
@@ -3968,7 +3994,7 @@ app.post('/api/chat', (req, res) => {
     });
 
     pythonProcess.on('close', (code) => {
-        res.json({ reply: jarvisReply.trim() || "Jarvis-ala ippo badhil solla mudiyala nanba!" });
+        res.json({ reply: jarvisReply.trim() || "Jarvis brain is syncing. Try again!" });
     });
 });
 
@@ -3990,7 +4016,7 @@ try {
 }
 
 // // --- PORT DEBUGGED START ---
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Server start panna try pannuvom
 const server = app.listen(PORT, '0.0.0.0', () => {
