@@ -329,12 +329,7 @@ Features:
 ├── Auto HTTPS/SSL
 ├── Fast loading (<2s)
 ├── Automatic deployment from GitHub
-└── Last Update: Jan 21, 2026
-```
-
-### **Backend Deployment** ✅
-
-```
+└── Last Update:
 Platform: Render
 URL: https://ai-tutor-jarvis.onrender.com
 Status: ✅ ACTIVE (after recent fixes)

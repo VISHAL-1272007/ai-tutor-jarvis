@@ -15,7 +15,7 @@ git add .
 echo.
 
 echo Step 3: Committing changes...
-git commit -m "Fix playground.html structure and styling"
+git commit -m "🚀 INTEGRATION COMPLETE: JARVIS Semantic Knowledge Base with Pinecone & Gemini. Ready for 30,000 students."
 echo.
 
 echo Step 4: Pushing to GitHub...

@@ -1,30 +1,12 @@
-# Render Deployment Configuration
-
-# Service Name
-name = ai-tutor-jarvis
-
-# Build Configuration
-[build]
-buildCommand = "cd backend && npm install --production"
-
-# Service Configuration
-[service]
-type = web
-runtime = node
-region = oregon
-branch = main
-rootDir = .
-
-# Start Command
-startCommand = "cd backend && node index.js"
-
-# Health Check
-healthCheckPath = /health
-
-# Environment Variables (Set these in Render dashboard)
-# GROQ_API_KEY
-# GOOGLE_CLIENT_ID
-# GOOGLE_CLIENT_SECRET
-# SESSION_SECRET
-# NODE_ENV=production
-# PORT (auto-provided by Render)
+services:
+  - type: web
+    name: ai-tutor-jarvis
+    env: node
+    plan: free
+    buildCommand: "npm install && cd backend && npm install && pip install -r ../requirements.txt"
+    startCommand: "cd backend && node index.js"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.10.12

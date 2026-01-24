@@ -812,6 +812,38 @@ function setupEventListeners() {
         });
     }
 
+    // ⭐ Sync Knowledge Base Button (NEW)
+    const syncKnowledgeBtn = document.getElementById('syncKnowledgeBtn');
+    if (syncKnowledgeBtn) {
+        syncKnowledgeBtn.addEventListener('click', async () => {
+            const originalContent = syncKnowledgeBtn.innerHTML;
+            syncKnowledgeBtn.disabled = true;
+            syncKnowledgeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Syncing...</span>';
+            
+            try {
+                const response = await fetch(`${BACKEND_BASE_URL}/api/knowledge/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    syncKnowledgeBtn.innerHTML = '<i class="fas fa-check"></i> <span>Sync Success</span>';
+                } else {
+                    throw new Error(data.error || 'Sync failed');
+                }
+            } catch (error) {
+                console.error('❌ Knowledge sync failed:', error);
+                syncKnowledgeBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>Error</span>';
+            } finally {
+                setTimeout(() => {
+                    syncKnowledgeBtn.innerHTML = originalContent;
+                    syncKnowledgeBtn.disabled = false;
+                }, 3000);
+            }
+        });
+    }
+
     // Language change
     if (elements.languageSelector) {
         elements.languageSelector.addEventListener('change', (e) => {

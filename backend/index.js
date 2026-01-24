@@ -25,6 +25,7 @@ const JARVISOmniscientFull = safeRequire('../jarvis-omniscient-full', 'jarvis-om
 const JARVISFullPower = safeRequire('../jarvis-full-power', 'jarvis-full-power');
 const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggressive-prompt');
 const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
+const pineconeIntegration = safeRequire('./pinecone-integration', 'pinecone-integration');
 
 const startDailyUpdates = dailyNews?.startDailyUpdates || (() => {});
 const getLatestNews = dailyNews?.getLatestNews || (() => {});
@@ -563,17 +564,40 @@ async function executeRagPipeline(question, existingContext, llmModel = 'groq') 
         console.log(`🔍 RAG Pipeline: Step 1 - Extracting keywords...`);
         const keywords = extractKeywords(question);
         
-        console.log(`📡 RAG Pipeline: Step 2 - Fetching latest context from Serper...`);
+        console.log(`📡 RAG Pipeline: Step 2A - Fetching latest context from Serper...`);
         const contextResults = await fetchSerperContext(keywords);
         
+        console.log(`📡 RAG Pipeline: Step 2B - Fetching semantic knowledge from Pinecone...`);
+        let pineconeResults = [];
+        try {
+            if (pineconeIntegration && pineconeIntegration.searchPineconeKnowledge) {
+                const pineconeMatches = await pineconeIntegration.searchPineconeKnowledge(question, 3);
+                pineconeResults = pineconeMatches.map(p => ({
+                    title: p.metadata.title,
+                    snippet: p.metadata.description,
+                    link: p.metadata.url,
+                    source: `${p.metadata.source} (Knowledge Base)`,
+                    date: p.metadata.publishedAt,
+                    type: 'semantic_knowledge',
+                    score: p.score
+                }));
+                console.log(`✅ Pinecone retrieved ${pineconeResults.length} semantic matches`);
+            }
+        } catch (pError) {
+            console.warn('⚠️ Pinecone search failed:', pError.message);
+        }
+
+        // Merge results, prioritizing semantic knowledge if score is high
+        const combinedResults = [...pineconeResults, ...contextResults];
+        
         console.log(`📝 RAG Pipeline: Step 3 - Building enhanced prompt with context...`);
-        const ragPrompt = buildRagPrompt(question, contextResults);
+        const ragPrompt = buildRagPrompt(question, combinedResults);
         
         console.log(`🧠 RAG Pipeline: Step 4 - Sending to LLM with context priority...`);
         
         return {
             systemPrompt: ragPrompt,
-            contextSources: contextResults,
+            contextSources: combinedResults,
             keywords,
             enriched: true
         };
@@ -3258,6 +3282,12 @@ app.post('/omniscient/rag-query', apiLimiter, async (req, res) => {
   }
 });
 
+// ⭐ High-Performance Knowledge Base Endpoints (NEW)
+if (pineconeIntegration) {
+  app.post('/api/knowledge/search', pineconeIntegration.knowledgeSearchEndpoint);
+  app.post('/api/knowledge/update', pineconeIntegration.knowledgeUpdateEndpoint);
+}
+
 // 1. Original Query Endpoint
 app.post('/omniscient/query', apiLimiter, async (req, res) => {
   try {
@@ -3782,8 +3812,8 @@ app.post('/omniscient/learning-path', apiLimiter, async (req, res) => {
     console.log(`🎯 JARVIS: Generating learning path for "${goal}"...`);
     const result = await jarvisOmniscient.generateLearningPath(
       goal,
-      currentLevel || 'beginner',
-      timeline || 'May 2027'
+      currentLevel || 'begnner',
+      timeline || 'May 2028'
     );
     
     const content = result.response ? await result.response.text() : result;
@@ -3798,42 +3828,17 @@ app.post('/omniscient/learning-path', apiLimiter, async (req, res) => {
   }
 });
 
-// --- FINAL STEP: SERVER STARTUP (Must be at the very bottom) ---
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`
-    ============================================
-    🚀  JARVIS SERVER IS NOW LIVE!
-    ============================================
-    🌐  URL: http://localhost:${PORT}
-    🎯  Mode: ${process.env.NODE_ENV || 'Development'}
-    ============================================
-    `);
-});
-
-// 📰 Start daily news training system
-console.log('\n📰 Initializing Daily News Training System...');
-try {
-    startDailyUpdates();
-    console.log('✅ Daily news system initialized successfully');
-} catch (err) {
-    console.error('⚠️ Daily news system error (non-blocking):', err.message);
-}
-/**
- * JARVIS FULL POWER ENDPOINTS
- * Add this to your backend/index.js before startServer()
- */
+// =========================================================
+// JARVIS FULL POWER ENDPOINTS
+// =========================================================
 
 // 1. Multi-AI Consensus
 app.post('/full-power/consensus', async (req, res) => {
     try {
         const { question, context = '' } = req.body;
-        if (!question) {
-            return res.status(400).json({ error: 'Question required' });
-        }
+        if (!question) return res.status(400).json({ error: 'Question required' });
 
         console.log(`🤖 JARVIS Full Power: Multi-AI Consensus for "${question.substring(0, 50)}..."`);
-        // jarvisFullPower is your internal orchestration module
         const result = await jarvisFullPower.multiAIConsensus(question, context);
         
         res.json({
@@ -3856,74 +3861,35 @@ app.post('/full-power/consensus', async (req, res) => {
 app.post('/full-power/search', async (req, res) => {
     try {
         const { query, type = 'news' } = req.body;
-        if (!query) {
-            return res.status(400).json({ error: 'Query required' });
-        }
+        if (!query) return res.status(400).json({ error: 'Query required' });
 
         console.log(`🔍 JARVIS: Real-time search for "${query}" (${type})...`);
         
-        // Try Serper first if configured (with dual key support)
+        // Try Serper first if configured
         const serperKeys = SEARCH_APIS.serper?.keys || [];
         if (serperKeys.length > 0 && (type === 'news' || type === 'all')) {
-            for (let i = 0; i < serperKeys.length; i++) {
+            // ... (Existing Serper Logic) ...
+             for (let i = 0; i < serperKeys.length; i++) {
                 try {
                     const response = await axios.post('https://google.serper.dev/news', {
-                        q: query,
-                        gl: 'in',
-                        hl: 'ta'
-                    }, {
-                        headers: {
-                            'X-API-KEY': serperKeys[i],
-                            'Content-Type': 'application/json'
-                        },
-                        timeout: 8000
-                    });
+                        q: query, gl: 'in', hl: 'ta'
+                    }, { headers: { 'X-API-KEY': serperKeys[i], 'Content-Type': 'application/json' } });
 
-                    const articles = response.data?.news || [];
-                    const mapped = articles.map(article => ({
-                        title: article.title,
-                        description: article.snippet,
-                        url: article.link,
-                        source: article.source,
-                        image: article.imageUrl,
-                        date: article.date,
-                        type: 'news'
+                    const mapped = (response.data?.news || []).map(article => ({
+                        title: article.title, description: article.snippet, url: article.link,
+                        source: article.source, image: article.imageUrl, date: article.date, type: 'news'
                     }));
 
-                    return res.json({
-                        success: true,
-                        data: {
-                            results: mapped,
-                            query,
-                            timestamp: new Date(),
-                            source: 'serper-news',
-                            count: mapped.length,
-                            keyUsed: i + 1
-                        },
-                    });
-                } catch (serperError) {
-                    console.warn(`⚠️ Serper key ${i + 1} failed: ${serperError.message}`);
-                    if (i < serperKeys.length - 1) {
-                        console.log(`🔄 Trying backup Serper key...`);
-                    }
-                }
+                    return res.json({ success: true, data: { results: mapped, source: 'serper-news' } });
+                } catch (e) { continue; }
             }
         }
 
-        // Fallback to jarvisFullPower if available
+        // Fallback to internal engine
         if (jarvisFullPower && jarvisFullPower.realtimeSearch) {
             const results = await jarvisFullPower.realtimeSearch(query);
-            return res.json({
-                success: true,
-                data: {
-                    results,
-                    query,
-                    timestamp: new Date(),
-                    source: 'jarvis-fallback'
-                },
-            });
+            return res.json({ success: true, data: { results, source: 'jarvis-fallback' } });
         }
-
         throw new Error('No search service available');
     } catch (error) {
         console.error('❌ Search error:', error.message);
@@ -3931,34 +3897,26 @@ app.post('/full-power/search', async (req, res) => {
     }
 });
 
-// 3. Image Generation (Stability AI)
+// 3. Image Generation
 app.post('/full-power/generate-image', async (req, res) => {
     try {
         const { prompt } = req.body;
-        if (!prompt) {
-            return res.status(400).json({ error: 'Prompt required' });
-        }
+        if (!prompt) return res.status(400).json({ error: 'Prompt required' });
 
         console.log(`🎨 JARVIS: Generating image...`);
         const result = await jarvisFullPower.generateImage(prompt, process.env.STABILITY_API_KEY);
-        
-        res.json({
-            success: true,
-            data: result,
-        });
+        res.json({ success: true, data: result });
     } catch (error) {
-        console.error('❌ Image generation error:', error.message);
+        console.error('❌ Image error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-// 4. Audio Generation (Text-to-Speech)
+// 4. Audio Generation
 app.post('/full-power/generate-audio', async (req, res) => {
     try {
         const { text } = req.body;
-        if (!text) {
-            return res.status(400).json({ error: 'Text required' });
-        }
+        if (!text) return res.status(400).json({ error: 'Text required' });
 
         console.log(`🔊 JARVIS: Generating audio...`);
         const audioBuffer = await jarvisFullPower.generateAudio(text, process.env.ELEVENLABS_API_KEY);
@@ -3970,7 +3928,7 @@ app.post('/full-power/generate-audio', async (req, res) => {
             res.status(500).json({ success: false, error: 'Audio generation failed' });
         }
     } catch (error) {
-        console.error('❌ Audio generation error:', error.message);
+        console.error('❌ Audio error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -3979,20 +3937,14 @@ app.post('/full-power/generate-audio', async (req, res) => {
 app.post('/full-power/fast-groq', async (req, res) => {
     try {
         const { question, context = '' } = req.body;
-        if (!question) {
-            return res.status(400).json({ error: 'Question required' });
-        }
+        if (!question) return res.status(400).json({ error: 'Question required' });
 
         console.log(`⚡ JARVIS Groq: Fastest response...`);
         const answer = await jarvisFullPower.queryGroq(question, context);
         
         res.json({
             success: true,
-            data: {
-                answer,
-                model: 'Groq (Mixtral 8x7B)',
-                speed: 'FASTEST',
-            },
+            data: { answer, model: 'Groq (Mixtral 8x7B)', speed: 'FASTEST' },
         });
     } catch (error) {
         console.error('❌ Groq error:', error.message);
@@ -4000,4 +3952,67 @@ app.post('/full-power/fast-groq', async (req, res) => {
     }
 });
 
+// =========================================================
+// 🚀 THE BRIDGE: PYTHON JARVIS CONNECT
+// =========================================================
+app.post('/api/chat', (req, res) => {
+    const { message } = req.body;
+    const { spawn } = require('child_process');
+    
+    // Inga 'python' use pannunga
+    const pythonProcess = spawn('python', ['jarvis_chat.py', message]);
+
+    let jarvisReply = "";
+    pythonProcess.stdout.on('data', (data) => {
+        jarvisReply += data.toString();
+    });
+
+    pythonProcess.on('close', (code) => {
+        res.json({ reply: jarvisReply.trim() || "Jarvis-ala ippo badhil solla mudiyala nanba!" });
+    });
+});
+
 console.log(`✅ JARVIS Full Power endpoints loaded!`);
+
+// =========================================================
+// 📰 NEWS SYSTEM & SERVER STARTUP (Only Once!)
+// =========================================================
+
+console.log('\n📰 Initializing Daily News Training System...');
+try {
+    // Check if function exists before calling
+    if (typeof startDailyUpdates === 'function') {
+        startDailyUpdates();
+        console.log('✅ Daily news system initialized successfully');
+    }
+} catch (err) {
+    console.error('⚠️ Daily news system error (non-blocking):', err.message);
+}
+
+// // --- PORT DEBUGGED START ---
+const PORT = process.env.PORT || 3000;
+
+// Server start panna try pannuvom
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`
+    ============================================
+    🚀  JARVIS SERVER IS NOW LIVE!
+    ============================================
+    🌐  URL: http://localhost:${PORT}
+    ============================================
+    `);
+});
+
+// Port error vandha handle panna indha logic:
+server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+        console.log(`⚠️ Port ${PORT} busy-ah irukku! 5 seconds-la thirumba try panren...`);
+        setTimeout(() => {
+            server.close();
+            server.listen(PORT);
+        }, 5000);
+    } else {
+        console.error("❌ Periya error nanba:", e);
+    }
+});
+// --- PORT DEBUGGED END ---
