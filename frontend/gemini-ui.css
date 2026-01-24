@@ -1,0 +1,299 @@
+/* ===== GEMINI AI DESIGN SYSTEM FOR JARVIS ===== */
+/* Completely redesigned interface following Google Gemini 2024-2025 specs */
+
+:root {
+    --gemini-bg: #131314;
+    --gemini-surface: #1e1f20;
+    --gemini-surface-hover: #282a2c;
+    --gemini-sidebar: #1e1f20;
+    --gemini-text: #e3e3e3;
+    --gemini-text-muted: #8e918f;
+    --gemini-blue: #4285f4;
+    --gemini-purple: #9b72cb;
+    --gemini-red: #d96570;
+    --gemini-pill: #1e1f20;
+    --gemini-border: #3c4043;
+    --gemini-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Text Gradients */
+    --gemini-gradient: linear-gradient(74deg, #4285f4 0, #9b72cb 9%, #d96570 20%, #d96570 24%, #9b72cb 35%, #4285f4 44%, #9b72cb 50%);
+}
+
+body {
+    background-color: var(--gemini-bg) !important;
+    color: var(--gemini-text) !important;
+    font-family: 'Google Sans', 'Inter', sans-serif !important;
+}
+
+/* SIDEBAR REDESIGN */
+.sidebar {
+    background-color: var(--gemini-sidebar) !important;
+    border-right: none !important;
+    width: 280px !important;
+    transition: var(--gemini-transition) !important;
+}
+
+.new-chat-btn {
+    background-color: #37393b !important;
+    color: var(--gemini-text) !important;
+    border-radius: 12px !important;
+    padding: 12px 24px !important;
+    margin: 16px !important;
+    font-weight: 500 !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: auto !important;
+}
+
+.new-chat-btn:hover {
+    background-color: #444746 !important;
+}
+
+/* MAIN CHAT AREA */
+.chat-main {
+    background-color: var(--gemini-bg) !important;
+}
+
+/* HELO TEXT (GEMINI STYLE) */
+.welcome-header h1 {
+    font-size: 56px !important;
+    font-weight: 500 !important;
+    background: linear-gradient(74deg, #4285f4 0, #9b72cb 9%, #d96570 20%, #d96570 24%, #9b72cb 35%, #4285f4 44%, #9b72cb 50%, #d96570 56%) !important;
+    background-size: 400% 100% !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    margin-bottom: 24px !important;
+    animation: gemini-gradient 8s linear infinite !important;
+}
+
+@keyframes gemini-gradient {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 400% 50%; }
+}
+
+/* ACTION CHIPS / SUGGESTIONS */
+.action-chips {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 16px !important;
+    max-width: 1000px !important;
+    margin: 40px auto !important;
+}
+
+.chip {
+    background: var(--gemini-surface) !important;
+    border: 1px solid var(--gemini-border) !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    color: var(--gemini-text) !important;
+    text-align: left !important;
+    transition: var(--gemini-transition) !important;
+    cursor: pointer !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+}
+
+.chip:hover {
+    background: var(--gemini-surface-hover) !important;
+}
+
+.chip i {
+    font-size: 24px !important;
+    margin-bottom: 30px !important;
+    opacity: 0.8 !important;
+}
+
+/* INPUT SECTION (GEMINI PILL) */
+.input-container {
+    max-width: 800px !important;
+    margin: 0 auto 30px auto !important;
+    padding: 0 20px !important;
+}
+
+.input-wrapper {
+    background: var(--gemini-pill) !important;
+    border: 1px solid var(--gemini-border) !important;
+    border-radius: 32px !important;
+    padding: 8px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 60px !important;
+}
+
+.query-input {
+    background: transparent !important;
+    border: none !important;
+    color: var(--gemini-text) !important;
+    padding: 12px !important;
+    font-size: 16px !important;
+    width: 100% !important;
+}
+
+.query-input:focus {
+    outline: none !important;
+}
+
+.input-wrapper .icon-btn {
+    background: transparent !important;
+    border: none !important;
+    color: var(--gemini-text) !important;
+    padding: 10px !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+    transition: var(--gemini-transition) !important;
+}
+
+.input-wrapper .icon-btn:hover {
+    background: rgba(255,255,255,0.1) !important;
+}
+
+/* MESSAGES */
+.message {
+    max-width: 80% !important;
+    margin: 20px auto !important;
+    padding: 20px !important;
+    background: transparent !important;
+}
+
+.message.user {
+    background: var(--gemini-surface) !important;
+    border-radius: 20px !important;
+}
+
+.message.jarvis {
+    border-left: none !important;
+}
+
+/* Keep Orb Animation */
+.jarvis-orb-minimal {
+    margin: 40px auto !important;
+}
+
+/* Fix main layout */
+.home-page {
+    display: flex !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+}
+
+.main-content {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    position: relative !important;
+}
+
+.chat-container {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 20px !important;
+}
+
+.welcome-screen {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 70vh !important;
+    padding-bottom: 100px !important;
+}
+
+.welcome-header {
+    text-align: center !important;
+    margin-bottom: 40px !important;
+}
+
+/* Gemini Sidebar Text */
+.sidebar span {
+    color: var(--gemini-text) !important;
+    font-size: 14px !important;
+}
+
+.sidebar i {
+    color: var(--gemini-text) !important;
+    font-size: 18px !important;
+    width: 24px !important;
+}
+
+/* Floating Input at bottom */
+.input-area {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: transparent !important;
+    padding: 20px !important;
+    border: none !important;
+}
+
+.input-container {
+    max-width: 850px !important;
+    margin: 0 auto !important;
+}
+
+.input-footer {
+    text-align: center !important;
+    font-size: 12px !important;
+    color: var(--gemini-text-muted) !important;
+    margin-top: 10px !important;
+}
+
+textarea#messageInput {
+    max-height: 200px !important;
+    overflow-y: auto !important;
+}
+
+.send-btn-gemini {
+    color: var(--gemini-blue) !important;
+}
+
+/* Sidebar Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed !important;
+        left: -280px !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        z-index: 1000 !important;
+        transition: left 0.3s ease !important;
+    }
+
+    .sidebar.active {
+        left: 0 !important;
+    }
+
+    .sidebar-overlay.active {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0,0,0,0.5) !important;
+        z-index: 999 !important;
+    }
+}
+
+.sidebar.collapsed {
+    width: 68px !important;
+}
+
+.sidebar.collapsed span,
+.sidebar.collapsed .chat-history,
+.sidebar.collapsed .sidebar-footer span,
+.sidebar.collapsed .new-chat-btn span {
+    display: none !important;
+}
+
+.sidebar.collapsed .new-chat-btn {
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+}

@@ -984,7 +984,14 @@ function setupEventListeners() {
 
     // Mobile menu
     if (elements.mobileMenuBtn) {
-        elements.mobileMenuBtn.addEventListener('click', toggleSidebar);
+        elements.mobileMenuBtn.addEventListener('click', () => {
+            // Check if mobile or desktop
+            if (window.innerWidth > 768) {
+                elements.sidebar.classList.toggle('collapsed');
+            } else {
+                toggleSidebar();
+            }
+        });
     }
 
     // Close sidebar when clicking overlay or close button
