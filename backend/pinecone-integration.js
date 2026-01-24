@@ -64,6 +64,47 @@ async function searchPineconeKnowledge(query, topK = 5) {
 }
 
 /**
+ * Upsert learned facts into Pinecone via Python bridge
+ * @param {Array} facts - Array of {id, text, metadata}
+ */
+async function upsertKnowledge(facts) {
+    return new Promise((resolve, reject) => {
+        try {
+            const pythonScript = path.join(__dirname, 'pinecone_embeddings.py');
+            const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+            const pythonProcess = spawn(pythonCmd, [pythonScript, '--upsert-facts', JSON.stringify(facts)]);
+            
+            let stdout = '';
+            let stderr = '';
+            
+            pythonProcess.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+            
+            pythonProcess.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+            
+            pythonProcess.on('close', (code) => {
+                if (code === 0) {
+                    try {
+                        const result = JSON.parse(stdout);
+                        resolve(result);
+                    } catch (e) {
+                        console.error('JSON Parse Error:', stdout);
+                        reject(new Error('Failed to parse Python output'));
+                    }
+                } else {
+                    reject(new Error(`Python process exited with code ${code}: ${stderr}`));
+                }
+            });
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+/**
  * Update knowledge base with latest news
  * Runs full pipeline in background
  * 
@@ -170,6 +211,8 @@ function knowledgeUpdateEndpoint(req, res) {
 // Export for Express app integration
 module.exports = {
     searchPineconeKnowledge,
+    queryKnowledge: searchPineconeKnowledge, // Alias for GlobalKnowledgeEngine
+    upsertKnowledge,
     updateKnowledgeBase,
     knowledgeSearchEndpoint,
     knowledgeUpdateEndpoint

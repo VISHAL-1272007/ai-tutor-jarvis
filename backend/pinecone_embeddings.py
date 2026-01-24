@@ -299,28 +299,93 @@ class NewsEmbeddingsPipeline:
         
         return True
 
+    def upsert_facts(self, facts: list) -> bool:
+        """
+        Upsert historical/trained facts into Pinecone.
+        facts: list of dicts like {"id": str, "text": str, "metadata": dict}
+        """
+        try:
+            if not self.connect_pinecone():
+                return False
+            
+            texts = [f["text"] for f in facts]
+            embeddings = self.generate_embeddings(texts)
+            
+            if not embeddings:
+                return False
+            
+            vectors = []
+            for i, fact in enumerate(facts):
+                # Ensure metadata has 'type': 'fact' and 'text'
+                metadata = fact.get("metadata", {})
+                metadata.update({
+                    "text": fact["text"],
+                    "type": "trained_knowledge",
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+                vectors.append({
+                    "id": fact["id"],
+                    "values": embeddings[i],
+                    "metadata": metadata
+                })
+            
+            self.index.upsert(vectors=vectors)
+            logger.info(f"✅ Successfully upserted {len(vectors)} facts to Pinecone")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Fact upsert failed: {e}")
+            return False
+
 
 def main():
-    """Main entry point"""
+    """Main entry point with CLI arguments"""
+    import argparse
+    import sys
+    
+    parser = argparse.ArgumentParser(description='JARVIS News & Knowledge Embeddings Pipeline')
+    parser.add_argument('--search', type=str, help='Search query for vector database')
+    parser.add_argument('--top-k', type=int, default=5, help='Number of results for search')
+    parser.add_argument('--upsert-facts', type=str, help='JSON string of facts to upsert')
+    
+    args = parser.parse_args()
+    
     try:
         pipeline = NewsEmbeddingsPipeline()
+        
+        if args.search:
+            # Connect and search
+            if pipeline.connect_pinecone():
+                results = pipeline.search_knowledge(args.search, top_k=args.top_k)
+                # Output JSON only for programmatic capture
+                print(json.dumps(results))
+            else:
+                print(json.dumps({"error": "Connection failed"}))
+            return
+
+        if args.upsert_facts:
+            try:
+                facts = json.loads(args.upsert_facts)
+                success = pipeline.upsert_facts(facts)
+                print(json.dumps({"success": success}))
+            except Exception as e:
+                print(json.dumps({"error": str(e)}))
+            return
+            
+        # Default behavior: Run news update
         success = pipeline.run_pipeline()
         
         if success:
             logger.info("\n🎉 All systems operational!")
-            logger.info("📍 Knowledge base ready for semantic searches")
-            logger.info(f"📦 Index: {PINECONE_INDEX_NAME}")
-            logger.info("✅ Status: PRODUCTION READY")
             exit(0)
         else:
-            logger.error("\n❌ Pipeline failed")
             exit(1)
             
     except KeyboardInterrupt:
-        logger.info("\n⚠️ Pipeline interrupted by user")
         exit(0)
     except Exception as e:
-        logger.error(f"\n❌ Unexpected error: {e}", exc_info=True)
+        logger.error(f"\n❌ Unexpected error: {e}")
         exit(1)
 
 

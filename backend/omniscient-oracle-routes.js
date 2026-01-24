@@ -7,10 +7,34 @@
 
 const express = require('express');
 const { OmniscientOracle } = require('./omniscient-oracle');
+const { GlobalKnowledgeEngine } = require('./global-knowledge-engine');
+const autonomousRAG = require('./jarvis-autonomous-rag');
 const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
 const oracle = new OmniscientOracle();
+const gke = new GlobalKnowledgeEngine();
+
+// ============================================================================
+// ENDPOINT 8: Autonomous RAG (The New Standard)
+// ============================================================================
+
+/**
+ * POST /api/oracle/autonomous-rag
+ * High-precision answer using the new autonomous RAG pipeline
+ */
+router.post('/autonomous-rag', async (req, res) => {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ error: 'Query is required' });
+
+    try {
+        const result = await autonomousRAG.answer(query);
+        res.json(result);
+    } catch (error) {
+        console.error('Autonomous RAG Route Error:', error);
+        res.status(500).json({ error: 'RAG Pipeline Failure' });
+    }
+});
 
 // Rate limiting: 30 requests per 15 minutes
 const limiter = rateLimit({
@@ -193,6 +217,48 @@ router.get('/health', async (req, res) => {
   };
 
   res.json(health);
+});
+
+// ============================================================================
+// ENDPOINT 6: Autonomous "A-Z" Training
+// ============================================================================
+
+/**
+ * POST /api/oracle/train
+ * Deeply research a topic from A-Z and store in Long-Term Memory
+ */
+router.post('/train', async (req, res) => {
+  const { topic } = req.body;
+  if (!topic) return res.status(400).json({ error: 'Topic is required' });
+
+  try {
+    const result = await gke.autonomousTrain(topic);
+    res.json(result);
+  } catch (error) {
+    console.error('Training route error:', error);
+    res.status(500).json({ error: 'Training failed' });
+  }
+});
+
+// ============================================================================
+// ENDPOINT 7: "God-Mode" Hybrid Inquiry
+// ============================================================================
+
+/**
+ * POST /api/oracle/ask-god
+ * Hybrid query: Permanent memory + Live Oracle
+ */
+router.post('/ask-god', async (req, res) => {
+  const { question } = req.body;
+  if (!question) res.status(400).json({ error: 'Question is required' });
+
+  try {
+    const result = await gke.queryGodMode(question);
+    res.json(result);
+  } catch (error) {
+    console.error('God-mode route error:', error);
+    res.status(500).json({ error: 'Knowledge synthesis failed' });
+  }
 });
 
 module.exports = router;

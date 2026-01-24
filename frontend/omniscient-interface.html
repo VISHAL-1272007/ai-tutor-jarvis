@@ -59,6 +59,30 @@
             animation: slideUp 0.6s ease-out 0.1s both;
         }
 
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .mode-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 20px;
+            color: #9ca3af;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
         .input-wrapper {
             position: relative;
             display: flex;
@@ -496,6 +520,11 @@
 
         <!-- QUERY INPUT -->
         <div class="query-section">
+            <div class="mode-selector">
+                <button class="mode-btn active" id="modeResearch" onclick="setMode('research')">Research & Verify</button>
+                <button class="mode-btn" id="modeTrain" onclick="setMode('train')">A-Z Training</button>
+                <button class="mode-btn" id="modeGod" onclick="setMode('god')">Persistent RAG</button>
+            </div>
             <div class="input-wrapper">
                 <input 
                     type="text" 
@@ -577,12 +606,32 @@
 
     <script>
         const API_URL = 'https://ai-tutor-jarvis.onrender.com/api/oracle';
+        let currentMode = 'research';
+
+        function setMode(mode) {
+            currentMode = mode;
+            // Update UI
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            if (mode === 'research') {
+                document.getElementById('modeResearch').classList.add('active');
+                document.getElementById('queryInput').placeholder = "Ask anything... (Live Research Mode)";
+                document.getElementById('submitBtn').textContent = "Search & Verify";
+            } else if (mode === 'train') {
+                document.getElementById('modeTrain').classList.add('active');
+                document.getElementById('queryInput').placeholder = "Topic to train JARVIS (e.g. 'Quantum Computing' or 'Zoho API')";
+                document.getElementById('submitBtn').textContent = "Start Training";
+            } else if (mode === 'god') {
+                document.getElementById('modeGod').classList.add('active');
+                document.getElementById('queryInput').placeholder = "Ask JARVIS anything (Persistent RAG Mode)";
+                document.getElementById('submitBtn').textContent = "Query RAG";
+            }
+        }
 
         async function submitQuery() {
             const query = document.getElementById('queryInput').value.trim();
             
             if (!query) {
-                alert('Please enter a question');
+                alert('Please enter a question or topic');
                 return;
             }
 
@@ -593,14 +642,29 @@
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('submitBtn').classList.add('loading');
 
+            const loadingTexts = {
+                research: "🔍 Querying all AI models and searching for live information...",
+                train: "🧠 JARVIS is autonomously researching the topic, ingesting web pages, and distilling knowledge...",
+                god: "⚡ Running Recursive RAG: Searching deep sources, cross-referencing truth, and synthesizing memory..."
+            };
+            document.querySelector('.loading-text').textContent = loadingTexts[currentMode];
+
             try {
-                const response = await fetch(`${API_URL}/query`, {
+                let endpoint = `${API_URL}/query`;
+                let body = { query, includeReasoning: true };
+
+                if (currentMode === 'train') {
+                    endpoint = `${API_URL}/train`;
+                    body = { topic: query };
+                } else if (currentMode === 'god') {
+                    endpoint = `${API_URL}/autonomous-rag`;
+                    body = { query: query };
+                }
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        query, 
-                        includeReasoning: true 
-                    })
+                    body: JSON.stringify(body)
                 });
 
                 if (!response.ok) {
@@ -613,7 +677,11 @@
                     throw new Error(data.message || 'Unknown error occurred');
                 }
 
-                displayResults(data);
+                if (currentMode === 'train') {
+                    displayTrainingResults(data);
+                } else {
+                    displayResults(data);
+                }
             } catch (error) {
                 showError(error.message);
             } finally {
@@ -621,6 +689,32 @@
                 document.getElementById('submitBtn').disabled = false;
                 document.getElementById('submitBtn').classList.remove('loading');
             }
+        }
+
+        function displayTrainingResults(data) {
+            // Training specific display
+            document.getElementById('answerText').innerHTML = `
+                <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid #10b981; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">Training Complete!</h3>
+                    <p>JARVIS has successfully learned about <strong>${data.topic}</strong>.</p>
+                </div>
+                <ul>
+                    <li>Sources Processed: ${data.sourcesProcessed}</li>
+                    <li>Atomic Facts Learned: ${data.factsLearned}</li>
+                    <li>Target Database: Pinecone Production</li>
+                </ul>
+                <p style="margin-top: 20px;">You can now ask questions about this topic in <strong>Hybrid Knowledge</strong> mode for even more accurate answers from memory.</p>
+            `;
+
+            // Reset other UI parts
+            document.getElementById('confidenceLevel').textContent = "COMPLETED (INTERNALIZED)";
+            document.getElementById('verificationBadge').textContent = "TRAINED";
+            document.getElementById('verificationBadge').className = "verification-badge verified";
+            document.getElementById('sourceList').innerHTML = '<p>Training sources internalized into Vector DB.</p>';
+            document.getElementById('reasoningTrace').innerHTML = '';
+            
+            // Show results
+            document.getElementById('resultsSection').classList.remove('hidden');
         }
 
         function displayResults(data) {

@@ -27,12 +27,23 @@ const JARVISFullPower = safeRequire('../jarvis-full-power', 'jarvis-full-power')
 const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggressive-prompt');
 const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
 const pineconeIntegration = safeRequire('./pinecone-integration', 'pinecone-integration');
+const autonomousRAG = safeRequire('./jarvis-autonomous-rag', 'jarvis-autonomous-rag');
 
 const startDailyUpdates = dailyNews?.startDailyUpdates || (() => {});
 const getLatestNews = dailyNews?.getLatestNews || (() => {});
 const { queryWolframAlpha, getDirectAnswer } = wolframSimple || {};
 const { JARVIS_AGGRESSIVE_PROMPT } = aggressivePrompt || {};
 const { JARVIS_PRO_PLUS_SYSTEM, JARVIS_PRO_PLUS_CODING, JARVIS_PRO_PLUS_MATH, JARVIS_PRO_PLUS_DSA } = proPlus || {};
+
+// Initialize Autonomous RAG Daily Worker
+if (autonomousRAG && autonomousRAG.runDailySelfTraining) {
+  console.log('🤖 Starting JARVIS Autonomous RAG Background Worker...');
+  // Run once on boot, then every 24 hours
+  autonomousRAG.runDailySelfTraining().catch(e => console.error('RAG Worker Error:', e));
+  setInterval(() => {
+    autonomousRAG.runDailySelfTraining().catch(e => console.error('RAG Worker Error:', e));
+  }, 24 * 60 * 60 * 1000);
+}
 
 // Ensure we load .env from backend directory
 require('dotenv').config({ path: path.join(__dirname, '.env') });
