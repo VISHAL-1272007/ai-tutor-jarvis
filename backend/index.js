@@ -4459,11 +4459,10 @@ try {
     console.error('⚠️ Daily news system error (non-blocking):', err.message);
 }
 
-// // --- PORT DEBUGGED START ---
-const PORT = process.env.PORT || 3001;
+// ✅ Updated Code - Render/Cloud compatible
+const PORT = process.env.PORT || 3000;
 
-// Server start panna try pannuvom
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
     ============================================
     🚀  JARVIS SERVER IS NOW LIVE!
