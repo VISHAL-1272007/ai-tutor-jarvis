@@ -757,7 +757,15 @@ function detectWebSearchNeeded(question) {
         'learn', 'study', 'write code', 'program', 'function', 'debug',
         'error', 'fix my', 'help with', 'can you help', 'example of'
     ];
+
+    // Regional/local news override: Tamil Nadu / Chennai
+    const regionalTamilKeywords = ['tamil nadu', 'tamilnadu', 'chennai'];
     
+    // Force web search for regional Tamil Nadu/Chennai queries
+    if (regionalTamilKeywords.some(k => lowerQuestion.includes(k))) {
+        return true;
+    }
+
     // Check if this should skip web search
     if (skipWebSearchKeywords.some(keyword => lowerQuestion.includes(keyword))) {
         // Exception: If it has BOTH 'latest' or 'news' AND is NOT coding-related
@@ -1568,9 +1576,16 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
 
         // ===== FALLBACK: Standard Web Search (if RAG Pipeline not available or didn't trigger) =====
         if (!ragPipelineUsed) {
-            const shouldSearchWeb = detectWebSearchNeeded(question);
+            // Compute local intent flags here to avoid pre-declaration usage
+            const currentEventsKeywordsLocal = ['latest', 'today', 'current', 'recent', 'breaking', 'this week', 'this month', 'update', 'happening'];
+            const regionalKeywordsLocal = ['tamil nadu', 'tamilnadu', 'chennai'];
+            const isCurrentEventsIntent = /2025|2026/.test(lowerQuestion) || currentEventsKeywordsLocal.some(k => lowerQuestion.includes(k));
+            const isRegionalTamilIntent = regionalKeywordsLocal.some(k => lowerQuestion.includes(k));
+
+            const forceWebSearch = isCurrentEventsIntent || isRegionalTamilIntent;
+            const shouldSearchWeb = forceWebSearch || detectWebSearchNeeded(question);
             
-            if (shouldSearchWeb && enableWebSearch !== false) {
+            if (shouldSearchWeb) {
                 console.log('🌐 Standard web search auto-detected...');
                 try {
                     webSearchResults = await searchWeb(question, mode || 'all');
@@ -1767,6 +1782,10 @@ I'm having trouble connecting to the AI service right now.
         const currentEventsKeywords = ['latest', 'today', 'current', 'recent', 'breaking', 'this week', 'this month', 'update', 'happening'];
         const isCurrentEventsQuestion = /2025|2026/.test(lowerQuestion) || currentEventsKeywords.some(k => lowerQuestion.includes(k));
 
+        // Detect regional local-news intent (Tamil Nadu / Chennai)
+        const regionalKeywords = ['tamil nadu', 'tamilnadu', 'chennai'];
+        const isRegionalTamilQuery = regionalKeywords.some(k => lowerQuestion.includes(k));
+
         // Reusable overlap check
         const overlapScore = (source, response) => {
             const sourceWords = source.toLowerCase().split(/\s+/).filter(word => word.length > 2);
@@ -1779,9 +1798,10 @@ I'm having trouble connecting to the AI service right now.
         if (isCurrentEventsQuestion && jarvisLiveSearch) {
             console.log('📰 Current events detected, fetching 2026 live news...');
             try {
-                // Bias search toward 2026 to override stale 2024 training data
-                const liveQuery = `${question} 2026`;
-                searchResults = await jarvisLiveSearch.searchNews(liveQuery, 5);
+            // For regional Tamil Nadu/Chennai queries, use the raw query and Indian sources
+            // Otherwise, bias toward 2026 to override stale training data
+            const liveQuery = isRegionalTamilQuery ? question : `${question} 2026`;
+            searchResults = await jarvisLiveSearch.searchNews(liveQuery, 5);
 
                 if (searchResults?.status === 'success' && (searchResults.total_results || 0) > 0) {
                     const newsText = searchResults.formatted_text || '';
@@ -1873,6 +1893,10 @@ I'm having trouble connecting to the AI service right now.
                     );
                     answer += verificationBadge;
                 }
+                // If regional query returned no specific local news, provide an explicit message
+                if (isRegionalTamilQuery && (!searchResults || searchResults.status === 'no_results' || (searchResults.total_results || 0) === 0)) {
+                    answer = `🔎 Searching for local Tamil Nadu updates...\n\nI couldn't find verified specific updates in the last 24 hours. Trying a broader search such as "Tamil Nadu government latest announcements" may help.\n\nIf you need official updates, check: thehindu.com, timesofindia.indiatimes.com, indianexpress.com`;
+                }
             } catch (verificationError) {
                 console.warn('⚠️ Live news verification failed, using original answer:', verificationError.message);
             }
@@ -1923,6 +1947,48 @@ I'm having trouble connecting to the AI service right now.
         // Add follow-up section to response
         if (followUpSuggestions.length > 0 && !answer.includes('💡 **Follow-up')) {
             answer += `\n\n---\n\n💡 **Follow-up Questions:**\n${followUpSuggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+        }
+
+        // Append Sources Found section if available
+        const allSources = [];
+        if (Array.isArray(webSearchResults?.sources)) {
+            allSources.push(...webSearchResults.sources);
+        }
+        const regionalSources = Array.isArray(searchResults?.results)
+            ? searchResults.results.map(r => ({ title: r.title, url: r.url, snippet: r.body }))
+            : [];
+        if (regionalSources.length > 0) {
+            allSources.push(...regionalSources);
+        }
+
+        if (allSources.length > 0 && !answer.includes('Sources Found')) {
+            const uniqueByUrl = new Map();
+            allSources.forEach(s => {
+                const url = s?.url;
+                if (!url) return;
+                if (!uniqueByUrl.has(url)) uniqueByUrl.set(url, s);
+            });
+            const finalSources = Array.from(uniqueByUrl.values()).slice(0, 8);
+            if (finalSources.length > 0) {
+                answer += `\n\n---\n\n**Sources Found:**\n`;
+                finalSources.forEach((s, i) => {
+                    if (s.title && s.url) {
+                        answer += `${i + 1}. [${s.title}](${s.url})\n`;
+                    } else if (s.url) {
+                        answer += `${i + 1}. ${s.url}\n`;
+                    }
+                });
+                // Cross-verification note when multiple domains are present
+                try {
+                    const domains = new Set(finalSources.map(s => {
+                        try { return new URL(s.url).hostname.replace(/^www\./,''); } catch { return null; }
+                    }).filter(Boolean));
+                    const enginesUsed = [webSearchResults?.searchEngine, searchResults?.searchEngine].filter(Boolean);
+                    if (domains.size > 1 && enginesUsed.length > 1) {
+                        answer += `\n*Cross-verified across ${enginesUsed.join(' + ')}; perspectives may differ. Highlighted the most credible sources.*`;
+                    }
+                } catch {}
+            }
         }
 
         // Add API source to response (for debugging)
