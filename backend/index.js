@@ -2,10 +2,90 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') })
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
 const omniscientRoutes = require('./omniscient-oracle-routes');
+// index.js
+require('dotenv').config();
+
+// index.js - Line 13 (Old code-ah replace pannunga)
+const serperKeysRaw = process.env.SERPER_KEYS || ""; 
+const keys = serperKeysRaw ? serperKeysRaw.split(',') : [];
+
+if (keys.length === 0) {
+    console.warn("⚠️ Warning: SERPER_KEYS is missing or empty in .env file!");
+}
+
+function getRotatedKey() {
+    const key = keys[keyIndex];
+    keyIndex = (keyIndex + 1) % keys.length; // 16 keys-um rotate aagitte irukkum
+    return key;
+}
+
+// 2. The RAG Pipeline Function
+async function askJarvisExpert(query) {
+    const currentKey = getRotatedKey();
+    console.log(`🚀 Using Serper Key #${keyIndex + 1}`);
+
+    // Retrieval: Search with rotated key
+    const searchData = await axios.post('https://google.serper.dev/search', {
+        q: `${query} news Jan 2026`,
+        num: 5
+    }, {
+        headers: { 'X-API-KEY': currentKey }
+    });
+
+    // Deep Scraping & Generation logic inga varum...
+    // ... (already we discussed the scraper integration)
+}
+// index.js (Continuation)
+
+async function askJarvisExpert(query, conversationHistory) {
+    const currentKey = getRotatedKey();
+    const queryType = detectQueryType(query); // Neenga add panna function
+    
+    try {
+        // 1. SEARCH PHASE
+        console.log(`🔍 JARVIS: Searching for [${query}] using key index ${keyIndex}...`);
+        const searchResponse = await axios.post('https://google.serper.dev/search', {
+            q: `${query} latest news Jan 2026`,
+            num: 3
+        }, {
+            headers: { 'X-API-KEY': currentKey }
+        });
+
+        // 2. CONTEXT PREPARATION (Retrieval)
+        // Search snippets-ah mattum extract panrom (Deep Scraper illanalum idhu work aagum)
+        const contextData = searchResponse.data.organic
+            .map(result => `Source: ${result.title}\nInfo: ${result.snippet}`)
+            .join('\n\n');
+
+        // 3. PROMPT GENERATION (Augmentation)
+        // Neenga mela add panna generateCoTPrompt function-ah inga use panrom
+        const expertPrompt = generateCoTPrompt(query, queryType, conversationHistory);
+        
+        const finalPayload = `
+            ${expertPrompt}
+            
+            🌐 **LIVE RESEARCH DATA (Real-time Jan 2026):**
+            ${contextData}
+            
+            USER'S CURRENT QUESTION: ${query}
+            
+            *INSTRUCTION: Use the Research Data to be 100% accurate. If the data is not relevant, rely on your core knowledge but prioritize live data.*
+        `;
+
+        // 4. GENERATION PHASE
+        const result = await geminiModel.generateContent(finalPayload);
+        return result.response.text();
+
+    } catch (error) {
+        console.error("❌ RAG Pipeline Error:", error.message);
+        return "Sir, I encountered an issue accessing my external knowledge bank. I will answer based on my core training...";
+    }
+}
 
 // Safely require modules with error handling
 function safeRequire(modulePath, moduleName) {
@@ -506,8 +586,8 @@ async function fetchSerperContext(query) {
 }
 
 /**
- * Step 3 & 4: Build RAG-Enhanced Prompt
- * Appends real-time context and instructs LLM to prioritize it
+ * /**
+ * Step 3 & 4: Build RAG-Enhanced Prompt (NEW & IMPROVED)
  */
 function buildRagPrompt(originalQuestion, contextResults) {
     const today = new Date().toLocaleDateString('en-US', { 
@@ -516,46 +596,38 @@ function buildRagPrompt(originalQuestion, contextResults) {
         day: 'numeric' 
     });
 
-    // Format context data as JSON with source hierarchy
+    // Format context data
     const serperData = contextResults.length > 0 
         ? contextResults.map(r => ({
             title: r.title,
             source: r.source,
             date: r.date,
             snippet: r.snippet,
-            link: r.link,
-            sourceType: classifySource(r.source) // official, tier1, tier2
+            link: r.link
           }))
         : [];
 
-    const ragSystemPrompt = `# STRICT IDENTITY: 
+    const ragSystemPrompt = `
+# STRICT IDENTITY: 
 You are JARVIS, a High-Precision Web Intelligence Agent. Today is ${today}.
+
+# TIMELINE INTEGRITY (CRITICAL):
+It is 2026. If the user asks about current events (like Vijay's party or latest tech), you MUST ignore all training data from 2024/2025 and ONLY use the 2026 DATA SOURCE provided below.
 
 # DATA SOURCE (THE ONLY TRUTH):
 ${JSON.stringify(serperData, null, 2)}
 
 # MANDATORY OPERATIONAL RULES:
 1. VERIFIED SEARCH ONLY: Prioritize the provided DATA SOURCE over internal training. Do not hallucinate facts.
-2. SOURCE HIERARCHY: Trust official documentation, gov portals, and tier-1 tech news first.
-3. CITATION MANDATE: Every factual claim must include a source link from the DATA SOURCE in brackets. [e.g., source: example.com]
-4. TIMELINE INTEGRITY: It is 2026. Discard outdated 2023/2024 release dates or news. Focus on TRENDING TODAY.
-5. CONTEXT AWARENESS: Remember the user's Roadmap Plan starts in February 2026. Align technical advice with this timeline.
-
-# RESPONSE STRUCTURE:
-- Executive Summary (Brief and high-energy)
-- Verified Findings (Bullet points with source citations)
-- Technical Risk Assessment (If applicable)
-- Confidence Score (0-100% based on data quality)
+2. CITATION MANDATE: Every factual claim must include a source link [e.g., source: example.com].
+3. CONTEXT AWARENESS: User's roadmap starts in February 2026. Keep all advice future-aligned.
 
 # USER QUESTION:
 ${originalQuestion}`;
 
     return ragSystemPrompt;
 }
-
-/**
- * Classify source reliability for SOURCE HIERARCHY
- */
+ 
 function classifySource(source) {
     const official = ['gov', 'official', 'openai.com', 'anthropic.com', 'google.com', 'microsoft.com', 'meta.com', 'apple.com'];
     const tier1 = ['techcrunch', 'wired', 'verge', 'arstechnica', 'thehackernews', 'medium.com/@official'];
