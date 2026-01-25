@@ -9,7 +9,18 @@ const FormData = require('form-data');
 const omniscientRoutes = require('./omniscient-oracle-routes');
 const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
 const SemanticVerifier = require('./semantic-verifier-wrapper');
-// index.js
+
+// ===== NEW: Advanced Features Systems =====
+const UserProfileSystem = require('./user-profile-system');
+const KnowledgeBaseSystem = require('./knowledge-base-system');
+const ExpertModeSystem = require('./expert-mode-system');
+const setupAdvancedFeaturesAPI = require('./advanced-features-api');
+
+// Initialize advanced systems
+const userProfileSystem = new UserProfileSystem();
+const knowledgeBaseSystem = new KnowledgeBaseSystem();
+const expertModeSystem = new ExpertModeSystem();
+
 require('dotenv').config();
 
 // index.js - Line 13 (Old code-ah replace pannunga)
@@ -1279,6 +1290,10 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/api/oracle', omniscientRoutes);
+
+// ===== SETUP ADVANCED FEATURES APIs =====
+setupAdvancedFeaturesAPI(app, userProfileSystem, knowledgeBaseSystem, expertModeSystem);
+
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Rate Limiter - Prevent hitting Groq API limits
