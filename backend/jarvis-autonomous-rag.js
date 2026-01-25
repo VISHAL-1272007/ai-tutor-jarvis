@@ -33,7 +33,15 @@ class JarvisAutonomousRAG {
             'medium.com',
             'paywall',
             'subscription',
-            'archive.org'
+            'archive.org',
+            // Indian publishers that commonly return 451 / block scraping
+            'thehindu.com',
+            'indiatimes.com',
+            'timesofindia.indiatimes.com',
+            'economictimes.indiatimes.com',
+            'indianexpress.com',
+            'hindustantimes.com',
+            'news18.com'
         ];
         
         // ✅ TRUSTED SOURCES: Indian news & tech sources that work well
