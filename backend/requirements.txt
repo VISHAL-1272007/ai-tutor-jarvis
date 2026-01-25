@@ -1,0 +1,4 @@
+python-dotenv
+pinecone-client
+sentence-transformers
+requests
