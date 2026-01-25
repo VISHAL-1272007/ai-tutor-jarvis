@@ -14,7 +14,7 @@
  * - Stability AI (Images)
  */
 
-const { GoogleGenerativeAI } = require('google-generativeai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const axios = require('axios');
 const WolframAlphaIntegration = require('./backend/wolfram-alpha-integration');
 
