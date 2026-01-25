@@ -20,6 +20,7 @@
     "express-rate-limit": "^7.1.5",
     "express-session": "^1.18.2",
     "form-data": "^4.0.0",
+    "google-it": "^1.6.4",
     "node-cron": "^4.2.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
