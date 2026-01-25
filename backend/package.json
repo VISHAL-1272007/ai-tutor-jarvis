@@ -4,7 +4,9 @@
   "description": "Backend server for AI Tutor application",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test:live-news": "node test-live-news-verification.js",
+    "test:semantic": "node test-semantic-verification.js"
   },
   "keywords": [
     "ai",

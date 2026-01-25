@@ -129,7 +129,8 @@ class ChatManager {
                 // Handle regular JSON response
                 const data = await response.json();
                 this.hideTyping();
-                this.addMessage('ai', data.answer || data.response || 'No response from AI');
+                const sources = this.normalizeSourcesFromResponse(data);
+                this.addMessage('ai', data.answer || data.response || 'No response from AI', sources);
             }
 
         } catch (error) {
@@ -207,6 +208,7 @@ class ChatManager {
         this.messages.push({
             role: 'ai',
             content: text,
+            sources: [],
             timestamp: Date.now()
         });
         
@@ -256,11 +258,12 @@ class ChatManager {
     // MESSAGE DISPLAY
     // ============================================
 
-    addMessage(role, content) {
+    addMessage(role, content, sources = []) {
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${role}-message`;
         
         const avatarIcon = role === 'user' ? 'fa-user' : 'fa-robot';
+        const safeSources = this.sanitizeSources(sources);
         
         messageEl.innerHTML = `
             <div class="message-avatar">
@@ -274,12 +277,23 @@ class ChatManager {
             </div>
         `;
 
+        const messageContent = messageEl.querySelector('.message-content');
+        const timeEl = messageContent.querySelector('.message-time');
+
+        if (role === 'ai') {
+            const sourcesEl = this.createSourcesElement(safeSources);
+            if (sourcesEl) {
+                messageContent.insertBefore(sourcesEl, timeEl);
+            }
+        }
+
         this.chatHistory.appendChild(messageEl);
         this.scrollToBottom();
 
         this.messages.push({
             role,
             content,
+            sources: safeSources,
             timestamp: Date.now()
         });
 
@@ -316,6 +330,108 @@ class ChatManager {
             role: m.role,
             content: m.content
         }));
+    }
+
+    normalizeSourcesFromResponse(data) {
+        if (!data) return [];
+
+        const directSources = this.sanitizeSources(data.sources);
+        if (directSources.length > 0) return directSources;
+
+        const searchResultsSources = this.sanitizeSources(data.searchResults?.results || data.searchResults?.sources);
+        if (searchResultsSources.length > 0) return searchResultsSources;
+
+        return [];
+    }
+
+    sanitizeSources(sources) {
+        if (!Array.isArray(sources)) return [];
+        return sources
+            .map(src => {
+                const url = src?.url || src?.link;
+                if (!url) return null;
+                return {
+                    title: src.title || src.heading || src.url || 'Source',
+                    url,
+                    snippet: src.snippet || src.description || src.content || ''
+                };
+            })
+            .filter(Boolean);
+    }
+
+    createSourcesElement(sources) {
+        if (!Array.isArray(sources) || sources.length === 0) return null;
+
+        const container = document.createElement('div');
+        container.className = 'sources-section';
+
+        const title = document.createElement('div');
+        title.className = 'sources-title';
+        title.innerHTML = '<span class="sources-dot"></span><span>Sources</span>';
+        container.appendChild(title);
+
+        const chips = document.createElement('div');
+        chips.className = 'source-chips';
+
+        sources.forEach((source) => {
+            const normalizedUrl = this.normalizeUrl(source.url);
+            const domain = this.extractDomain(normalizedUrl);
+
+            if (!normalizedUrl || !domain) return;
+
+            const chip = document.createElement('a');
+            chip.className = 'source-chip';
+            chip.href = normalizedUrl;
+            chip.target = '_blank';
+            chip.rel = 'noopener noreferrer';
+
+            const favicon = document.createElement('img');
+            favicon.className = 'source-favicon';
+            favicon.src = this.getFaviconUrl(domain);
+            favicon.alt = `${domain} icon`;
+            favicon.onerror = () => { favicon.style.opacity = '0'; };
+
+            const label = document.createElement('span');
+            label.className = 'source-domain';
+            label.textContent = domain;
+
+            chip.appendChild(favicon);
+            chip.appendChild(label);
+            chips.appendChild(chip);
+        });
+
+        if (chips.childElementCount === 0) return null;
+
+        container.appendChild(chips);
+        return container;
+    }
+
+    normalizeUrl(url) {
+        if (!url) return '';
+        try {
+            return new URL(url).toString();
+        } catch (error) {
+            try {
+                return new URL(`https://${url}`).toString();
+            } catch (err) {
+                return '';
+            }
+        }
+    }
+
+    extractDomain(url) {
+        if (!url) return '';
+        try {
+            const hostname = new URL(url).hostname;
+            return hostname.replace(/^www\./, '');
+        } catch (error) {
+            return '';
+        }
+    }
+
+    getFaviconUrl(domain) {
+        if (!domain) return '';
+        return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
     }
 
     // ============================================
@@ -378,7 +494,7 @@ class ChatManager {
                     // Render saved messages
                     chatData.messages.forEach(msg => {
                         if (msg.role !== 'ai' || msg.content !== 'Welcome message') {
-                            this.addMessageToHistory(msg.role, msg.content, msg.timestamp);
+                            this.addMessageToHistory(msg.role, msg.content, msg.timestamp, msg.sources || []);
                         }
                     });
                 }
@@ -388,11 +504,12 @@ class ChatManager {
         }
     }
 
-    addMessageToHistory(role, content, timestamp) {
+    addMessageToHistory(role, content, timestamp, sources = []) {
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${role}-message`;
         
         const avatarIcon = role === 'user' ? 'fa-user' : 'fa-robot';
+        const safeSources = this.sanitizeSources(sources);
         const time = new Date(timestamp).toLocaleTimeString('en-US', { 
             hour: '2-digit', 
             minute: '2-digit' 
@@ -409,6 +526,16 @@ class ChatManager {
                 <div class="message-time">${time}</div>
             </div>
         `;
+
+        const messageContent = messageEl.querySelector('.message-content');
+        const timeEl = messageContent.querySelector('.message-time');
+
+        if (role === 'ai') {
+            const sourcesEl = this.createSourcesElement(safeSources);
+            if (sourcesEl) {
+                messageContent.insertBefore(sourcesEl, timeEl);
+            }
+        }
 
         this.chatHistory.appendChild(messageEl);
     }

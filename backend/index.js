@@ -7,6 +7,8 @@ const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
 const omniscientRoutes = require('./omniscient-oracle-routes');
+const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
+const SemanticVerifier = require('./semantic-verifier-wrapper');
 // index.js
 require('dotenv').config();
 
@@ -108,6 +110,12 @@ const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggre
 const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
 const pineconeIntegration = safeRequire('./pinecone-integration', 'pinecone-integration');
 const autonomousRAG = safeRequire('./jarvis-autonomous-rag', 'jarvis-autonomous-rag');
+
+// Initialize JARVIS Live Search
+const jarvisLiveSearch = new JARVISLiveSearch();
+
+// Initialize Semantic Verifier
+const semanticVerifier = new SemanticVerifier();
 
 const startDailyUpdates = dailyNews?.startDailyUpdates || (() => {});
 const getLatestNews = dailyNews?.getLatestNews || (() => {});
@@ -1749,6 +1757,166 @@ I'm having trouble connecting to the AI service right now.
             });
         }
 
+        // ===== LIVE NEWS VERIFICATION (DuckDuckGo, 2026 bias) =====
+        let verificationUsed = false;
+        let searchResults = null;
+        let semanticVerificationResult = null;
+        let latestNewsText = '';
+
+        // Treat questions about "latest", "today", or years 2025-2026 as current events
+        const currentEventsKeywords = ['latest', 'today', 'current', 'recent', 'breaking', 'this week', 'this month', 'update', 'happening'];
+        const isCurrentEventsQuestion = /2025|2026/.test(lowerQuestion) || currentEventsKeywords.some(k => lowerQuestion.includes(k));
+
+        // Reusable overlap check
+        const overlapScore = (source, response) => {
+            const sourceWords = source.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+            if (sourceWords.length === 0) return 0;
+            const responseWords = response.toLowerCase().split(/\s+/);
+            const matches = sourceWords.filter(word => responseWords.some(r => r.includes(word) || word.includes(r)));
+            return matches.length / sourceWords.length;
+        };
+
+        if (isCurrentEventsQuestion && jarvisLiveSearch) {
+            console.log('📰 Current events detected, fetching 2026 live news...');
+            try {
+                // Bias search toward 2026 to override stale 2024 training data
+                const liveQuery = `${question} 2026`;
+                searchResults = await jarvisLiveSearch.searchNews(liveQuery, 5);
+
+                if (searchResults?.status === 'success' && (searchResults.total_results || 0) > 0) {
+                    const newsText = searchResults.formatted_text || '';
+                    latestNewsText = newsText;
+                    
+                    // ===== SEMANTIC VERIFICATION LAYER =====
+                    console.log('🧠 Running semantic verification...');
+                    const cutoffPhrases = ['i do not have real-time information', 'i don\'t have real-time information', 'knowledge cutoff', 'i don\'t know'];
+                    const answerLower = (answer || '').toLowerCase();
+                    const hasCutoffPhrase = cutoffPhrases.some(p => answerLower.includes(p));
+
+                    const currentEventsThreshold = 0.7; // stricter for current affairs
+
+                    semanticVerificationResult = await semanticVerifier.verifyAnswer(
+                        answer,
+                        newsText,
+                        currentEventsThreshold
+                    );
+                    
+                    console.log(`📊 Semantic similarity: ${(semanticVerificationResult.similarity_score * 100).toFixed(1)}% | Verdict: ${semanticVerificationResult.verdict}${hasCutoffPhrase ? ' | cutoff phrase detected' : ''}`);
+
+                    const needsOverride = hasCutoffPhrase || !semanticVerificationResult.is_verified;
+                    if (needsOverride) {
+                        verificationUsed = true; // Force flag when cutoff/unknown detected
+                    }
+                    
+                    // If semantic verification shows low similarity or cutoff phrase, re-prompt with live news
+                    if (needsOverride && process.env.GROQ_API_KEY) {
+                        console.log('🔁 Semantic verification failed - Re-prompting Groq with live 2026 news...');
+                        const verificationPrompt = `${finalSystemPrompt}\n\n📰 **Live DuckDuckGo News (2026 focus):**\n${newsText || 'No news text available.'}\n\n⚠️ IMPORTANT: Your previous answer had low semantic similarity (${(semanticVerificationResult.similarity_score * 100).toFixed(1)}%) with current 2026 data. Use the live news above to provide an accurate, up-to-date answer to: "${question}". Cite sources naturally and focus on 2026 information.`;
+
+                        const verificationMessages = [
+                            { role: 'system', content: verificationPrompt },
+                            { role: 'user', content: question }
+                        ];
+
+                        const groqResponse = await axios.post(
+                            'https://api.groq.com/openai/v1/chat/completions',
+                            {
+                                model: 'llama-3.1-8b-instant',
+                                messages: verificationMessages,
+                                temperature: 0.25,
+                                max_tokens: 2000
+                            },
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                timeout: 30000
+                            }
+                        );
+
+                        answer = groqResponse.data.choices[0].message.content;
+                        usedAPI = `${usedAPI} (Semantic-Verified with 2026 DuckDuckGo)`;
+                        verificationUsed = true;
+                        
+                        // Re-verify the corrected answer
+                        semanticVerificationResult = await semanticVerifier.verifyAnswer(
+                            answer,
+                            newsText,
+                            currentEventsThreshold
+                        );
+                        
+                        console.log(`✅ Answer corrected | New similarity: ${(semanticVerificationResult.similarity_score * 100).toFixed(1)}%`);
+                    }
+
+                    // If still not verified or cutoff/unknown, replace answer with live news summary
+                    if (!semanticVerificationResult?.is_verified || hasCutoffPhrase) {
+                        const topNews = (searchResults?.results || []).slice(0, 5);
+                        if (topNews.length > 0) {
+                            let summary = '⚠️ This topic is time-sensitive. Here is the latest 2026 news summary based on live sources:\n\n';
+                            topNews.forEach((item, i) => {
+                                summary += `${i + 1}. ${item.title} (Source: ${item.source || 'Unknown'})\n`;
+                                if (item.url) summary += `Link: ${item.url}\n`;
+                                if (item.body) summary += `Summary: ${item.body}\n`;
+                                summary += '\n';
+                            });
+                            answer = summary.trim();
+                            verificationUsed = true;
+                            console.log('⚠️ Answer replaced with live news summary due to mismatch/unknown.');
+                        }
+                    }
+                    
+                    // Add verification badge to answer
+                    const verificationBadge = semanticVerifier.formatVerificationBadge(
+                        semanticVerificationResult,
+                        searchResults
+                    );
+                    answer += verificationBadge;
+                }
+            } catch (verificationError) {
+                console.warn('⚠️ Live news verification failed, using original answer:', verificationError.message);
+            }
+        }
+
+        // ===== SECOND-PASS GROQ CORRECTION WHEN VERIFICATION TRIGGERS =====
+        if ((verificationUsed || (semanticVerificationResult && !semanticVerificationResult.is_verified))
+            && process.env.GROQ_API_KEY
+            && latestNewsText) {
+            try {
+                console.log('🔄 Running second Groq pass with live 2026 news context (post-verification)...');
+                const correctionPrompt = `${finalSystemPrompt}\n\nYou previously said you didn't know, but I found these 2026 news articles. Use this data to provide a definitive answer for the user.\n\n📰 Live 2026 News:\n${latestNewsText}`;
+
+                const correctionMessages = [
+                    { role: 'system', content: correctionPrompt },
+                    { role: 'user', content: question }
+                ];
+
+                const correctionResponse = await axios.post(
+                    'https://api.groq.com/openai/v1/chat/completions',
+                    {
+                        model: 'llama-3.1-8b-instant',
+                        messages: correctionMessages,
+                        temperature: 0.25,
+                        max_tokens: 2000
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 30000
+                    }
+                );
+
+                answer = correctionResponse.data.choices[0].message.content;
+                usedAPI = `${usedAPI || 'Groq'} (Post-Verification Correction)`;
+                verificationUsed = true;
+                console.log('✅ Second-pass Groq correction applied.');
+            } catch (secondPassError) {
+                console.warn('⚠️ Second Groq correction failed; keeping prior answer:', secondPassError.message);
+            }
+        }
+
         // 🧠 Generate smart follow-up suggestions
         const followUpSuggestions = generateFollowUpSuggestions(question, answer, queryType);
 
@@ -1782,6 +1950,16 @@ I'm having trouble connecting to the AI service right now.
                 totalToolsCalled: functionCallingResult?.toolsUsed?.length || 0,
                 successfulTools: functionCallingResult?.toolResults?.filter(t => t.success)?.length || 0,
                 failedTools: functionCallingResult?.toolResults?.filter(t => !t.success)?.length || 0
+            } : null,
+            // DuckDuckGo Verification Metadata
+            verificationUsed: verificationUsed,
+            searchResults: searchResults,
+            // Semantic Verification Metadata
+            semanticVerification: semanticVerificationResult ? {
+                similarity_score: semanticVerificationResult.similarity_score,
+                is_verified: semanticVerificationResult.is_verified,
+                verdict: semanticVerificationResult.verdict,
+                threshold: semanticVerificationResult.threshold
             } : null
         };
 
@@ -2682,6 +2860,123 @@ app.post('/api/news/serper', apiLimiter, async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Failed to fetch news from Serper',
+            message: error.message
+        });
+    }
+});
+
+// 9.6 DuckDuckGo Live News Search
+app.post('/api/search/news', apiLimiter, async (req, res) => {
+    try {
+        const { query, maxResults = 5 } = req.body;
+
+        if (!query) {
+            return res.status(400).json({ error: 'Query parameter required' });
+        }
+
+        const result = await jarvisLiveSearch.searchNews(query, maxResults);
+
+        if (result.status === 'error') {
+            return res.status(500).json({
+                success: false,
+                error: 'Search failed',
+                message: result.message
+            });
+        }
+
+        res.json({
+            success: true,
+            query,
+            results: result.results || [],
+            total: result.total_results || 0,
+            source: 'DuckDuckGo News',
+            timestamp: result.timestamp || new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ DuckDuckGo News Search error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to perform news search',
+            message: error.message
+        });
+    }
+});
+
+// 9.7 DuckDuckGo Web Search
+app.post('/api/search/web', apiLimiter, async (req, res) => {
+    try {
+        const { query, maxResults = 10 } = req.body;
+
+        if (!query) {
+            return res.status(400).json({ error: 'Query parameter required' });
+        }
+
+        const result = await jarvisLiveSearch.searchWeb(query, maxResults);
+
+        if (result.status === 'error') {
+            return res.status(500).json({
+                success: false,
+                error: 'Search failed',
+                message: result.message
+            });
+        }
+
+        res.json({
+            success: true,
+            query,
+            results: result.results || [],
+            total: result.total_results || 0,
+            source: 'DuckDuckGo Web',
+            timestamp: result.timestamp || new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ DuckDuckGo Web Search error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to perform web search',
+            message: error.message
+        });
+    }
+});
+
+// 9.8 DuckDuckGo Comprehensive Search (News + Web)
+app.post('/api/search/comprehensive', apiLimiter, async (req, res) => {
+    try {
+        const { query, newsResults = 3, webResults = 5 } = req.body;
+
+        if (!query) {
+            return res.status(400).json({ error: 'Query parameter required' });
+        }
+
+        const result = await jarvisLiveSearch.comprehensiveSearch(query);
+
+        if (result.status === 'error') {
+            return res.status(500).json({
+                success: false,
+                error: 'Comprehensive search failed',
+                message: result.message
+            });
+        }
+
+        res.json({
+            success: true,
+            query,
+            news: {
+                results: result.news?.results || [],
+                total: result.news?.total_results || 0
+            },
+            web: {
+                results: result.web?.results || [],
+                total: result.web?.total_results || 0
+            },
+            source: 'DuckDuckGo (News + Web)',
+            timestamp: result.timestamp || new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ DuckDuckGo Comprehensive Search error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to perform comprehensive search',
             message: error.message
         });
     }

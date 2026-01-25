@@ -7,7 +7,9 @@
 
 const axios = require('axios');
 const { performance } = require('perf_hooks');
+const { spawn } = require('child_process');
 const path = require('path');
+const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 class JarvisAutonomousRAG {
@@ -18,6 +20,8 @@ class JarvisAutonomousRAG {
         this.jinaReaderUrl = 'https://r.jina.ai/';
         this.chunkSize = 1000;
         this.chunkOverlap = 200;
+        this.pythonScript = path.join(__dirname, 'jarvis-live-search.py');
+        this.liveSearch = new JARVISLiveSearch();
     }
 
     /**
@@ -78,15 +82,16 @@ ${context}`;
     async ingestDeep(topic) {
         console.log(`🚀 [AUTONOMOUS-RAG] Deep Ingestion for: ${topic}`);
         
-        // 1. Get deep links from Serper
-        const searchRes = await axios.post('https://google.serper.dev/search', {
-            q: `${topic} technical documentation in-depth whitepaper`,
-            num: 10
-        }, {
-            headers: { 'X-API-KEY': this.serperKey }
-        });
+        // 1. Get candidate links via local DuckDuckGo Python search (avoids Serper 403)
+        const searchResults = await this.runLocalSearch(`${topic} 2026`, 10);
+        const urls = searchResults
+            .map(r => r.url || r.href)
+            .filter(Boolean);
 
-        const urls = searchRes.data.organic.map(o => o.link);
+        if (!urls.length) {
+            console.warn('[AUTONOMOUS-RAG] No URLs returned from local DuckDuckGo search');
+            return [];
+        }
         const results = [];
 
         // 2. Parallel Ingestion (Crawl Level 0)
@@ -118,6 +123,53 @@ ${context}`;
     }
 
     /**
+     * Run local DuckDuckGo search via Python helper
+     */
+    async runLocalSearch(query, maxResults = 8) {
+        return new Promise((resolve) => {
+            const proc = spawn('python', [
+                this.pythonScript,
+                'web',
+                query,
+                maxResults.toString()
+            ]);
+
+            let stdout = '';
+            let stderr = '';
+
+            proc.stdout.on('data', (data) => { stdout += data.toString(); });
+            proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+            proc.on('close', (code) => {
+                if (code !== 0) {
+                    console.warn(`[AUTONOMOUS-RAG] Python search failed (code ${code}): ${stderr}`);
+                    return resolve([]);
+                }
+
+                try {
+                    const output = stdout.trim();
+                    const start = output.indexOf('{');
+                    const end = output.lastIndexOf('}');
+                    if (start === -1 || end === -1) throw new Error('No JSON payload found');
+                    const parsed = JSON.parse(output.substring(start, end + 1));
+                    if (parsed.status === 'success' && Array.isArray(parsed.results)) {
+                        return resolve(parsed.results);
+                    }
+                    return resolve([]);
+                } catch (err) {
+                    console.warn(`[AUTONOMOUS-RAG] Failed to parse Python search output: ${err.message}`);
+                    return resolve([]);
+                }
+            });
+
+            proc.on('error', (err) => {
+                console.warn(`[AUTONOMOUS-RAG] Python process error: ${err.message}`);
+                return resolve([]);
+            });
+        });
+    }
+
+    /**
      * DAILY SELF-TRAINING WORKER
      * Background task to fetch latest tech news and update memory
      */
@@ -142,16 +194,39 @@ ${context}`;
 
         // Phase 1: Local Vector Retrieval
         const localMemory = this.pinecone ? await this.pinecone.searchPineconeKnowledge(query, 5) : [];
-        
-        // Phase 2: Live Multi-Source Fetch
+
+        // Detect current events or missing context
+        const currentEventsKeywords = ['latest', 'today', 'current', 'recent', 'breaking', 'this week', 'this month', 'update', 'happening'];
+        const lowerQuery = query.toLowerCase();
+        const isCurrentEvents = /2025|2026/.test(lowerQuery) || currentEventsKeywords.some(k => lowerQuery.includes(k));
+
+        // Phase 2: Live Multi-Source Fetch (web crawl)
         const liveSources = await this.ingestDeep(query);
+
+        // Phase 2b: Live News Fallback (DuckDuckGo) when memory is stale/empty
+        let liveNews = null;
+        let liveNewsContext = '';
+        if (isCurrentEvents || !localMemory || localMemory.length === 0) {
+            try {
+                const liveQuery = `${query} 2026`;
+                liveNews = await this.liveSearch.searchNews(liveQuery, 5);
+                if (liveNews?.status === 'success' && (liveNews.total_results || 0) > 0) {
+                    liveNewsContext = '\n\n📰 LIVE 2026 NEWS CONTEXT:\n';
+                    liveNews.results.slice(0, 3).forEach((item, i) => {
+                        liveNewsContext += `${i + 1}. ${item.title} (Source: ${item.source})\nLink: ${item.url}\n`;
+                    });
+                }
+            } catch (e) {
+                console.warn('[JARVIS-RAG] Live news fetch failed:', e.message);
+            }
+        }
         
         // Phase 3: Truth Verification
         const verifiedFacts = await this.verifyTruth(query, liveSources.slice(0, 3));
 
         // Phase 4: Final Synthesis
         const prompt = `You are JARVIS, an autonomous AI with access to a verified RAG pipeline.
-        Answer the following question using the provided Verified Facts and Local Memory.
+        Answer the following question using the provided Verified Facts, Local Memory, and any Live 2026 context below.
         
         USER QUESTION: ${query}
         
@@ -160,11 +235,14 @@ ${context}`;
         
         LOCAL MEMORY:
         ${localMemory.map(m => m.metadata.text).join('\n---\n')}
+
+        ${liveNewsContext}
         
         INSTRUCTIONS:
         - Be highly specific.
         - Cite sources if available.
         - If unsure, state what is unverified vs verified.
+        - Prefer 2026 information from live news when relevant.
         - Use the memory to avoid generic answers.`;
 
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
@@ -176,11 +254,17 @@ ${context}`;
         });
 
         const timeTaken = (performance.now() - startTime).toFixed(0);
+        const sourceUrls = liveSources.map(s => s.url).filter(Boolean);
+        if (liveNews?.results) {
+            liveNews.results.forEach(r => { if (r.url) sourceUrls.push(r.url); });
+        }
+
         return {
             answer: response.data.choices[0].message.content,
             verificationStatus: 'VERIFIED',
             latency: `${timeTaken}ms`,
-            sources: liveSources.map(s => s.url)
+            sources: sourceUrls,
+            liveNews: liveNews || null
         };
     }
 }
