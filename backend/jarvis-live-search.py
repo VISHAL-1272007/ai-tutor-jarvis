@@ -73,7 +73,6 @@ def _filter_results(raw_results, regional_info: dict = None):
         title = res.get('title', '') or ''
         url = res.get('url') or res.get('href') or ''
         source = res.get('source', '') or ''
-        haystack = f"{title} {url} {source}".lower()
         
         # For regional queries, prioritize local news sites
         if regional_info and regional_info.get('is_regional'):
@@ -81,12 +80,15 @@ def _filter_results(raw_results, regional_info: dict = None):
             if is_from_local_site:
                 filtered.insert(0, res)  # Prioritize local sources
                 continue
-        
-        # For global queries, use keyword filtering
-        if any(kw in haystack for kw in KEYWORDS):
+            # Don't exclude non-local sites for regional queries, just deprioritize
             filtered.append(res)
+        else:
+            # For global queries, be less strict - accept results even without keyword match
+            # Only hard-filter obviously irrelevant results
+            if url and title:
+                filtered.append(res)
     
-    return filtered
+    return filtered if filtered else raw_results  # Return raw results if filtering leaves nothing
 
 
 def jarvis_live_search(query, max_results=5):
@@ -94,7 +96,7 @@ def jarvis_live_search(query, max_results=5):
     JARVIS Live Internet Search using DuckDuckGo
     Returns real-time news and information with regional awareness
     """
-    print(f"JARVIS: Searching internet for '{query}'...")
+    print(f"JARVIS: Searching internet for '{query}'...", file=sys.stderr)
 
     # Detect if this is a regional query
     regional_info = _detect_regional_query(query)
@@ -105,36 +107,49 @@ def jarvis_live_search(query, max_results=5):
             search_region = regional_info.get('search_region', 'us-en') if regional_info.get('is_regional') else 'us-en'
             
             search_query = _augment_query(query, regional_info)
+            print(f"DEBUG: Using search query: {search_query}", file=sys.stderr)
+            print(f"DEBUG: Search region: {search_region}", file=sys.stderr)
             
             # Get news results with timelimit for recent news (last 24 hours)
-            results = [r for r in ddgs.news(
-                search_query, 
-                region=search_region,
-                safesearch="off",
-                timelimit="d",  # Last day (24 hours)
-                max_results=max_results * 3
-            )]
+            try:
+                results = list(ddgs.news(
+                    search_query, 
+                    region=search_region,
+                    safesearch="off",
+                    timelimit="d",  # Last day (24 hours)
+                    max_results=max_results * 3
+                ))
+                print(f"DEBUG: Got {len(results)} news results", file=sys.stderr)
+            except Exception as search_err:
+                print(f"ERROR: News search failed: {str(search_err)}", file=sys.stderr)
+                results = []
             
             # Filter and prioritize results
             filtered = _filter_results(results, regional_info)
             results = (filtered if filtered else results)[:max_results]
+            print(f"DEBUG: After filtering: {len(results)} results", file=sys.stderr)
 
             # If regional query and no results, try broader search
             if regional_info.get('is_regional') and not results:
                 region_name = regional_info.get('region_name', 'the region')
-                print(f"JARVIS: No recent local news found. Searching for {region_name} updates...")
+                print(f"JARVIS: No recent local news found. Searching for {region_name} updates...", file=sys.stderr)
                 
                 # Try a broader search
                 broader_query = f"{region_name} latest news government announcements updates"
-                print(f"JARVIS: Trying broader search: '{broader_query}'")
+                print(f"DEBUG: Trying broader search: '{broader_query}'", file=sys.stderr)
                 
-                results = [r for r in ddgs.news(
-                    broader_query,
-                    region=search_region,
-                    safesearch="off",
-                    timelimit="w",  # Last week for broader search
-                    max_results=max_results * 2
-                )]
+                try:
+                    results = list(ddgs.news(
+                        broader_query,
+                        region=search_region,
+                        safesearch="off",
+                        timelimit="w",  # Last week for broader search
+                        max_results=max_results * 2
+                    ))
+                    print(f"DEBUG: Broader search got {len(results)} results", file=sys.stderr)
+                except Exception as broader_err:
+                    print(f"ERROR: Broader search failed: {str(broader_err)}", file=sys.stderr)
+                    results = []
                 
                 # Filter again with regional preference
                 filtered = _filter_results(results, regional_info)

@@ -11,7 +11,7 @@ class JARVISLiveSearch {
    */
   async runPythonSearch(functionName, query, maxResults = 5) {
     return new Promise((resolve, reject) => {
-      const pythonProcess = spawn('python', [
+      const pythonProcess = spawn('python3', [
         this.pythonScript,
         functionName,
         query,
@@ -30,7 +30,12 @@ class JARVISLiveSearch {
       });
 
       pythonProcess.on('close', (code) => {
+        if (stderr) {
+          console.log('📋 Python stderr:', stderr);
+        }
+        
         if (code !== 0) {
+          console.error(`❌ Python process failed with code ${code}: ${stderr}`);
           reject(new Error(`Python process failed: ${stderr}`));
           return;
         }
@@ -42,14 +47,17 @@ class JARVISLiveSearch {
           const jsonEnd = output.lastIndexOf('}');
           
           if (jsonStart === -1 || jsonEnd === -1) {
+            console.error('❌ No JSON found in output:', output);
             throw new Error('No JSON found in output');
           }
           
           const jsonString = output.substring(jsonStart, jsonEnd + 1);
           const result = JSON.parse(jsonString);
+          console.log(`✅ Search result status: ${result.status} (${result.total_results || 0} results)`);
           resolve(result);
         } catch (error) {
           // If not JSON, return as text
+          console.error('❌ Failed to parse JSON:', error.message);
           resolve({
             status: 'error',
             message: `Failed to parse JSON: ${error.message}`,
@@ -60,6 +68,7 @@ class JARVISLiveSearch {
       });
 
       pythonProcess.on('error', (error) => {
+        console.error('❌ Python process error:', error);
         reject(error);
       });
     });
