@@ -1,10 +1,14 @@
-from duckduckgo_search import DDGS
+try:
+    from ddgs import DDGS
+except ImportError:
+    from duckduckgo_search import DDGS
 import json
 import datetime
 import sys
 import re
 
-# Note: Package renamed to 'ddgs' - consider updating: pip install ddgs
+# Package info: duckduckgo_search has been renamed to ddgs
+# Install with: pip install ddgs
 
 PREFERRED_SITES = "site:techcrunch.com OR site:theverge.com OR site:reuters.com"
 KEYWORDS = ["ai", "intelligence", "security", "space", "quantum"]

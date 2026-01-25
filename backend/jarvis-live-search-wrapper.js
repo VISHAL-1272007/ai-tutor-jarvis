@@ -81,14 +81,20 @@ class JARVISLiveSearch {
     try {
       console.log(`📰 JARVIS: Fetching live news for "${query}"...`);
       const result = await this.runPythonSearch('news', query, maxResults);
+      
+      // If news search returned no results, try web search as fallback
+      if (result.status === 'no_results' && result.status !== 'error') {
+        console.log('📰 News unavailable, trying web search fallback...');
+        return await this.searchWeb(query, maxResults);
+      }
+      
       return result;
     } catch (error) {
       console.error('❌ News search error:', error.message);
-      return {
-        status: 'error',
-        message: `Failed to search news: ${error.message}`,
-        query: query
-      };
+      console.log('🔄 Falling back to web search...');
+      
+      // Try web search as fallback
+      return await this.searchWeb(query, maxResults);
     }
   }
 
