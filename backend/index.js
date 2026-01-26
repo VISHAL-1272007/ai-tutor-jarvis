@@ -9,7 +9,7 @@ const FormData = require('form-data');
 const omniscientRoutes = require('./omniscient-oracle-routes');
 const trainingRoutes = require('./training-routes');
 const visionRoutes = require('./vision-routes');
-const Anthropic = require('@anthropic-ai/sdk');
+// REMOVED: const Anthropic = require('@anthropic-ai/sdk'); - Not used, using DDGS RAG instead
 const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
 const SemanticVerifier = require('./semantic-verifier-wrapper');
 
@@ -30,20 +30,14 @@ require('dotenv').config();
 // Add Perplexity endpoint
 const setupPerplexityEndpoint = require('./perplexity-endpoint');
 
-// index.js - Line 13 (Old code-ah replace pannunga)
-const serperKeysRaw = process.env.SERPER_KEYS || ""; 
-const keys = serperKeysRaw ? serperKeysRaw.split(',') : [];
+// REMOVED: Serper initialization - using DDGS RAG pipeline instead
+// const serperKeysRaw = process.env.SERPER_KEYS || ""; 
+// const keys = serperKeysRaw ? serperKeysRaw.split(',') : [];
+// Serper has been replaced by free DuckDuckGo search (DDGS RAG pipeline)
 
-if (keys.length === 0) {
-    console.warn("⚠️ Warning: SERPER_KEYS is missing or empty in .env file!");
-}
-
-function getRotatedKey() {
-    const key = keys[keyIndex];
-    keyIndex = (keyIndex + 1) % keys.length; // 16 keys-um rotate aagitte irukkum
-    return key;
-}
-
+// DEPRECATED: Old Serper-based RAG functions (replaced by DDGS RAG pipeline)
+// These functions are no longer used - see perplexity-endpoint.js for active search endpoints
+/*
 // 2. The RAG Pipeline Function
 async function askJarvisExpert(query) {
     const currentKey = getRotatedKey();
@@ -106,6 +100,8 @@ async function askJarvisExpert(query, conversationHistory) {
         return "Sir, I encountered an issue accessing my external knowledge bank. I will answer based on my core training...";
     }
 }
+*/
+// END OF DEPRECATED FUNCTIONS
 
 // Safely require modules with error handling
 function safeRequire(modulePath, moduleName, isOptional = false) {
@@ -241,20 +237,8 @@ try {
     });
     console.log('✅ Anthropic Claude initialized');
   } else {
-    console.warn('⚠️ CLAUDE_API_KEY not configured');
-  }
-} catch (error) {
-  console.warn('⚠️ Anthropic initialization warning:', error.message);
-}
-
-
-// ===== JARVIS 5.2 ADVANCED AI ENGINE =====
-console.log('🧠 Initializing JARVIS 5.2 Advanced AI Engine...');
-
-// Expert Personas for specialized responses
-const EXPERT_PERSONAS = {
-    coding: {
-        name: 'JARVIS Software Architect',
+   REMOVED: Anthropic AI initialization - not used, using DDGS RAG with Groq synthesis instead
+// Anthropic SDK removed for code cleanliness       name: 'JARVIS Software Architect',
         expertise: 'Full-stack development, system design, algorithms, debugging',
         style: 'Technical, precise, with code examples and best practices. Always loyal to Sir.'
     },
