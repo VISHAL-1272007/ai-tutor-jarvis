@@ -29,7 +29,15 @@ CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 PORT = int(os.getenv('PORT', 5002))
 
-# Import ML services (will create this file)
+# Import ML services with graceful fallback
+ML_AVAILABLE = False
+predict_model = None
+analyze_image = None
+sentiment_analysis = None
+summarize_text = None
+analyze_code_quality = None
+train_simple_model = None
+
 try:
     from ml_service import (
         predict_model,
@@ -42,8 +50,45 @@ try:
     ML_AVAILABLE = True
     logger.info("✅ ML services loaded successfully")
 except ImportError as e:
-    ML_AVAILABLE = False
     logger.warning(f"⚠️ ML services not available: {e}")
+    logger.info("🔄 Running in HEURISTIC MODE - basic functionality available")
+    
+    # Fallback heuristic functions
+    def predict_model(context, query):
+        """Fallback: Basic keyword matching"""
+        try:
+            matches = sum(1 for word in query.lower().split() if word in context.lower())
+            confidence = min(matches / max(len(query.split()), 1), 1.0)
+            return {
+                'success': True,
+                'confidence': round(confidence, 2),
+                'method': 'fallback_heuristic',
+                'message': 'Using basic keyword matching (ML service unavailable)'
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'confidence': 0.0}
+    
+    def sentiment_analysis(text):
+        """Fallback: Basic sentiment"""
+        return {'success': True, 'sentiment': 'neutral', 'score': 0.5, 'method': 'fallback'}
+    
+    def analyze_image(image_data):
+        """Fallback: Image analysis unavailable"""
+        return {'success': False, 'error': 'ML service not loaded', 'message': 'Image analysis requires ml_service.py'}
+    
+    def summarize_text(text, max_sentences=3):
+        """Fallback: Basic summarization"""
+        sentences = text.split('.')[:max_sentences]
+        return {'success': True, 'summary': '.'.join(sentences), 'method': 'fallback'}
+    
+    def analyze_code_quality(code):
+        """Fallback: Basic code metrics"""
+        lines = len(code.split('\n'))
+        return {'success': True, 'total_lines': lines, 'method': 'fallback'}
+    
+    def train_simple_model(data):
+        """Fallback: Training unavailable"""
+        return {'success': False, 'error': 'ML service not loaded'}
 
 # Health check
 @app.route('/', methods=['GET'])
@@ -68,15 +113,42 @@ def health():
 # ML Prediction endpoint
 @app.route('/predict', methods=['POST'])
 def predict():
-    if not ML_AVAILABLE:
-        return jsonify({'error': 'ML services not available'}), 503
-    
+    """ML prediction endpoint with fallback support"""
     try:
         data = request.get_json()
-        features = data.get('features', [])
         
-        if not features:
-            return jsonify({'error': 'No features provided'}), 400
+        # Support both 'features' and 'context'/'query' formats
+        if 'features' in data:
+            features = data.get('features', [])
+            if not features:
+                return jsonify({'error': 'No features provided'}), 400
+            
+            # Use class method if available
+            from ml_service import MLService
+            ml = MLService()
+            result = ml.predict_with_model(features)
+            return jsonify(result)
+        
+        elif 'context' in data and 'query' in data:
+            context = data.get('context', '')
+            query = data.get('query', '')
+            
+            if not context or not query:
+                return jsonify({'error': 'Context and query are required'}), 400
+            
+            # Use standalone predict_model function
+            result = predict_model(context, query)
+            return jsonify(result)
+        
+        else:
+            return jsonify({
+                'error': 'Invalid request format',
+                'expected': 'Either {features: [...]} or {context: "...", query: "..."}'
+            }), 400
+    
+    except Exception as e:
+        logger.error(f"Prediction error: {e}")
+        return jsonify({'error': str(e), 'success': False}), 500
         
         result = predict_model(features)
         logger.info(f"Prediction completed: {result}")

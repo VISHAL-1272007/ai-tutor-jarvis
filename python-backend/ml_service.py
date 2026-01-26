@@ -211,3 +211,95 @@ class MLService:
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
+
+
+# ===== STANDALONE FUNCTIONS FOR EASY IMPORT =====
+# These are wrappers around the MLService class for backward compatibility
+
+_ml_service_instance = MLService()
+
+def predict_model(context, query):
+    """
+    Standalone function: Predict relevance score between context and query
+    
+    Args:
+        context (str): The document/context text
+        query (str): The user query
+    
+    Returns:
+        dict: Prediction result with confidence score
+    """
+    try:
+        if not context or not query:
+            return {
+                'success': False,
+                'error': 'Context and query are required',
+                'confidence': 0.0
+            }
+        
+        # Simple relevance heuristic based on keyword matching
+        context_lower = str(context).lower()
+        query_lower = str(query).lower()
+        
+        # Extract keywords from query
+        query_words = set(re.findall(r'\w+', query_lower))
+        query_words = {w for w in query_words if len(w) > 3}  # Filter short words
+        
+        if not query_words:
+            return {
+                'success': True,
+                'confidence': 0.5,
+                'method': 'default',
+                'message': 'No significant keywords found'
+            }
+        
+        # Count matches
+        matches = sum(1 for word in query_words if word in context_lower)
+        confidence = min(matches / len(query_words), 1.0)
+        
+        return {
+            'success': True,
+            'confidence': round(confidence, 3),
+            'matches': matches,
+            'total_keywords': len(query_words),
+            'method': 'keyword_matching',
+            'timestamp': datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'confidence': 0.0
+        }
+
+def analyze_image(image_data):
+    """Standalone wrapper for image analysis"""
+    return _ml_service_instance.analyze_image(image_data)
+
+def sentiment_analysis(text):
+    """Standalone wrapper for sentiment analysis"""
+    return _ml_service_instance.analyze_sentiment(text)
+
+def summarize_text(text, max_sentences=3):
+    """Standalone wrapper for text summarization"""
+    return _ml_service_instance.summarize_text(text, max_sentences)
+
+def analyze_code_quality(code):
+    """Standalone wrapper for code quality analysis"""
+    return _ml_service_instance.analyze_code_quality(code)
+
+def train_simple_model(data):
+    """Standalone wrapper for model training"""
+    return _ml_service_instance.train_simple_model(data)
+
+
+# Export all functions
+__all__ = [
+    'MLService',
+    'predict_model',
+    'analyze_image',
+    'sentiment_analysis',
+    'summarize_text',
+    'analyze_code_quality',
+    'train_simple_model'
+]
