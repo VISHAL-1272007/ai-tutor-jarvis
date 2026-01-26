@@ -132,6 +132,7 @@ const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggre
 const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
 const pineconeIntegration = safeRequire('./pinecone-integration', 'pinecone-integration');
 const autonomousRAG = safeRequire('./jarvis-autonomous-rag', 'jarvis-autonomous-rag');
+const telegramBot = safeRequire('./telegramBot', 'telegramBot');
 
 // Initialize JARVIS Live Search
 const jarvisLiveSearch = new JARVISLiveSearch();
@@ -4621,6 +4622,12 @@ try {
     }
 } catch (err) {
     console.error('⚠️ Daily news system error (non-blocking):', err.message);
+}
+
+// 🤖 INITIALIZE TELEGRAM BOT (JARVIS TUTOR)
+if (telegramBot && typeof telegramBot.startTelegramBot === 'function') {
+    console.log('🤖 Initializing Modern JARVIS Telegram Bot...');
+    telegramBot.startTelegramBot();
 }
 
 // ✅ Updated Code - Render/Cloud compatible
