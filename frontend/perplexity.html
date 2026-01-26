@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS Search - Perplexity AI Clone</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e4e4e7;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .search-wrapper {
+            position: relative;
+            max-width: 800px;
+            margin: 3rem auto;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1.25rem 3.5rem 1.25rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            color: #fff;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.1);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 8px 25px rgba(96, 165, 250, 0.3);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 600px;
+        }
+
+        .message {
+            margin-bottom: 2rem;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.assistant {
+            padding: 1.5rem;
+            background: rgba(96, 165, 250, 0.05);
+            border-radius: 16px;
+            border-left: 3px solid #60a5fa;
+        }
+
+        .message-content {
+            line-height: 1.8;
+            font-size: 1.05rem;
+        }
+
+        .citation {
+            display: inline-block;
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+            padding: 0.15rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0 0.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .citation:hover {
+            background: rgba(96, 165, 250, 0.3);
+            transform: scale(1.05);
+        }
+
+        /* Sources Sidebar */
+        .sources-sidebar {
+            position: sticky;
+            top: 2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .sources-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .source-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .source-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(96, 165, 250, 0.3);
+            transform: translateX(5px);
+        }
+
+        .source-card.active {
+            border-color: #60a5fa;
+            box-shadow: 0 0 20px rgba(96, 165, 250, 0.2);
+        }
+
+        .source-number {
+            display: inline-block;
+            background: #60a5fa;
+            color: #0a0e27;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            margin-right: 0.75rem;
+        }
+
+        .source-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .source-url {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .relevance-bar {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+
+        .relevance-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 100%);
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            background: #60a5fa;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 1.2rem;
+            color: #9ca3af;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .sources-sidebar {
+                position: relative;
+                top: 0;
+                max-height: none;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(96, 165, 250, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(96, 165, 250, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <span>⚡</span>
+                <span>JARVIS Search</span>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button onclick="window.location.href='/'" style="padding: 0.5rem 1rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 8px; cursor: pointer;">← Back to Home</button>
+            </div>
+        </div>
+
+        <!-- Search Input -->
+        <div class="search-wrapper">
+            <input 
+                type="text" 
+                id="searchInput"
+                class="search-input" 
+                placeholder="Ask anything... JARVIS will search and synthesize answers"
+                onkeypress="if(event.key === 'Enter') handleSearch()"
+            />
+            <button class="search-btn" id="searchBtn" onclick="handleSearch()">
+                <span>🔍 Search</span>
+            </button>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Chat Area -->
+            <div class="chat-area" id="chatArea">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🧠</div>
+                    <div class="empty-state-text">Ask JARVIS anything. I'll search the web and provide comprehensive answers.</div>
+                </div>
+            </div>
+
+            <!-- Sources Sidebar -->
+            <div class="sources-sidebar">
+                <div class="sources-title">
+                    <span>📚</span>
+                    <span>Sources</span>
+                </div>
+                <div id="sourcesContainer">
+                    <p style="color: #9ca3af; font-size: 0.9rem;">Sources will appear here after your search</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSources = [];
+        
+        async function handleSearch() {
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim();
+            
+            if (!query) return;
+            
+            const chatArea = document.getElementById('chatArea');
+            const searchBtn = document.getElementById('searchBtn');
+            
+            // Disable button
+            searchBtn.disabled = true;
+            searchBtn.innerHTML = '<span>⏳ Searching...</span>';
+            
+            // Add user message
+            chatArea.innerHTML = `
+                <div class="message">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #60a5fa;">You</div>
+                    <div class="message-content">${query}</div>
+                </div>
+            `;
+            
+            // Add loading state
+            chatArea.innerHTML += `
+                <div class="message assistant">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #a78bfa;">JARVIS</div>
+                    <div class="loading">
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                        <div class="loading-dot"></div>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('https://ai-tutor-jarvis.onrender.com/api/perplexity-search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                
+                const data = await response.json();
+                
+                // Update sources
+                if (data.sources && data.sources.length > 0) {
+                    currentSources = data.sources;
+                    updateSources(data.sources);
+                }
+                
+                // Update chat with response
+                const lastMessage = chatArea.lastElementChild;
+                lastMessage.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #a78bfa;">JARVIS</div>
+                    <div class="message-content">${formatResponse(data.answer, data.sources)}</div>
+                `;
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                const lastMessage = chatArea.lastElementChild;
+                lastMessage.innerHTML = `
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #a78bfa;">JARVIS</div>
+                    <div class="message-content" style="color: #ef4444;">⚠️ Search failed. Please try again or check if the backend is running.</div>
+                `;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerHTML = '<span>🔍 Search</span>';
+                input.value = '';
+            }
+        }
+        
+        function formatResponse(answer, sources) {
+            if (!answer) return 'No answer generated.';
+            
+            // Add citation links
+            let formatted = answer;
+            if (sources && sources.length > 0) {
+                sources.forEach((source, idx) => {
+                    const citation = `[${idx + 1}]`;
+                    formatted = formatted.replace(
+                        new RegExp(`\\[${idx + 1}\\]`, 'g'),
+                        `<span class="citation" onclick="highlightSource(${idx})">${citation}</span>`
+                    );
+                });
+            }
+            
+            return formatted;
+        }
+        
+        function updateSources(sources) {
+            const container = document.getElementById('sourcesContainer');
+            container.innerHTML = sources.map((source, idx) => `
+                <div class="source-card" id="source-${idx}" onclick="window.open('${source.url}', '_blank')">
+                    <div style="display: flex; align-items: start;">
+                        <span class="source-number">${idx + 1}</span>
+                        <div style="flex: 1;">
+                            <div class="source-title">${source.title || 'Source'}</div>
+                            <div class="source-url">
+                                <span>🌐</span>
+                                <span>${source.domain || new URL(source.url).hostname}</span>
+                            </div>
+                            ${source.relevance ? `
+                                <div class="relevance-bar">
+                                    <div class="relevance-fill" style="width: ${source.relevance}%"></div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function highlightSource(index) {
+            // Remove previous highlights
+            document.querySelectorAll('.source-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            // Add highlight
+            const sourceCard = document.getElementById(`source-${index}`);
+            if (sourceCard) {
+                sourceCard.classList.add('active');
+                sourceCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    </script>
+</body>
+</html>
