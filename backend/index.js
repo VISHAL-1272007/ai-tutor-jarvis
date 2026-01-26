@@ -534,7 +534,7 @@ const SEARCH_APIS = {
         enabled: !!process.env.PERPLEXITY_API_KEY,
         key: process.env.PERPLEXITY_API_KEY,
         endpoint: 'https://api.perplexity.ai/chat/completions',
-        model: 'llama-3.1-sonar-small-128k-online'
+        model: 'sonar-small-online'
     },
     brave: {
         enabled: !!process.env.BRAVE_SEARCH_API_KEY,
@@ -803,16 +803,17 @@ async function searchWeb(query, mode = 'all') {
     if (SEARCH_APIS.jina.enabled) {
         try {
             console.log('🔥 Using Jina AI Search (10K/month free)...');
-            const response = await axios.get(
+            const response = await axios.post(
                 'https://api.jina.ai/v1/search',
                 {
-                    params: {
-                        q: query,
-                        limit: 100000
-                    },
+                    query,
+                    top_k: 5,
+                    size: 5
+                },
+                {
                     headers: {
                         'Authorization': `Bearer ${SEARCH_APIS.jina.key}`,
-                        'Accept': 'application/json'
+                        'Content-Type': 'application/json'
                     },
                     timeout: 12000
                 }

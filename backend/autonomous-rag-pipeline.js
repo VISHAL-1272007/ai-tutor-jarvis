@@ -351,14 +351,14 @@ Respond in JSON format ONLY:
 
                 return {
                     type: 'CLARIFICATION_REQUEST',
-                    message: `Based on your question about "${userQuery.substring(0, 50)}...", here are the most likely answers:\n\n${clarification.options.map(opt => `✓ ${opt}`).join('\n')}\n\nLet me know which one matches what you're looking for!`,
+                    message: `Based on your question about "${originalQuery.substring(0, 50)}...", here are the most likely answers:\n\n${clarification.options.map(opt => `✓ ${opt}`).join('\n')}\n\nLet me know which one matches what you're looking for!`,
                     options: clarification.options
                 };
             } catch (error) {
                 console.warn(`⚠️ Clarification generation failed`);
                 return {
                     type: 'DIRECT_ANSWER',
-                    message: `I'm providing my best answer to your question. If you need something more specific, just let me know! Here's what you asked about:\n\n"${userQuery}"\n\nBased on this, the answer is likely related to: [Context provided]. For more precise results, tell me exactly what you need!`
+                    message: `I'm providing my best answer to your question. If you need something more specific, just let me know! Here's what you asked about:\n\n"${originalQuery}"\n\nBased on this, the answer is likely related to: [Context provided]. For more precise results, tell me exactly what you need!`
                 };
             }
         }
