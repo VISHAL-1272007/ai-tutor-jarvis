@@ -266,7 +266,7 @@ class JarvisAutonomousRAG {
         // Step 1: verification
         const judgePrompt = `You are a strict fact checker. Extract verified facts from the sources and map each fact to its citation index like [1], [2]. Only use provided sources.`;
         const judgeResp = await verifierGroq.chat.completions.create({
-            model: 'llama3-70b-8192',
+            model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
             temperature: 0,
             max_tokens: 600,
             messages: [
@@ -280,7 +280,7 @@ class JarvisAutonomousRAG {
         const citeMap = docs.map(d => `[${d.index}] ${d.url}`).join('\n');
         const chatPrompt = `You are a helpful assistant. Answer the question using ONLY the verified facts and cite sources using [n]. Provide a concise answer with citations. Sources:\n${citeMap}`;
         const chatResp = await chatGroq.chat.completions.create({
-            model: 'llama3-8b-8192',
+            model: 'openai/gpt-oss-120b',
             temperature: 0.7,
             max_tokens: 400,
             messages: [
@@ -339,7 +339,7 @@ ${context}`;
 
         try {
             const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-                model: 'llama-3.3-70b-versatile',
+                model: 'openai/gpt-oss-120b',
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0
             }, {

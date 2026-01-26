@@ -2,8 +2,8 @@
  * ===== JARVIS AUTONOMOUS RAG (RETRIEVAL-AUGMENTED GENERATION) =====
  * Three-Step Verified Search Pipeline:
  * 1. Search: Fetch top 5 results via google-it
- * 2. Judge: Verify facts using Groq (llama3-70b) with 0.0 temperature
- * 3. Communicate: Synthesize response using Groq (llama3-8b) with 0.7 temperature
+ * 2. Judge: Verify facts using Groq (Llama 4 Maverick) with 0.0 temperature
+ * 3. Communicate: Synthesize response using Groq (GPT-OSS-120B) with 0.7 temperature
  * 
  * Author: JARVIS Development Team
  * Date: January 2026
@@ -15,7 +15,7 @@ const googleIt = require('google-it');
 // ===== INITIALIZATION =====
 
 /**
- * Verifier Client - Strict Fact-Check Judge (llama3-70b)
+ * Verifier Client - Strict Fact-Check Judge (Llama 4 Maverick)
  * Uses specific API key with 0.0 temperature for deterministic accuracy
  */
 const verifierGroq = new Groq({
@@ -23,7 +23,7 @@ const verifierGroq = new Groq({
 });
 
 /**
- * Chat Client - Friendly Response Generator (llama3-8b)
+ * Chat Client - Friendly Response Generator (GPT-OSS-120B)
  * Uses environment variable for API key with 0.7 temperature for natural tone
  */
 const chatGroq = new Groq({
@@ -105,12 +105,12 @@ async function jarvisAutonomousVerifiedSearch(query) {
         const sourceUrls = extractUrls(searchResults);
 
         // ===== STEP 2: THE JUDGE (VERIFY FACTS) =====
-        console.log(`⚖️  [JARVIS RAG] Step 2: Verifying facts with Judge (llama3-70b)...`);
+        console.log(`⚖️  [JARVIS RAG] Step 2: Verifying facts with Judge (Llama 4 Maverick)...`);
         
         let judgeOutput = '';
         try {
             const judgeMessage = await verifierGroq.chat.completions.create({
-                model: 'llama3-70b-8192',
+                model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
                 temperature: 0.0, // Deterministic accuracy
                 messages: [
                     {
@@ -140,12 +140,12 @@ async function jarvisAutonomousVerifiedSearch(query) {
         }
 
         // ===== STEP 3: THE COMMUNICATOR (SYNTHESIZE RESPONSE) =====
-        console.log(`💬 [JARVIS RAG] Step 3: Synthesizing response with Chat (llama3-8b)...`);
+        console.log(`💬 [JARVIS RAG] Step 3: Synthesizing response with Chat (GPT-OSS-120B)...`);
         
         let finalResponse = '';
         try {
             const chatMessage = await chatGroq.chat.completions.create({
-                model: 'llama3-8b-8192',
+                model: 'openai/gpt-oss-120b',
                 temperature: 0.7, // Natural, friendly tone
                 messages: [
                     {
