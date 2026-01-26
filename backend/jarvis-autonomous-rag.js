@@ -9,20 +9,42 @@ const axios = require('axios');
 const { performance } = require('perf_hooks');
 const { spawn } = require('child_process');
 const path = require('path');
-const googleIt = require('google-it');
+const { verifierGroq, chatGroq } = require('./jarvis-autonomous-rag-verified');
+
+// Try to load google-it, fallback to null if not available (legacy only)
+let googleIt;
+try {
+    googleIt = require('google-it');
+} catch (err) {
+    console.warn('⚠️ google-it module not available, using fallback');
+    googleIt = null;
+}
+
 const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 class JarvisAutonomousRAG {
     constructor() {
         this.pinecone = require('./pinecone-integration');
-        this.serperKey = process.env.SERPER_API_KEY;
+        this.serperKeys = (process.env.SERPER_KEYS || process.env.SERPER_API_KEY || '')
+            .split(',')
+            .map(k => k.trim())
+            .filter(Boolean);
+        this.serperIndex = 0;
         this.groqKey = process.env.GROQ_API_KEY;
-        this.jinaReaderUrl = 'https://r.jina.ai/';
+        this.jinaReaderUrl = process.env.JINA_READER_BASE_URL || 'https://r.jina.ai/';
+        this.jinaApiKey = process.env.JINA_API_KEY;
+        this.stabilityApiKey = process.env.STABILITY_API_KEY;
+        this.imageProvider = process.env.IMAGE_PROVIDER || 'stability';
+        this.backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
         this.chunkSize = 1000;
         this.chunkOverlap = 200;
         this.pythonScript = path.join(__dirname, 'jarvis-live-search.py');
         this.liveSearch = new JARVISLiveSearch();
+        
+        console.log(`✅ JARVIS RAG initialized with ${this.serperKeys.length} Serper keys`);
+        console.log(`✅ Jina Reader: ${this.jinaReaderUrl}`);
+        console.log(`✅ Image Provider: ${this.imageProvider}`);
         
         // 🛑 BLOCKLIST: Domains that actively block scrapers (HTTP 451, 403, etc)
         this.blockedDomains = [
@@ -92,6 +114,192 @@ class JarvisAutonomousRAG {
             const bIsTrusted = this.trustedDomains.some(domain => b.toLowerCase().includes(domain));
             return (bIsTrusted ? 1 : 0) - (aIsTrusted ? 1 : 0);
         });
+    }
+
+    /**
+     * Round-robin Serper API key rotation
+     */
+    nextSerperKey() {
+        if (!this.serperKeys.length) return null;
+        const key = this.serperKeys[this.serperIndex % this.serperKeys.length];
+        this.serperIndex = (this.serperIndex + 1) % this.serperKeys.length;
+        return key;
+    }
+
+    /**
+     * Fetch search results from Serper
+     */
+    async fetchSerperResults(query, limit = 5) {
+        const apiKey = this.nextSerperKey();
+        if (!apiKey) throw new Error('SERPER_KEYS not configured');
+
+        const payload = {
+            q: query,
+            num: limit,
+            gl: 'us',
+            hl: 'en'
+        };
+
+        const res = await axios.post('https://google.serper.dev/search', payload, {
+            headers: {
+                'X-API-KEY': apiKey,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+
+        const organic = res.data?.organic || [];
+        return organic.slice(0, limit).map((item, idx) => ({
+            title: item.title || `Result ${idx + 1}`,
+            url: item.link || item.url,
+            snippet: item.snippet || item.description || ''
+        })).filter(r => r.url);
+    }
+
+    /**
+     * Fetch cleaned markdown using Jina Reader
+     */
+    async fetchJinaContent(url) {
+        if (!url) return null;
+        const headers = {
+            'User-Agent': 'Mozilla/5.0',
+        };
+        if (this.jinaApiKey) {
+            headers['Authorization'] = `Bearer ${this.jinaApiKey}`;
+        }
+        const res = await axios.get(`${this.jinaReaderUrl}${url}`, {
+            headers,
+            timeout: 15000
+        });
+        if (!res.data || typeof res.data !== 'string') return null;
+        return res.data;
+    }
+
+    /**
+     * High-performance Serper + Jina stack
+     */
+    async searchWithSerperAndJina(query, limit = 5) {
+        const results = await this.fetchSerperResults(query, limit);
+        const top = results.slice(0, limit);
+
+        const enriched = [];
+        for (let i = 0; i < top.length; i++) {
+            const r = top[i];
+            try {
+                const content = await this.fetchJinaContent(r.url);
+                if (content && content.length > 100) {
+                    enriched.push({
+                        title: r.title,
+                        url: r.url,
+                        snippet: r.snippet,
+                        content,
+                        index: i + 1
+                    });
+                }
+            } catch (err) {
+                console.warn(`[SERPER+JINA] Failed to fetch ${r.url}: ${err.message}`);
+            }
+        }
+        return enriched;
+    }
+
+    /**
+     * Generate contextual image using Stability AI
+     */
+    async generateContextualImage(query) {
+        if (this.imageProvider !== 'stability' || !this.stabilityApiKey) {
+            return null;
+        }
+
+        try {
+            const prompt = `A professional, modern illustration representing: ${query}. High quality, 4K, detailed, vibrant colors`;
+            
+            const response = await fetch('https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.stabilityApiKey}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    text_prompts: [{ text: prompt, weight: 1 }],
+                    cfg_scale: 7,
+                    height: 512,
+                    width: 512,
+                    steps: 30,
+                    samples: 1
+                })
+            });
+
+            if (!response.ok) {
+                console.error(`Stability AI error: ${response.status}`);
+                return null;
+            }
+
+            const data = await response.json();
+            if (data.artifacts && data.artifacts.length > 0) {
+                // Return base64 data URL
+                return `data:image/png;base64,${data.artifacts[0].base64}`;
+            }
+            return null;
+        } catch (err) {
+            console.error('Image generation error:', err.message);
+            return null;
+        }
+    }
+
+    /**
+     * Smart RAG: verifierGroq + chatGroq with citations
+     */
+    async smartRagAnswer(query, docs) {
+        if (!docs || docs.length === 0) {
+            return {
+                answer: 'No relevant sources found. Please try another query.',
+                verified: false,
+                sources: [],
+                fallback: true
+            };
+        }
+
+        const context = docs.map(d => `SOURCE [${d.index}] ${d.title}\nURL: ${d.url}\n${d.content.substring(0, 4000)}`).join('\n\n---\n\n');
+
+        // Step 1: verification
+        const judgePrompt = `You are a strict fact checker. Extract verified facts from the sources and map each fact to its citation index like [1], [2]. Only use provided sources.`;
+        const judgeResp = await verifierGroq.chat.completions.create({
+            model: 'llama3-70b-8192',
+            temperature: 0,
+            max_tokens: 600,
+            messages: [
+                { role: 'system', content: judgePrompt },
+                { role: 'user', content: `Question: ${query}\n\nSources:\n${context}` }
+            ]
+        });
+        const verifiedFacts = judgeResp.choices?.[0]?.message?.content || 'No facts extracted.';
+
+        // Step 2: synthesis
+        const citeMap = docs.map(d => `[${d.index}] ${d.url}`).join('\n');
+        const chatPrompt = `You are a helpful assistant. Answer the question using ONLY the verified facts and cite sources using [n]. Provide a concise answer with citations. Sources:\n${citeMap}`;
+        const chatResp = await chatGroq.chat.completions.create({
+            model: 'llama3-8b-8192',
+            temperature: 0.7,
+            max_tokens: 400,
+            messages: [
+                { role: 'system', content: chatPrompt },
+                { role: 'user', content: `Question: ${query}\n\nVerified facts:\n${verifiedFacts}` }
+            ]
+        });
+        const finalAnswer = chatResp.choices?.[0]?.message?.content || verifiedFacts;
+
+        // Generate contextual image
+        const imageUrl = await this.generateContextualImage(query);
+
+        return {
+            answer: finalAnswer,
+            verified: true,
+            sources: docs.map(d => d.url),
+            image_url: imageUrl,
+            fallback: false
+        };
     }
 
     /**
@@ -322,6 +530,10 @@ ${context}`;
      */
     async _fallbackGoogleSearch(query, maxResults) {
         try {
+            if (!googleIt) {
+                console.warn('[AUTONOMOUS-RAG] google-it not available, returning empty results');
+                return [];
+            }
             console.warn('[AUTONOMOUS-RAG] Falling back to google-it for search results');
             const results = await googleIt({ query, limit: Math.max(5, maxResults) });
             return results.map(r => ({ title: r.title, url: r.link, source: r.snippet }));
@@ -359,8 +571,14 @@ ${context}`;
         for (const topic of allTopics) {
             try {
                 console.log(`📰 [RAG-WORKER] Processing topic: ${topic}`);
-                const result = await this.ingestDeep(`Latest news on ${topic} ${new Date().toISOString().split('T')[0]}`);
-                if (result.length > 0) {
+                const docs = await this.searchWithSerperAndJina(`${topic} latest 2026`, 3);
+                if (docs.length > 0 && this.pinecone) {
+                    const facts = docs.map(d => ({
+                        id: `rag-${Date.now()}-${Math.random()}`,
+                        text: d.content.substring(0, this.chunkSize),
+                        metadata: { topic, source: d.url, type: 'serper_jina' }
+                    }));
+                    await this.pinecone.upsertKnowledge(facts);
                     topicsProcessed++;
                 }
             } catch (error) {
@@ -382,7 +600,7 @@ ${context}`;
         console.log(`🔍 [JARVIS-RAG] Query: ${query}`);
 
         try {
-            // Phase 1: Local Vector Retrieval
+            // Phase 1: Local Vector Retrieval (kept for backward compatibility)
             let localMemory = [];
             try {
                 localMemory = this.pinecone ? await this.pinecone.searchPineconeKnowledge(query, 5) : [];
@@ -390,92 +608,39 @@ ${context}`;
                 console.warn(`⚠️ [JARVIS-RAG] Local memory search failed: ${e.message}`);
             }
 
-            // Detect current events or missing context
-            const currentEventsKeywords = ['latest', 'today', 'current', 'recent', 'breaking', 'this week', 'this month', 'update', 'happening'];
-            const lowerQuery = query.toLowerCase();
-            const isCurrentEvents = /2025|2026/.test(lowerQuery) || currentEventsKeywords.some(k => lowerQuery.includes(k));
-
-            // Phase 2: Live Multi-Source Fetch (web crawl) - with error handling
-            let liveSources = [];
+            // Phase 2: High-performance Serper + Jina stack (replaces legacy scraping)
+            let serperDocs = [];
             try {
-                liveSources = await this.ingestDeep(query);
+                serperDocs = await this.searchWithSerperAndJina(`${query} (latest, high quality sources)`, 5);
             } catch (e) {
-                console.warn(`⚠️ [JARVIS-RAG] Deep ingestion failed: ${e.message}`);
+                console.warn(`⚠️ [JARVIS-RAG] Serper+Jina search failed: ${e.message}`);
             }
 
-            // Phase 2b: Live News Fallback (DuckDuckGo) when memory is stale/empty
-            let liveNews = null;
-            let liveNewsContext = '';
-            if (isCurrentEvents || !localMemory || localMemory.length === 0) {
-                try {
-                    const liveQuery = `${query} 2026`;
-                    liveNews = await this.liveSearch.searchNews(liveQuery, 5);
-                    if (liveNews?.status === 'success' && (liveNews.total_results || 0) > 0) {
-                        liveNewsContext = '\n\n📰 LIVE 2026 NEWS CONTEXT:\n';
-                        liveNews.results.slice(0, 3).forEach((item, i) => {
-                            liveNewsContext += `${i + 1}. ${item.title} (Source: ${item.source})\nLink: ${item.url}\n`;
-                        });
-                    }
-                } catch (e) {
-                    console.warn('[JARVIS-RAG] Live news fetch failed:', e.message);
-                }
-            }
-            
-            // Phase 3: Truth Verification (with error handling)
-            let verifiedFacts = '';
-            try {
-                if (liveSources.length > 0) {
-                    verifiedFacts = await this.verifyTruth(query, liveSources.slice(0, 3));
-                } else {
-                    verifiedFacts = 'No verified facts from web sources available.';
-                }
-            } catch (e) {
-                console.warn(`⚠️ [JARVIS-RAG] Truth verification failed: ${e.message}`);
-                verifiedFacts = 'Unable to verify facts due to search limitations.';
+            // If no docs, fallback to local memory only
+            if (serperDocs.length === 0 && localMemory.length === 0) {
+                return {
+                    answer: 'No relevant sources found. Please try a different query.',
+                    sources: [],
+                    verified: false,
+                    fallback: true,
+                    timeMs: Math.round(performance.now() - startTime)
+                };
             }
 
-            // Phase 4: Final Synthesis
-            const prompt = `You are JARVIS, an autonomous AI with access to a verified RAG pipeline.
-Answer the following question using the provided Verified Facts, Local Memory, and any Live 2026 context below.
+            // Build combined docs (Serper+Jina preferred)
+            const docsForRag = serperDocs.length ? serperDocs : localMemory.map((m, idx) => ({
+                title: m.metadata?.title || `Memory ${idx + 1}`,
+                url: m.metadata?.source || 'memory',
+                snippet: m.text?.substring(0, 160) || '',
+                content: m.text || '',
+                index: idx + 1
+            }));
 
-USER QUESTION: ${query}
-
-VERIFIED FACTS:
-${verifiedFacts || 'No verified facts available. Use your knowledge if needed.'}
-
-LOCAL MEMORY:
-${localMemory.length > 0 ? localMemory.map(m => m.metadata?.text || m.text).join('\n---\n') : 'No local memory available.'}
-
-${liveNewsContext}
-
-INSTRUCTIONS:
-- Be highly specific.
-- Cite sources if available.
-- If unsure, state what is unverified vs verified.
-- Prefer 2026 information from live news when relevant.
-- Use available context to provide accurate information.
-- If external sources failed, rely on your training knowledge.`;
-
-            const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-                model: 'llama-3.3-70b-versatile',
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.1
-            }, {
-                headers: { 'Authorization': `Bearer ${this.groqKey}` }
-            });
-
-            const timeTaken = (performance.now() - startTime).toFixed(0);
-            const sourceUrls = liveSources.map(s => s.url).filter(Boolean);
-            if (liveNews?.results) {
-                liveNews.results.forEach(r => { if (r.url) sourceUrls.push(r.url); });
-            }
+            const ragResult = await this.smartRagAnswer(query, docsForRag);
 
             return {
-                answer: response.data.choices[0].message.content,
-                verificationStatus: liveSources.length > 0 ? 'VERIFIED' : 'FALLBACK',
-                latency: `${timeTaken}ms`,
-                sources: sourceUrls,
-                liveNews: liveNews || null
+                ...ragResult,
+                timeMs: Math.round(performance.now() - startTime)
             };
             
         } catch (error) {

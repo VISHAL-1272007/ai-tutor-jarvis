@@ -110,16 +110,19 @@ class KnowledgeBaseSystem {
       }
 
       // Create document record
+      const uploadedAt = new Date().toISOString();
       const docRecord = {
         docId,
         userId,
         fileName,
-        uploadedAt: new Date().toISOString(),
+        title: fileName,
+        source: 'user-upload',
+        uploadedAt,
         wordCount: content.split(/\s+/).length,
         tokenEstimate: Math.ceil(content.length / 4),
         tags: this.extractTags(content),
         summary: this.generateSummary(content),
-        chunks: this.chunkContent(content)
+        chunks: this.chunkContent(content, fileName, uploadedAt)
       };
 
       // Store document
@@ -180,12 +183,20 @@ class KnowledgeBaseSystem {
   /**
    * Chunk content for better retrieval
    */
-  chunkContent(content, chunkSize = 500) {
+  chunkContent(content, title = 'Document', uploadedAt = null, chunkSize = 500) {
     const chunks = [];
     const words = content.split(/\s+/);
 
     for (let i = 0; i < words.length; i += chunkSize) {
-      chunks.push(words.slice(i, i + chunkSize).join(' '));
+      const text = words.slice(i, i + chunkSize).join(' ');
+      chunks.push({
+        id: `${title}-chunk-${i / chunkSize}`,
+        text,
+        title,
+        source: 'user-upload',
+        date: uploadedAt,
+        confidence: 1.0
+      });
     }
 
     return chunks;

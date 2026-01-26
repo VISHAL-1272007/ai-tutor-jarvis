@@ -15,6 +15,7 @@ const UserProfileSystem = require('./user-profile-system');
 const KnowledgeBaseSystem = require('./knowledge-base-system');
 const ExpertModeSystem = require('./expert-mode-system');
 const setupAdvancedFeaturesAPI = require('./advanced-features-api');
+const { jarvisAutonomousVerifiedSearch } = require('./jarvis-autonomous-rag-verified');
 
 // Initialize advanced systems
 const userProfileSystem = new UserProfileSystem();
@@ -569,6 +570,16 @@ function extractKeywords(query) {
  * Step 2: Fetch latest context from Serper API
  * Retrieves 5 most recent and relevant results
  */
+const FRESH_DAYS = 90; // Only keep sources from the last 90 days
+
+function isFresh(dateStr) {
+    if (!dateStr) return false;
+    const dt = new Date(dateStr);
+    if (isNaN(dt.getTime())) return false;
+    const ageDays = (Date.now() - dt.getTime()) / (1000 * 60 * 60 * 24);
+    return ageDays <= FRESH_DAYS;
+}
+
 async function fetchSerperContext(query) {
     const serperKeys = SEARCH_APIS.serper?.keys || [];
     if (!serperKeys.length) return [];
@@ -576,7 +587,7 @@ async function fetchSerperContext(query) {
     for (let i = 0; i < serperKeys.length; i++) {
         try {
             const response = await axios.post('https://google.serper.dev/news', {
-                q: query,
+                q: `${query} past 24 hours`,
                 gl: 'in',
                 hl: 'en',
                 num: 5  // Get top 5 results
@@ -589,13 +600,17 @@ async function fetchSerperContext(query) {
             });
 
             const articles = response.data?.news || [];
-            return articles.slice(0, 5).map(article => ({
-                title: article.title,
-                snippet: article.snippet,
-                link: article.link,
-                source: article.source,
-                date: article.date
-            }));
+            return articles
+                .filter(a => isFresh(a.date))
+                .slice(0, 5)
+                .map(article => ({
+                    title: article.title,
+                    snippet: article.snippet,
+                    link: article.link,
+                    source: article.source,
+                    date: article.date,
+                    confidence: 0.72
+                }));
         } catch (error) {
             console.warn(`⚠️ Serper key ${i + 1} failed for context: ${error.message}`);
         }
@@ -608,12 +623,27 @@ async function fetchSerperContext(query) {
  * /**
  * Step 3 & 4: Build RAG-Enhanced Prompt (NEW & IMPROVED)
  */
-function buildRagPrompt(originalQuestion, contextResults) {
+function detectTaskType(text) {
+    const lower = text.toLowerCase();
+    if (/(debug|error|exception|stack trace|bug)/.test(lower)) return 'debug';
+    if (/(math|integral|derivative|solve|equation|calculate)/.test(lower)) return 'math';
+    if (/(plan|steps|roadmap|break down|outline)/.test(lower)) return 'plan';
+    if (/(summary|summarize|tl;dr|bullet)/.test(lower)) return 'summary';
+    return 'tutor';
+}
+
+function buildRagPrompt(originalQuestion, contextResults, userProfile = {}) {
     const today = new Date().toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
     });
+
+    const tone = userProfile.tone || 'friendly';
+    const depth = userProfile.depth || 'medium';
+    const skill = userProfile.skill || 'intermediate';
+    const language = userProfile.language || 'en';
+    const task = detectTaskType(originalQuestion);
 
     // Format context data
     const serperData = contextResults.length > 0 
@@ -622,9 +652,14 @@ function buildRagPrompt(originalQuestion, contextResults) {
             source: r.source,
             date: r.date,
             snippet: r.snippet,
-            link: r.link
+            link: r.link,
+            confidence: r.confidence
           }))
         : [];
+
+    const avgConfidence = serperData.length
+        ? (serperData.reduce((sum, r) => sum + (r.confidence || 0), 0) / serperData.length).toFixed(2)
+        : '0.00';
 
     const ragSystemPrompt = `
 # STRICT IDENTITY: 
@@ -636,10 +671,17 @@ It is 2026. If the user asks about current events (like Vijay's party or latest 
 # DATA SOURCE (THE ONLY TRUTH):
 ${JSON.stringify(serperData, null, 2)}
 
+# CONTEXT CONFIDENCE:
+Average confidence: ${avgConfidence}. Use only high-confidence snippets; if confidence is low, say it.
+
+# USER PROFILE:
+Tone: ${tone}; Depth: ${depth}; Skill: ${skill}; Task: ${task}; Language: ${language}
+
 # MANDATORY OPERATIONAL RULES:
 1. VERIFIED SEARCH ONLY: Prioritize the provided DATA SOURCE over internal training. Do not hallucinate facts.
 2. CITATION MANDATE: Every factual claim must include a source link [e.g., source: example.com].
 3. CONTEXT AWARENESS: User's roadmap starts in February 2026. Keep all advice future-aligned.
+ 4. If context confidence is low, state uncertainty and propose a follow-up question.
 
 # USER QUESTION:
 ${originalQuestion}`;
@@ -691,16 +733,30 @@ async function executeRagPipeline(question, existingContext, llmModel = 'groq') 
         }
 
         // Merge results, prioritizing semantic knowledge if score is high
-        const combinedResults = [...pineconeResults, ...contextResults];
+        const combinedResults = [...pineconeResults, ...contextResults].map(r => ({
+            ...r,
+            confidence: r.confidence !== undefined ? r.confidence : (r.score !== undefined ? Math.max(0, Math.min(1, r.score)) : 0.6)
+        }));
+
+        // Filter out very low-confidence or stale items (older than 90 days)
+        const filteredResults = combinedResults.filter(r => {
+            const fresh = isFresh(r.date || r.publishedAt || r.time || r.timestamp || null);
+            const confOk = (r.confidence || 0) >= 0.35;
+            // If no date, allow but require higher confidence
+            if (!r.date && !r.publishedAt && !r.time && !r.timestamp) {
+                return confOk && (r.confidence || 0) >= 0.5;
+            }
+            return confOk && fresh;
+        });
         
-        console.log(`📝 RAG Pipeline: Step 3 - Building enhanced prompt with context...`);
-        const ragPrompt = buildRagPrompt(question, combinedResults);
+        console.log(`📝 RAG Pipeline: Step 3 - Building enhanced prompt with context... (${filteredResults.length}/${combinedResults.length} kept)`);
+        const ragPrompt = buildRagPrompt(question, filteredResults, existingContext?.userProfile || {});
         
         console.log(`🧠 RAG Pipeline: Step 4 - Sending to LLM with context priority...`);
         
         return {
             systemPrompt: ragPrompt,
-            contextSources: combinedResults,
+            contextSources: filteredResults,
             keywords,
             enriched: true
         };
@@ -3677,8 +3733,8 @@ function startServer(port, attempts = 0) {
 // ===================================================
 // 1. OMNISCIENT RAG QUERY - Real-time context aware responses
 app.post('/omniscient/rag-query', apiLimiter, async (req, res) => {
-  try {
-    const { question, context = '', domain = 'general', useRag = true } = req.body;
+    try {
+        const { question, context = '', domain = 'general', useRag = true, userProfile = {} } = req.body;
     
     if (!question) {
       return res.status(400).json({ error: 'Question required' });
@@ -3687,7 +3743,7 @@ app.post('/omniscient/rag-query', apiLimiter, async (req, res) => {
     console.log(`🚀 JARVIS RAG Query: ${question.substring(0, 60)}...`);
     
     // Step 1-4: Execute RAG Pipeline
-    const ragData = await executeRagPipeline(question, context);
+    const ragData = await executeRagPipeline(question, { userProfile });
     
     // Combine existing context with RAG context
     const enrichedContext = context + '\n' + ragData.systemPrompt;
@@ -4461,7 +4517,50 @@ app.post('/api/chat', async (req, res) => {
 console.log(`✅ JARVIS Full Power endpoints loaded!`);
 
 // =========================================================
-// 📰 NEWS SYSTEM & SERVER STARTUP (Only Once!)
+// � AUTONOMOUS VERIFIED RAG ENDPOINT
+// =========================================================
+
+app.post('/omniscient/verified', apiLimiter, async (req, res) => {
+  try {
+    const { query, userProfile } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        error: 'Query is required'
+      });
+    }
+
+    // Call the verified RAG pipeline
+    const result = await jarvisAutonomousVerifiedSearch(query);
+    
+    // Apply user profile conditioning if provided
+    if (userProfile) {
+      result.userProfile = userProfile;
+      // The verified RAG response can be further customized based on user profile
+      // (tone, depth, skill level adjustments handled in synthesized answer)
+    }
+
+    res.json({
+      success: true,
+      data: result,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Verified RAG Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process query with verified RAG',
+      message: error.message
+    });
+  }
+});
+
+console.log('✅ Autonomous Verified RAG endpoint loaded!');
+
+// =========================================================
+// �📰 NEWS SYSTEM & SERVER STARTUP (Only Once!)
 // =========================================================
 
 console.log('\n📰 Initializing Daily News Training System...');

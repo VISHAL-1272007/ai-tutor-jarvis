@@ -8,7 +8,7 @@
 const express = require('express');
 const { OmniscientOracle } = require('./omniscient-oracle');
 const { GlobalKnowledgeEngine } = require('./global-knowledge-engine');
-const autonomousRAG = require('./jarvis-autonomous-rag');
+const { jarvisAutonomousVerifiedSearch } = require('./jarvis-autonomous-rag-verified');
 const rateLimit = require('express-rate-limit');
 
 const router = express.Router();
@@ -28,11 +28,11 @@ router.post('/autonomous-rag', async (req, res) => {
     if (!query) return res.status(400).json({ error: 'Query is required' });
 
     try {
-        const result = await autonomousRAG.answer(query);
-        res.json(result);
+        const result = await jarvisAutonomousVerifiedSearch(query);
+        res.json({ success: true, data: result });
     } catch (error) {
         console.error('Autonomous RAG Route Error:', error);
-        res.status(500).json({ error: 'RAG Pipeline Failure' });
+        res.status(500).json({ error: 'RAG Pipeline Failure', details: error.message });
     }
 });
 
