@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Globe, ChevronRight, ExternalLink, Zap, ShieldAlert, Cpu } from 'lucide-react';
-import { useChat } from 'ai/react'; 
+import { useChat } from 'ai/react';
 
 // --- TYPES (Idhu dhaan mukkiyam, Red lines varama thadukkum) ---
 interface Source {
@@ -28,7 +28,7 @@ const PerplexityView = () => {
 
     // Vercel AI SDK Hook
     const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-        api: '/api/chat', // Make sure this route exists in your backend!
+        api: '/api/chat',
         initialMessages: [
             { id: '1', role: 'assistant', content: 'JARVIS Online. **Search-First** Protocol activated. What can I verify for you?' }
         ]
@@ -83,7 +83,7 @@ const PerplexityView = () => {
 
                     {/* Chat Stream Area */}
                     <div className="flex-1 overflow-y-auto space-y-8 pb-40 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent pr-4">
-                        {messages.map((m) => (
+                        {messages.map((m: any) => (
                             <motion.div
                                 key={m.id}
                                 initial={{ opacity: 0, y: 10 }}
