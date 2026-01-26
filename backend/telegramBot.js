@@ -13,7 +13,10 @@ const startTelegramBot = () => {
         return;
     }
 
-    const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+    const bot = new TelegramBot(TELEGRAM_TOKEN, { 
+        polling: true,
+        filepath: false // Disable file storage warnings
+    });
     console.log('✅ JARVIS Telegram Bot is standing by, Sir.');
 
     // Helper to check for ADMIN access

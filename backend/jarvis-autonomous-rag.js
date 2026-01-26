@@ -31,6 +31,11 @@ class JarvisAutonomousRAG {
             .split(',')
             .map(k => k.trim())
             .filter(Boolean);
+        
+        if (this.serperKeys.length === 0) {
+            console.warn('⚠️ No Serper API keys configured - search functionality will be limited');
+        }
+        
         this.serperIndex = 0;
         this.groqKey = process.env.GROQ_API_KEY;
         this.jinaReaderUrl = process.env.JINA_READER_BASE_URL || 'https://r.jina.ai/';
@@ -200,38 +205,61 @@ class JarvisAutonomousRAG {
         }
         const res = await axios.get(`${this.jinaReaderUrl}${url}`, {
             headers,
-            timeout: 15000
+            timeout: 8000, // Reduced from 15s to 8s for faster failures
+            maxRedirects: 3
         });
         if (!res.data || typeof res.data !== 'string') return null;
         return res.data;
     }
 
     /**
-     * High-performance Serper + Jina stack
+     * High-performance Serper + Jina stack with parallel processing
      */
     async searchWithSerperAndJina(query, limit = 5) {
         const results = await this.fetchSerperResults(query, limit);
         const top = results.slice(0, limit);
 
-        const enriched = [];
-        for (let i = 0; i < top.length; i++) {
-            const r = top[i];
+        // Parallel fetch with Promise.allSettled for faster processing
+        const fetchPromises = top.map(async (r, i) => {
             try {
                 const content = await this.fetchJinaContent(r.url);
                 if (content && content.length > 100) {
-                    enriched.push({
+                    return {
                         title: r.title,
                         url: r.url,
                         snippet: r.snippet,
                         content,
-                        index: i + 1
-                    });
+                        index: i + 1,
+                        status: 'success'
+                    };
                 }
+                return null;
             } catch (err) {
-                console.warn(`[SERPER+JINA] Failed to fetch ${r.url}: ${err.message}`);
+                // Silent failure - use snippet as fallback
+                return {
+                    title: r.title,
+                    url: r.url,
+                    snippet: r.snippet,
+                    content: r.snippet || 'Content unavailable',
+                    index: i + 1,
+                    status: 'fallback'
+                };
             }
-        }
-        return enriched;
+        });
+
+        const settled = await Promise.allSettled(fetchPromises);
+        const enriched = settled
+            .filter(p => p.status === 'fulfilled' && p.value !== null)
+            .map(p => p.value);
+        
+        return enriched.length > 0 ? enriched : top.map((r, i) => ({
+            title: r.title,
+            url: r.url,
+            snippet: r.snippet,
+            content: r.snippet,
+            index: i + 1,
+            status: 'snippet_only'
+        }));
     }
 
     /**
