@@ -18,7 +18,7 @@ try:
     import requests
 except ImportError as e:
     print(f"⚠️ Missing dependency: {e}")
-    print("Install with: pip install google-generativeai pinecone-client python-dotenv requests")
+    print("Install with: pip install google-generativeai pinecone python-dotenv requests")
     exit(1)
 
 # ===== SETUP LOGGING =====
