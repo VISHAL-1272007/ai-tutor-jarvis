@@ -1,16 +1,19 @@
-// perplexity-endpoint.js
-// Perplexity Search Endpoint for Frontend Integration
+/**
+ * DDGS RAG-based Search Endpoint (Replaces Serper + Jina)
+ * Uses DuckDuckGo search + BeautifulSoup + Groq synthesis
+ */
 
-const { jarvisAutonomousVerifiedSearch } = require('./jarvis-autonomous-rag-verified');
+const { ddgsRagPipeline } = require('./ddgs-rag-integration');
 
 /**
- * Setup Perplexity Search Endpoint
- * @param {Express.Application} app - Express app instance
+ * Setup DDGS RAG Search endpoints
  */
-function setupPerplexityEndpoint(app) {
-  app.post('/api/perplexity-search', async (req, res) => {
+function setupSearchEndpoints(app) {
+  
+  // New DDGS endpoint
+  app.post('/api/search-ddgs', async (req, res) => {
     try {
-      const { query } = req.body;
+      const { query, region = 'in-en' } = req.body;
       
       if (!query) {
         return res.status(400).json({ 
@@ -19,33 +22,59 @@ function setupPerplexityEndpoint(app) {
         });
       }
 
-      console.log(`🔍 Perplexity Search Query: ${query}`);
+      console.log(`🔍 DDGS Search: ${query}`);
+      const result = await ddgsRagPipeline(query, region);
+      res.json(result);
 
-      // Use the autonomous RAG system
-      const result = await jarvisAutonomousVerifiedSearch(query);
+    } catch (error) {
+      console.error(`❌ Search Error: ${error.message}`);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Search failed'
+      });
+    }
+  });
 
-      // Format response for frontend
-      const response = {
-        success: true,
-        answer: result.answer || result.message || 'No answer generated',
-        sources: result.sources || [],
-        confidence: result.confidence || 0.8,
-        timestamp: new Date().toISOString()
-      };
+  // Backward compatible perplexity endpoint (now uses DDGS)
+  app.post('/api/perplexity-search', async (req, res) => {
+    try {
+      const { query, region = 'in-en' } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Query is required' 
+        });
+      }
 
-      res.json(response);
+      console.log(`🔍 Perplexity Search (DDGS RAG): ${query}`);
+
+      const result = await ddgsRagPipeline(query, region);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          answer: result.answer,
+          sources: result.sources,
+          confidence: 0.85,
+          timestamp: result.timestamp
+        });
+      } else {
+        res.status(500).json(result);
+      }
 
     } catch (error) {
       console.error('❌ Perplexity Search Error:', error.message);
       res.status(500).json({
         success: false,
-        error: 'Search failed',
-        message: error.message
+        error: error.message || 'Perplexity search failed'
       });
     }
   });
 
-  console.log('✅ Perplexity Search endpoint loaded!');
+  console.log('✅ DDGS RAG Search endpoints loaded!');
+  console.log('   📡 /api/search-ddgs (new DDGS endpoint)');
+  console.log('   📡 /api/perplexity-search (compatible via DDGS)');
 }
 
-module.exports = setupPerplexityEndpoint;
+module.exports = setupSearchEndpoints;
