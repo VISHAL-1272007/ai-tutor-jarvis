@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
 const omniscientRoutes = require('./omniscient-oracle-routes');
+const trainingRoutes = require('./training-routes');
 const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
 const SemanticVerifier = require('./semantic-verifier-wrapper');
 
@@ -1347,6 +1348,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/api/oracle', omniscientRoutes);
+app.use('/api', trainingRoutes);
 
 // ===== SETUP ADVANCED FEATURES APIs =====
 setupAdvancedFeaturesAPI(app, userProfileSystem, knowledgeBaseSystem, expertModeSystem);
