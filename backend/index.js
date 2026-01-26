@@ -9,6 +9,7 @@ const FormData = require('form-data');
 const omniscientRoutes = require('./omniscient-oracle-routes');
 const trainingRoutes = require('./training-routes');
 const visionRoutes = require('./vision-routes');
+const Anthropic = require('@anthropic-ai/sdk');
 const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
 const SemanticVerifier = require('./semantic-verifier-wrapper');
 
@@ -104,11 +105,17 @@ async function askJarvisExpert(query, conversationHistory) {
 }
 
 // Safely require modules with error handling
-function safeRequire(modulePath, moduleName) {
+function safeRequire(modulePath, moduleName, isOptional = false) {
   try {
     return require(modulePath);
   } catch (err) {
-    console.warn(`⚠️ Optional module ${moduleName} failed to load: ${err.message}`);
+    const errorMsg = err.message;
+    // Suppress @google/generative-ai warnings - vision already works via main import
+    if (errorMsg.includes('@google/generative-ai') && isOptional) {
+      // Vision is already initialized via main import, these are fallback modules
+      return null;
+    }
+    console.warn(`⚠️ Optional module ${moduleName} failed to load: ${errorMsg}`);
     return null;
   }
 }
@@ -117,9 +124,10 @@ const dailyNews = safeRequire('./daily-news-trainer', 'daily-news-trainer');
 const wolframSimple = safeRequire('./wolfram-simple', 'wolfram-simple');
 const AutonomousRAGPipeline = safeRequire('./autonomous-rag-pipeline', 'autonomous-rag-pipeline');
 const FunctionCallingEngine = safeRequire('./function-calling-engine', 'function-calling-engine');
-const JARVISOmniscientLite = safeRequire('../jarvis-omniscient-lite', 'jarvis-omniscient-lite');
-const JARVISOmniscientFull = safeRequire('../jarvis-omniscient-full', 'jarvis-omniscient-full');
-const JARVISFullPower = safeRequire('../jarvis-full-power', 'jarvis-full-power');
+// Safe require with Gemini dependency fallback
+const JARVISOmniscientLite = safeRequire('../jarvis-omniscient-lite', 'jarvis-omniscient-lite', true);
+const JARVISOmniscientFull = safeRequire('../jarvis-omniscient-full', 'jarvis-omniscient-full', true);
+const JARVISFullPower = safeRequire('../jarvis-full-power', 'jarvis-full-power', true);
 const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggressive-prompt');
 const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
 const pineconeIntegration = safeRequire('./pinecone-integration', 'pinecone-integration');
@@ -218,6 +226,21 @@ try {
   }
 } catch (error) {
   console.warn('⚠️ Gemini initialization warning:', error.message);
+}
+
+// Initialize Anthropic AI
+let anthropic = null;
+try {
+  if (process.env.CLAUDE_API_KEY) {
+    anthropic = new Anthropic({
+      apiKey: process.env.CLAUDE_API_KEY,
+    });
+    console.log('✅ Anthropic Claude initialized');
+  } else {
+    console.warn('⚠️ CLAUDE_API_KEY not configured');
+  }
+} catch (error) {
+  console.warn('⚠️ Anthropic initialization warning:', error.message);
 }
 
 
@@ -1297,12 +1320,37 @@ let activePort = BASE_PORT;
 // This allows express-rate-limit to correctly identify users via X-Forwarded-For header
 app.set('trust proxy', 1);
 
-// Session Middleware
-app.use(session({
+// Session Middleware with production-ready configuration
+const sessionConfig = {
     secret: process.env.SESSION_SECRET || 'jarvis_secret_key',
     resave: false,
-    saveUninitialized: false
-}));
+    saveUninitialized: false,
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+};
+
+// Use Redis if available in production, otherwise use memory (with warning)
+if (process.env.REDIS_URL) {
+    try {
+        const RedisStore = require('connect-redis').default;
+        const { createClient } = require('redis');
+        const redisClient = createClient({ url: process.env.REDIS_URL });
+        redisClient.connect().catch(err => console.warn('⚠️ Redis connection failed:', err.message));
+        sessionConfig.store = new RedisStore({ client: redisClient });
+        console.log('✅ Session store: Redis (production-ready)');
+    } catch (err) {
+        console.warn('⚠️ Redis not available, using memory store (development only)');
+    }
+} else if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️ REDIS_URL not configured - using memory store. This will cause memory leaks in production.');
+    console.warn('   To fix: Set REDIS_URL environment variable on Render.');
+}
+
+app.use(session(sessionConfig));
 
 // Passport Middleware
 app.use(passport.initialize());
@@ -3934,16 +3982,13 @@ async function tryAPISequentially(question, context, domain, models = ['groq', '
           break;
           
         case 'claude':
-          if (process.env.CLAUDE_API_KEY) {
-            response = await axios.post('https://api.anthropic.com/v1/messages', {
+          if (anthropic) {
+            const msg = await anthropic.messages.create({
               model: 'claude-3-opus-20240229',
               max_tokens: 1024,
               messages: [{ role: 'user', content: question }]
-            }, {
-              headers: { 'x-api-key': process.env.CLAUDE_API_KEY },
-              timeout: 3000
             });
-            response = response.data?.content?.[0]?.text || response.data;
+            response = msg.content[0].text;
             confidence = scoreConfidence(response, 'claude');
           }
           break;
