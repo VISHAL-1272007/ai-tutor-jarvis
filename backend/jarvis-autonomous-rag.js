@@ -10,6 +10,7 @@ const { performance } = require('perf_hooks');
 const { spawn } = require('child_process');
 const path = require('path');
 const { verifierGroq, chatGroq } = require('./jarvis-autonomous-rag-verified');
+const admin = require('firebase-admin');
 
 // Try to load google-it, fallback to null if not available (legacy only)
 let googleIt;
@@ -41,6 +42,36 @@ class JarvisAutonomousRAG {
         this.chunkOverlap = 200;
         this.pythonScript = path.join(__dirname, 'jarvis-live-search.py');
         this.liveSearch = new JARVISLiveSearch();
+        this.firestore = null;
+        this.firebaseReady = false;
+        if (!admin.apps.length) {
+            try {
+                const fbConfigRaw = process.env.FIREBASE_CONFIG;
+                if (fbConfigRaw) {
+                    const fbConfig = typeof fbConfigRaw === 'string' ? JSON.parse(fbConfigRaw) : fbConfigRaw;
+                    admin.initializeApp({
+                        credential: admin.credential.cert(fbConfig),
+                        storageBucket: fbConfig.storageBucket || process.env.FIREBASE_STORAGE_BUCKET || undefined,
+                        projectId: fbConfig.projectId
+                    });
+                    console.log('✅ Firebase Admin initialized for chat memory via FIREBASE_CONFIG');
+                } else {
+                    admin.initializeApp({
+                        credential: admin.credential.applicationDefault(),
+                        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'vishai-f6197.appspot.com'
+                    });
+                    console.log('✅ Firebase Admin initialized for chat memory (applicationDefault)');
+                }
+            } catch (err) {
+                console.warn(`⚠️ Firebase Admin init skipped for chat memory: ${err.message}`);
+            }
+        }
+        try {
+            this.firestore = admin.firestore();
+            this.firebaseReady = true;
+        } catch (err) {
+            console.warn(`⚠️ Firestore unavailable for chat memory: ${err.message}`);
+        }
         
         console.log(`✅ JARVIS RAG initialized with ${this.serperKeys.length} Serper keys`);
         console.log(`✅ Jina Reader: ${this.jinaReaderUrl}`);
@@ -250,8 +281,9 @@ class JarvisAutonomousRAG {
 
     /**
      * Smart RAG: verifierGroq + chatGroq with citations
+     * Now supports visual context integration
      */
-    async smartRagAnswer(query, docs) {
+    async smartRagAnswer(query, docs, history = [], visualContext = null) {
         if (!docs || docs.length === 0) {
             return {
                 answer: 'No relevant sources found. Please try another query.',
@@ -263,29 +295,37 @@ class JarvisAutonomousRAG {
 
         const context = docs.map(d => `SOURCE [${d.index}] ${d.title}\nURL: ${d.url}\n${d.content.substring(0, 4000)}`).join('\n\n---\n\n');
 
+        const historyContext = (history || [])
+            .map((m, idx) => `${idx + 1}. ${m.role.toUpperCase()}: ${m.message.substring(0, 500)}`)
+            .join('\n');
+        const historyBlock = historyContext ? `Conversation Context (latest ${history.length} messages):\n${historyContext}\n\n` : '';
+
+        // Add visual context if provided
+        const visualBlock = visualContext ? `\n${visualContext}\n\n` : '';
+
         // Step 1: verification
-        const judgePrompt = `You are a strict fact checker. Extract verified facts from the sources and map each fact to its citation index like [1], [2]. Only use provided sources.`;
+        const judgePrompt = `You are a strict fact checker. Extract verified facts from the sources and map each fact to its citation index like [1], [2]. Only use provided sources. Consider the prior conversation context when interpreting the user's intent.${visualContext ? ' Also consider the visual context provided from image analysis.' : ''}`;
         const judgeResp = await verifierGroq.chat.completions.create({
             model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
             temperature: 0,
             max_tokens: 600,
             messages: [
                 { role: 'system', content: judgePrompt },
-                { role: 'user', content: `Question: ${query}\n\nSources:\n${context}` }
+                { role: 'user', content: `${historyBlock}${visualBlock}Question: ${query}\n\nSources:\n${context}` }
             ]
         });
         const verifiedFacts = judgeResp.choices?.[0]?.message?.content || 'No facts extracted.';
 
         // Step 2: synthesis
         const citeMap = docs.map(d => `[${d.index}] ${d.url}`).join('\n');
-        const chatPrompt = `You are a helpful assistant. Answer the question using ONLY the verified facts and cite sources using [n]. Provide a concise answer with citations. Sources:\n${citeMap}`;
+        const chatPrompt = `You are a helpful assistant. Answer the question using ONLY the verified facts and cite sources using [n]. Provide a concise answer with citations.${visualContext ? ' Integrate insights from the visual analysis when relevant.' : ''} Sources:\n${citeMap}\n\nConversation Context:\n${historyContext || 'None provided.'}`;
         const chatResp = await chatGroq.chat.completions.create({
             model: 'openai/gpt-oss-120b',
             temperature: 0.7,
             max_tokens: 400,
             messages: [
                 { role: 'system', content: chatPrompt },
-                { role: 'user', content: `Question: ${query}\n\nVerified facts:\n${verifiedFacts}` }
+                { role: 'user', content: `${visualBlock}Question: ${query}\n\nVerified facts:\n${verifiedFacts}` }
             ]
         });
         const finalAnswer = chatResp.choices?.[0]?.message?.content || verifiedFacts;
@@ -314,6 +354,53 @@ class JarvisAutonomousRAG {
             i += (size - overlap);
         }
         return chunks;
+    }
+
+    /**
+     * CHAT MEMORY (FIRESTORE)
+     * Save and retrieve recent messages for long-term memory
+     */
+    async saveMessageToFirebase(userId, message, role) {
+        if (!this.firebaseReady || !this.firestore) return false;
+        if (!userId || !message || !role) return false;
+        try {
+            await this.firestore.collection('chats').add({
+                userId,
+                role,
+                message,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAtMs: Date.now()
+            });
+            return true;
+        } catch (err) {
+            console.warn(`⚠️ [CHAT-MEMORY] Failed to save message: ${err.message}`);
+            return false;
+        }
+    }
+
+    async getRecentMessages(userId, limit = 5) {
+        if (!this.firebaseReady || !this.firestore || !userId) return [];
+        try {
+            const snapshot = await this.firestore
+                .collection('chats')
+                .where('userId', '==', userId)
+                .orderBy('createdAtMs', 'desc')
+                .limit(limit)
+                .get();
+
+            const messages = snapshot.docs.map(doc => doc.data());
+            // Return oldest -> newest for conversational flow
+            return messages
+                .sort((a, b) => (a.createdAtMs || 0) - (b.createdAtMs || 0))
+                .map(m => ({
+                    role: m.role || 'user',
+                    message: m.message || '',
+                    createdAtMs: m.createdAtMs || Date.now()
+                }));
+        } catch (err) {
+            console.warn(`⚠️ [CHAT-MEMORY] Failed to fetch history: ${err.message}`);
+            return [];
+        }
     }
 
     /**
@@ -593,11 +680,14 @@ ${context}`;
     /**
      * THE PERSISTENT ANSWER ENGINE (IMPROVED)
      * Answers queries by: 1. Vector Search + 2. Web Search + 3. Truth Verification
-     * Now with fallback chains and graceful degradation
+     * Now with fallback chains, graceful degradation, and multimodal vision support
      */
-    async answer(query) {
+    async answer(query, userId = null, visualContext = null) {
         const startTime = performance.now();
-        console.log(`🔍 [JARVIS-RAG] Query: ${query}`);
+        console.log(`🔍 [JARVIS-RAG] Query: ${query}${visualContext ? ' [WITH VISION]' : ''}`);
+
+        // Fetch recent chat history for long-term memory
+        const conversationHistory = userId ? await this.getRecentMessages(userId, 5) : [];
 
         try {
             // Phase 1: Local Vector Retrieval (kept for backward compatibility)
@@ -636,7 +726,17 @@ ${context}`;
                 index: idx + 1
             }));
 
-            const ragResult = await this.smartRagAnswer(query, docsForRag);
+            const ragResult = await this.smartRagAnswer(query, docsForRag, conversationHistory, visualContext);
+
+            // Persist chat messages for long-term memory
+            if (userId) {
+                try {
+                    await this.saveMessageToFirebase(userId, query, 'user');
+                    await this.saveMessageToFirebase(userId, ragResult.answer, 'assistant');
+                } catch (err) {
+                    console.warn(`⚠️ [CHAT-MEMORY] Failed to persist conversation: ${err.message}`);
+                }
+            }
 
             return {
                 ...ragResult,
