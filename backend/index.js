@@ -27,6 +27,9 @@ const expertModeSystem = new ExpertModeSystem();
 
 require('dotenv').config();
 
+// Add Perplexity endpoint
+const setupPerplexityEndpoint = require('./perplexity-endpoint');
+
 // index.js - Line 13 (Old code-ah replace pannunga)
 const serperKeysRaw = process.env.SERPER_KEYS || ""; 
 const keys = serperKeysRaw ? serperKeysRaw.split(',') : [];
@@ -1403,6 +1406,9 @@ app.use('/api', visionRoutes);
 
 // ===== SETUP ADVANCED FEATURES APIs =====
 setupAdvancedFeaturesAPI(app, userProfileSystem, knowledgeBaseSystem, expertModeSystem);
+
+// ===== SETUP PERPLEXITY SEARCH ENDPOINT =====
+setupPerplexityEndpoint(app);
 
 app.use(express.static(path.join(__dirname, '../frontend')));
 
