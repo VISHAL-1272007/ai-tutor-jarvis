@@ -27,15 +27,8 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 class JarvisAutonomousRAG {
     constructor() {
         this.pinecone = require('./pinecone-integration');
-        this.serperKeys = (process.env.SERPER_KEYS || process.env.SERPER_API_KEY || '')
-            .split(',')
-            .map(k => k.trim())
-            .filter(Boolean);
-        
-        if (this.serperKeys.length === 0) {
-            console.warn('⚠️ No Serper API keys configured - search functionality will be limited');
-        }
-        
+        // Serper disabled; using DDGS pipeline
+        this.serperKeys = [];
         this.serperIndex = 0;
         this.groqKey = process.env.GROQ_API_KEY;
         this.jinaReaderUrl = process.env.JINA_READER_BASE_URL || 'https://r.jina.ai/';
@@ -78,7 +71,7 @@ class JarvisAutonomousRAG {
             console.warn(`⚠️ Firestore unavailable for chat memory: ${err.message}`);
         }
         
-        console.log(`✅ JARVIS RAG initialized with ${this.serperKeys.length} Serper keys`);
+        console.log(`✅ JARVIS RAG initialized using DDGS (DuckDuckGo) search`);
         console.log(`✅ Jina Reader: ${this.jinaReaderUrl}`);
         console.log(`✅ Image Provider: ${this.imageProvider}`);
         
@@ -112,6 +105,56 @@ class JarvisAutonomousRAG {
             'techcrunch.com',
             'hackernews.com'
         ];
+    }
+
+    /**
+     * DDGS-backed search using local Node endpoint /api/search-ddgs
+     * Falls back gracefully if endpoint is unavailable
+     */
+    async searchWithDDGS(query, limit = 5) {
+        try {
+            const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
+            const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
+            const endpoint = `${baseUrl}/api/search-ddgs`;
+            console.log(`[DDGS] Attempting: ${endpoint}`);
+            const res = await axios.post(endpoint, { query, region: 'in-en' }, { timeout: 30000 });
+            if (!res.data || res.data.success !== true) {
+                console.error(`[DDGS] Invalid response: ${JSON.stringify(res.data)}`);
+                throw new Error(res.data?.error || 'DDGS search failed');
+            }
+            const answer = res.data.answer || '';
+            const context = res.data.context || '';
+            const sources = Array.isArray(res.data.sources) ? res.data.sources : [];
+            // Build docs: prefer context for content; include top sources
+            const docs = sources.slice(0, limit).map((s, i) => ({
+                title: s.title || `Source ${i + 1}`,
+                url: s.url || s.link || 'unknown',
+                snippet: s.snippet || '',
+                content: (context || answer || s.snippet || '').toString().substring(0, 8000),
+                index: i + 1,
+                status: 'ddgs'
+            }));
+            // If no sources, still create a single doc from synthesized answer/context
+            if (docs.length === 0 && (context || answer)) {
+                docs.push({
+                    title: 'DDGS Synthesized Context',
+                    url: 'ddgs.local',
+                    snippet: (answer || '').toString().substring(0, 200),
+                    content: (context || answer).toString().substring(0, 8000),
+                    index: 1,
+                    status: 'ddgs_context'
+                });
+            }
+            return docs;
+        } catch (e) {
+            const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
+            const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
+            const status = e.response?.status || e.code || 'unknown';
+            const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
+            console.warn(`⚠️ [JARVIS-RAG] DDGS failed (${status}): ${errorMsg}`);
+            console.warn(`   Endpoint: ${baseUrl}/api/search-ddgs`);
+            return [];
+        }
     }
     
     /**
@@ -686,12 +729,12 @@ ${context}`;
         for (const topic of allTopics) {
             try {
                 console.log(`📰 [RAG-WORKER] Processing topic: ${topic}`);
-                const docs = await this.searchWithSerperAndJina(`${topic} latest 2026`, 3);
+                const docs = await this.searchWithDDGS(`${topic} latest 2026`, 3);
                 if (docs.length > 0 && this.pinecone) {
                     const facts = docs.map(d => ({
                         id: `rag-${Date.now()}-${Math.random()}`,
                         text: d.content.substring(0, this.chunkSize),
-                        metadata: { topic, source: d.url, type: 'serper_jina' }
+                        metadata: { topic, source: d.url, type: 'ddgs' }
                     }));
                     await this.pinecone.upsertKnowledge(facts);
                     topicsProcessed++;
@@ -726,16 +769,16 @@ ${context}`;
                 console.warn(`⚠️ [JARVIS-RAG] Local memory search failed: ${e.message}`);
             }
 
-            // Phase 2: High-performance Serper + Jina stack (replaces legacy scraping)
-            let serperDocs = [];
+            // Phase 2: DDGS pipeline (replaces Serper + Jina)
+            let ddgsDocs = [];
             try {
-                serperDocs = await this.searchWithSerperAndJina(`${query} (latest, high quality sources)`, 5);
+                ddgsDocs = await this.searchWithDDGS(`${query} (latest, high quality sources)`, 5);
             } catch (e) {
-                console.warn(`⚠️ [JARVIS-RAG] Serper+Jina search failed: ${e.message}`);
+                console.warn(`⚠️ [JARVIS-RAG] DDGS search failed: ${e.message}`);
             }
 
             // If no docs, fallback to local memory only
-            if (serperDocs.length === 0 && localMemory.length === 0) {
+            if (ddgsDocs.length === 0 && localMemory.length === 0) {
                 return {
                     answer: 'No relevant sources found. Please try a different query.',
                     sources: [],
@@ -745,8 +788,8 @@ ${context}`;
                 };
             }
 
-            // Build combined docs (Serper+Jina preferred)
-            const docsForRag = serperDocs.length ? serperDocs : localMemory.map((m, idx) => ({
+            // Build combined docs (DDGS preferred)
+            const docsForRag = ddgsDocs.length ? ddgsDocs : localMemory.map((m, idx) => ({
                 title: m.metadata?.title || `Memory ${idx + 1}`,
                 url: m.metadata?.source || 'memory',
                 snippet: m.text?.substring(0, 160) || '',

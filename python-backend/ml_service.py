@@ -1,18 +1,37 @@
 """
 Machine Learning Service Module for JARVIS
 Lightweight version without heavy ML dependencies
+Integrated with JARVIS Researcher and Groq LLM
 """
 
 import re
 from datetime import datetime
 import json
+import os
+from typing import Dict, List, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from backend/.env
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'backend', '.env'))
+
+from groq import Groq
+from jarvis_researcher import jarvis_researcher, jarvis_researcher_quick
 
 class MLService:
-    """Lightweight ML/AI Service for JARVIS"""
+    """Lightweight ML/AI Service for JARVIS with Groq Integration"""
     
     def __init__(self):
-        """Initialize the ML service"""
+        """Initialize the ML service with Groq client"""
         print("🤖 ML Service initialized (lightweight mode)")
+        
+        # Initialize Groq client
+        self.groq_api_key = os.getenv('GROQ_API_KEY')
+        if self.groq_api_key:
+            self.groq_client = Groq(api_key=self.groq_api_key)
+            print("✅ Groq LLM client initialized")
+        else:
+            self.groq_client = None
+            print("⚠️ GROQ_API_KEY not found - Groq features disabled")
     
     def predict_with_model(self, features):
         """
@@ -211,6 +230,122 @@ class MLService:
             }
         except Exception as e:
             return {'success': False, 'error': str(e)}
+    
+    def generate_jarvis_response(self, user_query: str) -> Dict:
+        """
+        Generate AI response using JARVIS Researcher + Groq LLM pipeline
+        
+        Pipeline:
+        1. Call jarvis_researcher() to get verified 2026 web context
+        2. Construct system prompt with context
+        3. Send to Groq Llama-3-70B model
+        4. Return AI response with source citations
+        
+        Args:
+            user_query: User's question/query
+            
+        Returns:
+            dict: {
+                'success': bool,
+                'response': str (AI's answer),
+                'sources': list (source URLs),
+                'context_length': int,
+                'model': str,
+                'error': str (if failed)
+            }
+        """
+        try:
+            # Step 1: Check if Groq is available
+            if not self.groq_client:
+                return {
+                    'success': False,
+                    'error': 'Groq API key not configured',
+                    'response': 'JARVIS AI is currently unavailable. Please configure GROQ_API_KEY.',
+                    'sources': []
+                }
+            
+            print(f"🔍 JARVIS processing query: '{user_query}'")
+            
+            # Step 2: Get verified web context using JARVIS Researcher
+            print("📡 Fetching verified 2026 web context...")
+            research_results = jarvis_researcher(user_query, max_results=5)
+            
+            # Extract context and sources
+            if research_results:
+                context = "\n\n".join([
+                    f"[Source {i+1}: {r['title']}]\n{r['content']}"
+                    for i, r in enumerate(research_results)
+                ])
+                sources = [{'title': r['title'], 'url': r['url']} for r in research_results]
+            else:
+                context = ""
+                sources = []
+            
+            print(f"✅ Retrieved {len(research_results)} verified sources ({len(context)} chars)")
+            
+            # Step 3: Construct System Prompt
+            if context:
+                system_prompt = f"""You are JARVIS, a helpful AI assistant developed for educational purposes.
+
+Use the following verified 2026 web context to answer the user's question accurately:
+
+{context}
+
+Instructions:
+- Provide a professional and concise answer based on the context
+- Cite sources when making claims (e.g., "According to Source 1...")
+- If the context doesn't fully answer the question, acknowledge what you know and what's missing
+- Keep the tone helpful and educational
+- Focus on information from 2026 when available"""
+            else:
+                system_prompt = """You are JARVIS, a helpful AI assistant.
+
+The web research returned no verified 2026 data for this query. 
+
+Instructions:
+- Politely inform the user that you couldn't find fresh 2026 web data
+- Offer to help with the question using your general knowledge
+- Suggest the user try a more specific query or check back later
+- Keep the tone professional and helpful"""
+            
+            # Step 4: Call Groq LLM
+            print("🤖 Generating response with Groq Llama-3.3-70B...")
+            completion = self.groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_query}
+                ],
+                temperature=0.7,
+                max_tokens=1024,
+                top_p=0.9
+            )
+            
+            response_text = completion.choices[0].message.content
+            
+            print(f"✅ Response generated ({len(response_text)} chars)")
+            
+            return {
+                'success': True,
+                'response': response_text,
+                'sources': sources,
+                'context_length': len(context),
+                'verified_sources_count': len(research_results),
+                'model': 'llama-3.3-70b-versatile',
+                'timestamp': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            error_msg = f"Error generating JARVIS response: {str(e)}"
+            print(f"❌ {error_msg}")
+            
+            return {
+                'success': False,
+                'error': error_msg,
+                'response': 'I encountered an error while processing your request. Please try again.',
+                'sources': [],
+                'timestamp': datetime.now().isoformat()
+            }
 
 
 # ===== STANDALONE FUNCTIONS FOR EASY IMPORT =====
@@ -292,6 +427,10 @@ def train_simple_model(data):
     """Standalone wrapper for model training"""
     return _ml_service_instance.train_simple_model(data)
 
+def generate_jarvis_response(user_query: str) -> Dict:
+    """Standalone wrapper for JARVIS response generation"""
+    return _ml_service_instance.generate_jarvis_response(user_query)
+
 
 # Export all functions
 __all__ = [
@@ -301,5 +440,6 @@ __all__ = [
     'sentiment_analysis',
     'summarize_text',
     'analyze_code_quality',
-    'train_simple_model'
+    'train_simple_model',
+    'generate_jarvis_response'
 ]

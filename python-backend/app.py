@@ -1,106 +1,140 @@
 """
 JARVIS AI - Python Flask Backend
-ML/AI Service for heavy computational tasks
-Port: 5002
+Primary endpoints:
+- GET /health
+- POST /ask-jarvis
 """
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import os
-from datetime import datetime
+import io
 import json
 import logging
+import os
+import sys
+from datetime import datetime
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('python-backend.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from dotenv import load_dotenv
 
+
+ROOT_DIR = os.path.dirname(__file__)
+ENV_PATH = os.path.join(ROOT_DIR, '..', 'backend', '.env')
+LOG_PATH = os.path.join(ROOT_DIR, 'python-backend.log')
+
+
+# Load environment variables
+load_dotenv(ENV_PATH)
+
+
+def configure_logging() -> logging.Logger:
+    """Configure UTF-8 safe logging for Windows consoles."""
+    if sys.platform == 'win32':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+    class UTF8StreamHandler(logging.StreamHandler):
+        def __init__(self):
+            super().__init__()
+            self.stream = sys.stderr
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(LOG_PATH, encoding='utf-8'),
+            UTF8StreamHandler(),
+        ],
+    )
+    return logging.getLogger("jarvis-backend")
+
+
+logger = configure_logging()
+
+
+# Initialize Flask
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
-PORT = int(os.getenv('PORT', 5002))
 
-# Import ML services with graceful fallback
-ML_AVAILABLE = False
-predict_model = None
-analyze_image = None
-sentiment_analysis = None
-summarize_text = None
-analyze_code_quality = None
-train_simple_model = None
-
+# Attempt to load ML service
 try:
-    from ml_service import (
-        predict_model,
-        analyze_image,
-        sentiment_analysis,
-        summarize_text,
-        analyze_code_quality,
-        train_simple_model
-    )
+    from ml_service import MLService
+
+    ml_service = MLService()
     ML_AVAILABLE = True
     logger.info("✅ ML services loaded successfully")
-except ImportError as e:
-    logger.warning(f"⚠️ ML services not available: {e}")
-    logger.info("🔄 Running in HEURISTIC MODE - basic functionality available")
-    
-    # Fallback heuristic functions
-    def predict_model(context, query):
-        """Fallback: Basic keyword matching"""
-        try:
-            matches = sum(1 for word in query.lower().split() if word in context.lower())
-            confidence = min(matches / max(len(query.split()), 1), 1.0)
-            return {
-                'success': True,
-                'confidence': round(confidence, 2),
-                'method': 'fallback_heuristic',
-                'message': 'Using basic keyword matching (ML service unavailable)'
-            }
-        except Exception as e:
-            return {'success': False, 'error': str(e), 'confidence': 0.0}
-    
-    def sentiment_analysis(text):
-        """Fallback: Basic sentiment"""
-        return {'success': True, 'sentiment': 'neutral', 'score': 0.5, 'method': 'fallback'}
-    
-    def analyze_image(image_data):
-        """Fallback: Image analysis unavailable"""
-        return {'success': False, 'error': 'ML service not loaded', 'message': 'Image analysis requires ml_service.py'}
-    
-    def summarize_text(text, max_sentences=3):
-        """Fallback: Basic summarization"""
-        sentences = text.split('.')[:max_sentences]
-        return {'success': True, 'summary': '.'.join(sentences), 'method': 'fallback'}
-    
-    def analyze_code_quality(code):
-        """Fallback: Basic code metrics"""
-        lines = len(code.split('\n'))
-        return {'success': True, 'total_lines': lines, 'method': 'fallback'}
-    
-    def train_simple_model(data):
-        """Fallback: Training unavailable"""
-        return {'success': False, 'error': 'ML service not loaded'}
+except Exception as exc:  # broad to catch missing deps
+    ML_AVAILABLE = False
+    ml_service = None
+    logger.warning(f"⚠️ ML services not available: {exc}")
 
-# Health check
-@app.route('/', methods=['GET'])
-def home():
-    return jsonify({
-        'status': 'online',
-        'service': 'JARVIS Python ML Backend',
-        'version': '1.0.0',
-        'port': PORT,
-        'ml_available': ML_AVAILABLE,
-        'timestamp': datetime.now().isoformat()
-    })
+
+PORT = int(os.environ.get("FLASK_PORT", 3000))
+
+
+@app.route("/", methods=["GET"])
+def root():
+    return jsonify(
+        {
+            "status": "online",
+            "service": "JARVIS Python ML Backend",
+            "version": "1.0.0",
+            "port": PORT,
+            "ml_available": ML_AVAILABLE,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    )
+
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "healthy", "ml_available": ML_AVAILABLE})
+
+
+@app.route("/ask-jarvis", methods=["POST"])
+def ask_jarvis():
+    """Main endpoint: accepts {query} and returns structured response."""
+    if not ML_AVAILABLE or ml_service is None:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "ML services not available",
+                    "response": "JARVIS research engine is offline. Please start ML services.",
+                }
+            ),
+            503,
+        )
+
+    payload = request.get_json(silent=True) or {}
+    query = (payload.get("query") or "").strip()
+
+    if not query:
+        return (
+            jsonify({"success": False, "error": "Query cannot be empty"}),
+            400,
+        )
+
+    try:
+        logger.info(f"🤖 JARVIS query received: '{query[:120]}'")
+        result = ml_service.generate_jarvis_response(query)
+        status_code = 200 if result.get("success") else 500
+        return jsonify(result), status_code
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"❌ JARVIS processing error: {exc}")
+        return (
+            jsonify({
+                "success": False,
+                "error": str(exc),
+                "response": "JARVIS hit an unexpected issue. Please try again.",
+            }),
+            500,
+        )
+
+
+if __name__ == "__main__":
+    logger.info(f"🚀 Starting Flask server on port {PORT}")
+    app.run(host="0.0.0.0", port=PORT)
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -287,6 +321,77 @@ def train_model():
     except Exception as e:
         logger.error(f"Training error: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/ask-jarvis', methods=['POST'])
+def ask_jarvis():
+    """
+    JARVIS AI Assistant Endpoint
+    
+    Uses JARVIS Researcher + Groq LLM pipeline to answer user queries
+    with verified 2026 web context
+    
+    Request Body:
+        {
+            "query": "What are the latest AI trends in Tamil Nadu?"
+        }
+    
+    Response:
+        {
+            "success": true,
+            "response": "AI assistant's answer...",
+            "sources": [
+                {"title": "Article Title", "url": "https://..."},
+                ...
+            ],
+            "context_length": 1234,
+            "verified_sources_count": 3,
+            "model": "llama3-70b-8192",
+            "timestamp": "2026-01-27T..."
+        }
+    """
+    try:
+        if not ML_AVAILABLE or not generate_jarvis_response:
+            logger.error("JARVIS service not available")
+            return jsonify({
+                'success': False,
+                'error': 'JARVIS service is not available. Please check ML service configuration.',
+                'response': 'The AI assistant is currently unavailable.'
+            }), 503
+        
+        # Get query from request
+        data = request.get_json()
+        if not data or 'query' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Missing required field: query'
+            }), 400
+        
+        user_query = data['query'].strip()
+        if not user_query:
+            return jsonify({
+                'success': False,
+                'error': 'Query cannot be empty'
+            }), 400
+        
+        logger.info(f"🤖 JARVIS query received: '{user_query}'")
+        
+        # Generate response using JARVIS pipeline
+        result = generate_jarvis_response(user_query)
+        
+        if result['success']:
+            logger.info(f"✅ JARVIS response generated ({result.get('verified_sources_count', 0)} sources)")
+        else:
+            logger.error(f"❌ JARVIS response failed: {result.get('error', 'Unknown error')}")
+        
+        return jsonify(result), 200 if result['success'] else 500
+        
+    except Exception as e:
+        logger.error(f"JARVIS endpoint error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'response': 'An unexpected error occurred while processing your request.'
+        }), 500
 
 # Error handlers
 @app.errorhandler(404)

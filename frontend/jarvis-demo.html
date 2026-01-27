@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI - Quick Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 min-h-screen text-white">
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <div class="inline-block p-4 bg-blue-500/10 rounded-full mb-4">
+                <svg class="w-16 h-16 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                JARVIS AI Assistant
+            </h1>
+            <p class="text-gray-400">Production-Ready Demo</p>
+        </div>
+
+        <!-- Status Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Backend Status -->
+            <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/30">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-3 h-3 rounded-full bg-green-400 animate-pulse-slow"></div>
+                    <h3 class="font-semibold">Backend Status</h3>
+                </div>
+                <button onclick="testBackend()" class="w-full bg-blue-500 hover:bg-blue-600 py-2 px-4 rounded-lg transition-colors">
+                    Test Connection
+                </button>
+                <p id="backend-status" class="mt-3 text-sm text-gray-400">Click to test</p>
+            </div>
+
+            <!-- Component Status -->
+            <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-cyan-500/30">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse-slow"></div>
+                    <h3 class="font-semibold">React Component</h3>
+                </div>
+                <a href="jarvis-standalone.html" class="block w-full bg-cyan-500 hover:bg-cyan-600 py-2 px-4 rounded-lg transition-colors text-center">
+                    Open JARVIS Chat
+                </a>
+                <p class="mt-3 text-sm text-gray-400">Full-featured UI</p>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-blue-500/30 mb-8">
+            <h2 class="text-2xl font-bold mb-6">✨ Features Implemented</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-green-400 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <h3 class="font-semibold">Animated Loading</h3>
+                        <p class="text-sm text-gray-400">4 status messages cycle</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-green-400 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <h3 class="font-semibold">Source Cards</h3>
+                        <p class="text-sm text-gray-400">Perplexity-style layout</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-green-400 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <h3 class="font-semibold">Chat History</h3>
+                        <p class="text-sm text-gray-400">Full conversation tracking</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-green-400 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <h3 class="font-semibold">Markdown Support</h3>
+                        <p class="text-sm text-gray-400">Rich text formatting</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-green-400 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <h3 class="font-semibold">Dark Mode UI</h3>
+                        <p class="text-sm text-gray-400">Glass morphism design</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-green-400 mt-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <div>
+                        <h3 class="font-semibold">Mobile Responsive</h3>
+                        <p class="text-sm text-gray-400">Works on all devices</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Links -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="JARVIS_INTEGRATION_GUIDE.md" class="bg-gray-800/30 hover:bg-gray-800/50 rounded-xl p-4 border border-gray-700 hover:border-blue-500/50 transition-all">
+                <h3 class="font-semibold mb-1">📚 Integration Guide</h3>
+                <p class="text-sm text-gray-400">Setup instructions</p>
+            </a>
+            <a href="jarvis-chat.jsx" class="bg-gray-800/30 hover:bg-gray-800/50 rounded-xl p-4 border border-gray-700 hover:border-cyan-500/50 transition-all">
+                <h3 class="font-semibold mb-1">⚛️ React Component</h3>
+                <p class="text-sm text-gray-400">View source code</p>
+            </a>
+            <a href="jarvis-chat.css" class="bg-gray-800/30 hover:bg-gray-800/50 rounded-xl p-4 border border-gray-700 hover:border-purple-500/50 transition-all">
+                <h3 class="font-semibold mb-1">🎨 Custom Styles</h3>
+                <p class="text-sm text-gray-400">Animations & CSS</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        async function testBackend() {
+            const statusEl = document.getElementById('backend-status');
+            statusEl.textContent = '⏳ Testing connection...';
+            statusEl.className = 'mt-3 text-sm text-yellow-400';
+
+            try {
+                const response = await fetch('http://localhost:3000/ask-jarvis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: 'test connection' })
+                });
+
+                if (response.ok) {
+                    statusEl.textContent = '✅ Backend is running! Ready to use.';
+                    statusEl.className = 'mt-3 text-sm text-green-400';
+                } else {
+                    throw new Error('Backend returned error');
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ Backend not reachable. Start Flask server first.';
+                statusEl.className = 'mt-3 text-sm text-red-400';
+            }
+        }
+    </script>
+</body>
+</html>

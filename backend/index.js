@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') })
+require('dotenv').config({ path: path.join(__dirname, '.env'), override: true })
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const FormData = require('form-data');
@@ -25,98 +25,47 @@ const userProfileSystem = new UserProfileSystem();
 const knowledgeBaseSystem = new KnowledgeBaseSystem();
 const expertModeSystem = new ExpertModeSystem();
 
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 // Add Perplexity endpoint
 const setupPerplexityEndpoint = require('./perplexity-endpoint');
+// Add JARVIS Proxy for Python Flask integration
+const { setupJarvisRoutes } = require('./jarvis-proxy');
 
 // REMOVED: Serper initialization - using DDGS RAG pipeline instead
 // const serperKeysRaw = process.env.SERPER_KEYS || ""; 
 // const keys = serperKeysRaw ? serperKeysRaw.split(',') : [];
 // Serper has been replaced by free DuckDuckGo search (DDGS RAG pipeline)
 
-// DEPRECATED: Old Serper-based RAG functions (replaced by DDGS RAG pipeline)
-// These functions are no longer used - see perplexity-endpoint.js for active search endpoints
-/*
 // 2. The RAG Pipeline Function
 async function askJarvisExpert(query) {
-    const currentKey = getRotatedKey();
-    console.log(`🚀 Using Serper Key #${keyIndex + 1}`);
-
-    // Retrieval: Search with rotated key
-    const searchData = await axios.post('https://google.serper.dev/search', {
-        q: `${query} news Jan 2026`,
-        num: 5
-    }, {
-        headers: { 'X-API-KEY': currentKey }
-    });
-
-    // Deep Scraping & Generation logic inga varum...
-    // ... (already we discussed the scraper integration)
+    // Legacy Serper logic removed; return stub
+    return `Legacy askJarvisExpert is deprecated. Use new RAG pipeline for: ${query}`;
 }
 // index.js (Continuation)
 
 async function askJarvisExpert(query, conversationHistory) {
-    const currentKey = getRotatedKey();
-    const queryType = detectQueryType(query); // Neenga add panna function
-    
-    try {
-        // 1. SEARCH PHASE
-        console.log(`🔍 JARVIS: Searching for [${query}] using key index ${keyIndex}...`);
-        const searchResponse = await axios.post('https://google.serper.dev/search', {
-            q: `${query} latest news Jan 2026`,
-            num: 3
-        }, {
-            headers: { 'X-API-KEY': currentKey }
-        });
-
-        // 2. CONTEXT PREPARATION (Retrieval)
-        // Search snippets-ah mattum extract panrom (Deep Scraper illanalum idhu work aagum)
-        const contextData = searchResponse.data.organic
-            .map(result => `Source: ${result.title}\nInfo: ${result.snippet}`)
-            .join('\n\n');
-
-        // 3. PROMPT GENERATION (Augmentation)
-        // Neenga mela add panna generateCoTPrompt function-ah inga use panrom
-        const expertPrompt = generateCoTPrompt(query, queryType, conversationHistory);
-        
-        const finalPayload = `
-            ${expertPrompt}
-            
-            🌐 **LIVE RESEARCH DATA (Real-time Jan 2026):**
-            ${contextData}
-            
-            USER'S CURRENT QUESTION: ${query}
-            
-            *INSTRUCTION: Use the Research Data to be 100% accurate. If the data is not relevant, rely on your core knowledge but prioritize live data.*
-        `;
-
-        // 4. GENERATION PHASE
-        const result = await geminiModel.generateContent(finalPayload);
-        return result.response.text();
-
-    } catch (error) {
-        console.error("❌ RAG Pipeline Error:", error.message);
-        return "Sir, I encountered an issue accessing my external knowledge bank. I will answer based on my core training...";
-    }
+    // Legacy Serper logic removed; return stub
+    return `Legacy askJarvisExpert is deprecated. Use new RAG pipeline for: ${query}`;
 }
-*/
-// END OF DEPRECATED FUNCTIONS
 
 // Safely require modules with error handling
 function safeRequire(modulePath, moduleName, isOptional = false) {
-  try {
-    return require(modulePath);
-  } catch (err) {
-    const errorMsg = err.message;
-    // Suppress @google/generative-ai warnings - vision already works via main import
-    if (errorMsg.includes('@google/generative-ai') && isOptional) {
-      // Vision is already initialized via main import, these are fallback modules
-      return null;
+    try {
+        return require(modulePath);
+    } catch (err) {
+        const errorMsg = err.message;
+        // If optional, fail silently and continue
+        if (isOptional) {
+            return null;
+        }
+        // Suppress @google/generative-ai warnings - vision already works via main import
+        if (errorMsg.includes('@google/generative-ai')) {
+            return null;
+        }
+        console.warn(`⚠️ Optional module ${moduleName} failed to load: ${errorMsg}`);
+        return null;
     }
-    console.warn(`⚠️ Optional module ${moduleName} failed to load: ${errorMsg}`);
-    return null;
-  }
 }
 
 const dailyNews = safeRequire('./daily-news-trainer', 'daily-news-trainer');
@@ -130,8 +79,16 @@ const JARVISFullPower = safeRequire('../jarvis-full-power', 'jarvis-full-power',
 const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggressive-prompt');
 const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
 const pineconeIntegration = safeRequire('./pinecone-integration', 'pinecone-integration');
-const autonomousRAG = safeRequire('./jarvis-autonomous-rag', 'jarvis-autonomous-rag');
-const telegramBot = safeRequire('./telegramBot', 'telegramBot');
+// Only enable autonomous RAG when explicitly requested
+const AUTONOMOUS_RAG_ENABLED = process.env.AUTONOMOUS_RAG_ENABLED === 'true';
+let autonomousRAG = null;
+if (AUTONOMOUS_RAG_ENABLED) {
+    autonomousRAG = safeRequire('./jarvis-autonomous-rag', 'jarvis-autonomous-rag', false);
+    if (!autonomousRAG) {
+        console.warn('⚠️ Autonomous RAG module failed to load. Worker will remain disabled.');
+    }
+}
+// Telegram Bot removed
 
 // Initialize JARVIS Live Search
 const jarvisLiveSearch = new JARVISLiveSearch();
@@ -145,18 +102,21 @@ const { queryWolframAlpha, getDirectAnswer } = wolframSimple || {};
 const { JARVIS_AGGRESSIVE_PROMPT } = aggressivePrompt || {};
 const { JARVIS_PRO_PLUS_SYSTEM, JARVIS_PRO_PLUS_CODING, JARVIS_PRO_PLUS_MATH, JARVIS_PRO_PLUS_DSA } = proPlus || {};
 
-// Initialize Autonomous RAG Daily Worker
-if (autonomousRAG && autonomousRAG.runDailySelfTraining) {
-  console.log('🤖 Starting JARVIS Autonomous RAG Background Worker...');
-  // Run once on boot, then every 24 hours
-  autonomousRAG.runDailySelfTraining().catch(e => console.error('RAG Worker Error:', e));
-  setInterval(() => {
+// Initialize Autonomous RAG Daily Worker (disabled by default)
+console.log('🔧 AUTONOMOUS_RAG_ENABLED raw:', process.env.AUTONOMOUS_RAG_ENABLED, 'flag:', AUTONOMOUS_RAG_ENABLED);
+if (AUTONOMOUS_RAG_ENABLED && autonomousRAG && autonomousRAG.runDailySelfTraining) {
+    console.log('🤖 Starting JARVIS Autonomous RAG Background Worker...');
+    // Run once on boot, then every 24 hours
     autonomousRAG.runDailySelfTraining().catch(e => console.error('RAG Worker Error:', e));
-  }, 24 * 60 * 60 * 1000);
+    setInterval(() => {
+        autonomousRAG.runDailySelfTraining().catch(e => console.error('RAG Worker Error:', e));
+    }, 24 * 60 * 60 * 1000);
+} else {
+    console.log('⏸️ Autonomous RAG worker disabled (set AUTONOMOUS_RAG_ENABLED=true to enable).');
 }
 
 // Ensure we load .env from backend directory
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
 
 // ⭐ Initialize JARVIS Full Power with WolframAlpha Quad Load Balancing
 console.log('🚀 Initializing JARVIS Full Power with ALL APIs...');
@@ -186,7 +146,6 @@ let jarvisOmniscient = null;
 
 const allKeysAvailable = 
   process.env.GEMINI_API_KEY &&
-  process.env.CLAUDE_API_KEY &&
   process.env.GROQ_API_KEY &&
   process.env.PERPLEXITY_API_KEY &&
   process.env.WOLFRAM_API_KEY &&
@@ -197,7 +156,6 @@ try {
     console.log('✨ FULL POWER MODE - All APIs available!');
     jarvisOmniscient = new JARVISOmniscientFull({
       gemini: process.env.GEMINI_API_KEY,
-      claude: process.env.CLAUDE_API_KEY,
       groq: process.env.GROQ_API_KEY,
       perplexity: process.env.PERPLEXITY_API_KEY,
       wolfram: process.env.WOLFRAM_API_KEY,
@@ -228,17 +186,12 @@ try {
   console.warn('⚠️ Gemini initialization warning:', error.message);
 }
 
-// Initialize Anthropic AI
-let anthropic = null;
-try {
-  if (process.env.CLAUDE_API_KEY) {
-    anthropic = new Anthropic({
-      apiKey: process.env.CLAUDE_API_KEY,
-    });
-    console.log('✅ Anthropic Claude initialized');
-  } else {
-   REMOVED: Anthropic AI initialization - not used, using DDGS RAG with Groq synthesis instead
-// Anthropic SDK removed for code cleanliness       name: 'JARVIS Software Architect',
+// REMOVED: Anthropic AI initialization - not used, using DDGS RAG with Groq synthesis instead
+
+// Expert personas used for routing
+const EXPERT_PERSONAS = {
+    coding: {
+        name: 'JARVIS Software Architect',
         expertise: 'Full-stack development, system design, algorithms, debugging',
         style: 'Technical, precise, with code examples and best practices. Always loyal to Sir.'
     },
@@ -527,17 +480,9 @@ function getNextGeminiKey() {
 
 // ===== WEB SEARCH APIs =====
 const SEARCH_APIS = {
-    serper: {
-        enabled: !!process.env.SERPER_API_KEY,
-        keys: [
-            process.env.SERPER_API_KEY,
-            process.env.SERPER_API_KEY_2,
-            process.env.SERPER_API_KEY_3,
-            process.env.SERPER_API_KEY_4,
-            process.env.SERPER_API_KEY_5,
-            process.env.SERPER_API_KEY_6
-        ].filter(Boolean),
-        endpoint: 'https://google.serper.dev/news'
+    duckduckgo: {
+        enabled: true,
+        endpoint: 'https://api.duckduckgo.com'
     },
     jina: {
         enabled: !!process.env.JINA_API_KEY,
@@ -580,56 +525,44 @@ function extractKeywords(query) {
 }
 
 /**
- * Step 2: Fetch latest context from Serper API
- * Retrieves 5 most recent and relevant results
+ * Step 2: Fetch latest context from DuckDuckGo (free)
+ * Uses DDG Instant Answer API (no keys required)
  */
 const FRESH_DAYS = 90; // Only keep sources from the last 90 days
 
 function isFresh(dateStr) {
-    if (!dateStr) return false;
+    if (!dateStr) return true; // Keep when unknown
     const dt = new Date(dateStr);
-    if (isNaN(dt.getTime())) return false;
+    if (isNaN(dt.getTime())) return true;
     const ageDays = (Date.now() - dt.getTime()) / (1000 * 60 * 60 * 24);
     return ageDays <= FRESH_DAYS;
 }
 
-async function fetchSerperContext(query) {
-    const serperKeys = SEARCH_APIS.serper?.keys || [];
-    if (!serperKeys.length) return [];
+async function fetchDuckContext(query) {
+    try {
+        const url = `${SEARCH_APIS.duckduckgo.endpoint}?q=${encodeURIComponent(query)}&format=json&no_redirect=1&no_html=1`; 
+        const response = await axios.get(url, { timeout: 8000 });
 
-    for (let i = 0; i < serperKeys.length; i++) {
-        try {
-            const response = await axios.post('https://google.serper.dev/news', {
-                q: `${query} past 24 hours`,
-                gl: 'in',
-                hl: 'en',
-                num: 5  // Get top 5 results
-            }, {
-                headers: {
-                    'X-API-KEY': serperKeys[i],
-                    'Content-Type': 'application/json'
-                },
-                timeout: 6000
-            });
-
-            const articles = response.data?.news || [];
-            return articles
-                .filter(a => isFresh(a.date))
-                .slice(0, 5)
-                .map(article => ({
-                    title: article.title,
-                    snippet: article.snippet,
-                    link: article.link,
-                    source: article.source,
-                    date: article.date,
-                    confidence: 0.72
-                }));
-        } catch (error) {
-            console.warn(`⚠️ Serper key ${i + 1} failed for context: ${error.message}`);
-        }
+        const topics = response.data?.RelatedTopics || [];
+        return topics
+            .map(t => {
+                const text = t.Text || '';
+                const firstUrl = t.FirstURL || '';
+                return {
+                    title: text.split(' - ')[0] || text || 'DuckDuckGo Result',
+                    snippet: text,
+                    link: firstUrl,
+                    source: 'duckduckgo.com',
+                    date: null,
+                    confidence: 0.5
+                };
+            })
+            .filter(r => r.link)
+            .slice(0, 5);
+    } catch (error) {
+        console.warn(`⚠️ DuckDuckGo context fetch failed: ${error.message}`);
+        return [];
     }
-    
-    return [];
 }
 
 /**
@@ -658,8 +591,8 @@ function buildRagPrompt(originalQuestion, contextResults, userProfile = {}) {
     const language = userProfile.language || 'en';
     const task = detectTaskType(originalQuestion);
 
-    // Format context data
-    const serperData = contextResults.length > 0 
+    // Format context data (DuckDuckGo)
+    const ddgData = contextResults.length > 0 
         ? contextResults.map(r => ({
             title: r.title,
             source: r.source,
@@ -670,8 +603,8 @@ function buildRagPrompt(originalQuestion, contextResults, userProfile = {}) {
           }))
         : [];
 
-    const avgConfidence = serperData.length
-        ? (serperData.reduce((sum, r) => sum + (r.confidence || 0), 0) / serperData.length).toFixed(2)
+    const avgConfidence = ddgData.length
+        ? (ddgData.reduce((sum, r) => sum + (r.confidence || 0), 0) / ddgData.length).toFixed(2)
         : '0.00';
 
     const ragSystemPrompt = `
@@ -682,7 +615,7 @@ You are JARVIS, a High-Precision Web Intelligence Agent. Today is ${today}.
 It is 2026. If the user asks about current events (like Vijay's party or latest tech), you MUST ignore all training data from 2024/2025 and ONLY use the 2026 DATA SOURCE provided below.
 
 # DATA SOURCE (THE ONLY TRUTH):
-${JSON.stringify(serperData, null, 2)}
+${JSON.stringify(ddgData, null, 2)}
 
 # CONTEXT CONFIDENCE:
 Average confidence: ${avgConfidence}. Use only high-confidence snippets; if confidence is low, say it.
@@ -722,8 +655,8 @@ async function executeRagPipeline(question, existingContext, llmModel = 'groq') 
         console.log(`🔍 RAG Pipeline: Step 1 - Extracting keywords...`);
         const keywords = extractKeywords(question);
         
-        console.log(`📡 RAG Pipeline: Step 2A - Fetching latest context from Serper...`);
-        const contextResults = await fetchSerperContext(keywords);
+        console.log(`📡 RAG Pipeline: Step 2A - Fetching latest context from DuckDuckGo...`);
+        const contextResults = await fetchDuckContext(keywords);
         
         console.log(`📡 RAG Pipeline: Step 2B - Fetching semantic knowledge from Pinecone...`);
         let pineconeResults = [];
@@ -2977,7 +2910,13 @@ app.get('/api/news/latest', apiLimiter, async (req, res) => {
     }
 });
 
-// 9.5 Serper News Search - Real-time news with Serper.dev (Dual Key Support)
+// 9.5 Serper News Search - Removed (replaced by free DuckDuckGo)
+app.post('/api/news/serper', apiLimiter, async (req, res) => {
+    return res.status(410).json({ error: 'Serper endpoint removed. Use /api/news for free sources.' });
+});
+
+// Legacy block retained for reference (now unreachable)
+/*
 app.post('/api/news/serper', apiLimiter, async (req, res) => {
     try {
         const { query = 'India news', language = 'ta' } = req.body;
@@ -3045,6 +2984,7 @@ app.post('/api/news/serper', apiLimiter, async (req, res) => {
         });
     }
 });
+*/
 
 // 9.6 DuckDuckGo Live News Search
 app.post('/api/search/news', apiLimiter, async (req, res) => {
@@ -4423,25 +4363,27 @@ app.post('/full-power/search', async (req, res) => {
 
         console.log(`🔍 JARVIS: Real-time search for "${query}" (${type})...`);
         
-        // Try Serper first if configured
-        const serperKeys = SEARCH_APIS.serper?.keys || [];
-        if (serperKeys.length > 0 && (type === 'news' || type === 'all')) {
-            // ... (Existing Serper Logic) ...
-             for (let i = 0; i < serperKeys.length; i++) {
-                try {
-                    const response = await axios.post('https://google.serper.dev/news', {
-                        q: query, gl: 'in', hl: 'ta'
-                    }, { headers: { 'X-API-KEY': serperKeys[i], 'Content-Type': 'application/json' } });
-
-                    const mapped = (response.data?.news || []).map(article => ({
-                        title: article.title, description: article.snippet, url: article.link,
-                        source: article.source, image: article.imageUrl, date: article.date, type: 'news'
-                    }));
-
-                    return res.json({ success: true, data: { results: mapped, source: 'serper-news' } });
-                } catch (e) { continue; }
+        // Use DuckDuckGo free fallback (no keys)
+        try {
+            const ddgUrl = `${SEARCH_APIS.duckduckgo.endpoint}?q=${encodeURIComponent(query)}&format=json&no_redirect=1&no_html=1`;
+            const response = await axios.get(ddgUrl, { timeout: 8000 });
+            const topics = response.data?.RelatedTopics || [];
+            const mapped = topics
+                .map(t => ({
+                    title: (t.Text || '').split(' - ')[0] || (t.Text || 'Result'),
+                    description: t.Text || '',
+                    url: t.FirstURL || '',
+                    source: 'duckduckgo.com',
+                    image: null,
+                    date: new Date().toISOString(),
+                    type: 'news'
+                }))
+                .filter(r => r.url)
+                .slice(0, 10);
+            if (mapped.length) {
+                return res.json({ success: true, data: { results: mapped, source: 'duckduckgo' } });
             }
-        }
+        } catch (_) { /* ignore */ }
 
         // Fallback to internal engine
         if (jarvisFullPower && jarvisFullPower.realtimeSearch) {
@@ -4604,6 +4546,15 @@ console.log('✅ Autonomous Verified RAG endpoint loaded!');
 // =========================================================
 
 console.log('\n📰 Initializing Daily News Training System...');
+// 🤖 JARVIS AI PROXY - Initialize Python Flask integration routes
+console.log('🤖 Initializing JARVIS AI Proxy...');
+try {
+    setupJarvisRoutes(app);
+    console.log('✅ JARVIS proxy routes initialized on /api/jarvis/*');
+} catch (err) {
+    console.error('⚠️ JARVIS proxy initialization failed:', err.message);
+}
+
 try {
     // Check if function exists before calling
     if (typeof startDailyUpdates === 'function') {
@@ -4614,14 +4565,10 @@ try {
     console.error('⚠️ Daily news system error (non-blocking):', err.message);
 }
 
-// 🤖 INITIALIZE TELEGRAM BOT (JARVIS TUTOR)
-if (telegramBot && typeof telegramBot.startTelegramBot === 'function') {
-    console.log('🤖 Initializing Modern JARVIS Telegram Bot...');
-    telegramBot.startTelegramBot();
-}
+// Telegram Bot removed
 
 // ✅ Updated Code - Render/Cloud compatible
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.NODE_PORT || process.env.PORT || 5000;
 
 const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`
@@ -4633,16 +4580,25 @@ const server = app.listen(PORT, "0.0.0.0", () => {
     `);
 });
 
-// Port error vandha handle panna indha logic:
+// Port error handling: fail fast on EADDRINUSE
+let portRetries = 0;
+const maxPortRetries = 2;
 server.on('error', (e) => {
     if (e.code === 'EADDRINUSE') {
-        console.log(`⚠️ Port ${PORT} busy-ah irukku! 5 seconds-la thirumba try panren...`);
+        portRetries++;
+        if (portRetries > maxPortRetries) {
+            console.error(`❌ FATAL: Port ${PORT} is in use. Multiple retries failed.`);
+            console.error(`   Kill port ${PORT} using: netstat -ano | findstr :${PORT}`);
+            console.error(`   Then: taskkill /PID <PID> /F`);
+            process.exit(1);
+        }
+        console.log(`⚠️ Port ${PORT} busy. Retry ${portRetries}/${maxPortRetries}...`);
         setTimeout(() => {
             server.close();
-            server.listen(PORT);
-        }, 5000);
+            server.listen(PORT, "0.0.0.0");
+        }, 2000);
     } else {
-        console.error("❌ Periya error nanba:", e);
+        console.error("❌ Server error:", e.message);
+        process.exit(1);
     }
 });
-// --- PORT DEBUGGED END ---
