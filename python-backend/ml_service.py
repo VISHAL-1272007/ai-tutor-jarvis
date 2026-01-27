@@ -231,15 +231,61 @@ class MLService:
         except Exception as e:
             return {'success': False, 'error': str(e)}
     
+    def _needs_web_search(self, query: str) -> bool:
+        """
+        Determine if a query requires web search or can use built-in knowledge.
+        
+        Web search is needed for:
+        - Current events, news, live updates
+        - Questions about "today", "latest", "recent"
+        - Queries mentioning 2024, 2025, 2026
+        - Breaking news, current affairs
+        
+        NOT needed for:
+        - General knowledge (history, science, math)
+        - Programming/coding questions
+        - Explanations of concepts
+        - "What is X?" questions (unless X is recent)
+        
+        Args:
+            query: User's query string
+            
+        Returns:
+            bool: True if web search needed, False otherwise
+        """
+        query_lower = query.lower()
+        
+        # Keywords that indicate need for current/live information
+        web_search_keywords = [
+            'today', 'latest', 'current', 'recent', 'now',
+            'news', 'breaking', 'update', 'live',
+            '2024', '2025', '2026',
+            'this week', 'this month', 'this year',
+            'happening', 'trending', 'viral',
+            'just announced', 'breaking news'
+        ]
+        
+        # Check if any keyword matches
+        for keyword in web_search_keywords:
+            if keyword in query_lower:
+                return True
+        
+        # Otherwise, use built-in knowledge
+        return False
+    
     def generate_jarvis_response(self, user_query: str) -> Dict:
         """
-        Generate AI response using JARVIS Researcher + Groq LLM pipeline
+        Generate AI response using smart search strategy:
         
-        Pipeline:
-        1. Call jarvis_researcher() to get verified 2026 web context
-        2. Construct system prompt with context
-        3. Send to Groq Llama-3-70B model
-        4. Return AI response with source citations
+        Strategy:
+        1. Check if query needs web search (current news, live updates)
+        2. If NO web search needed: Use Groq LLM knowledge directly
+
+        3. If YES web search needed: Use JARVIS Researcher + LLM synthesis
+        
+        Web Search Triggers:
+        - Keywords: today, latest, current, news, 2026, recent, now
+        - Specific events, breaking news, live updates
         
         Args:
             user_query: User's question/query
@@ -266,9 +312,15 @@ class MLService:
             
             print(f"🔍 JARVIS processing query: '{user_query}'")
             
-            # Step 2: Get verified web context using JARVIS Researcher
-            print("📡 Fetching verified 2026 web context...")
-            research_results = jarvis_researcher(user_query, max_results=5)
+            # Step 2: Determine if web search is needed
+            needs_web_search = self._needs_web_search(user_query)
+            
+            if needs_web_search:
+                print("📡 Web search needed - fetching live data...")
+                research_results = jarvis_researcher(user_query, max_results=5)
+            else:
+                print("🧠 Using JARVIS built-in knowledge (no web search needed)")
+                research_results = []
             
             # Extract context and sources
             if research_results:
@@ -277,36 +329,41 @@ class MLService:
                     for i, r in enumerate(research_results)
                 ])
                 sources = [{'title': r['title'], 'url': r['url']} for r in research_results]
+                print(f"✅ Retrieved {len(research_results)} sources with web data")
             else:
                 context = ""
                 sources = []
+                if needs_web_search:
+                    print("⚠️  Web search attempted but returned no results")
+                else:
+                    print("✅ Using built-in knowledge")
             
-            print(f"✅ Retrieved {len(research_results)} verified sources ({len(context)} chars)")
-            
-            # Step 3: Construct System Prompt
+            # Step 3: Construct System Prompt based on search mode
             if context:
-                system_prompt = f"""You are JARVIS, a helpful AI assistant developed for educational purposes.
+                # MODE 1: Web search was performed and returned results
+                system_prompt = f"""You are JARVIS, an advanced AI assistant with access to current web information.
 
-Use the following verified 2026 web context to answer the user's question accurately:
-
+VERIFIED 2026 WEB SOURCES:
 {context}
 
 Instructions:
-- Provide a professional and concise answer based on the context
-- Cite sources when making claims (e.g., "According to Source 1...")
-- If the context doesn't fully answer the question, acknowledge what you know and what's missing
-- Keep the tone helpful and educational
-- Focus on information from 2026 when available"""
+- Answer the user's question using the above sources
+- Cite sources when making claims (e.g., "According to [Source 1]...")
+- Provide accurate, up-to-date information
+- If sources don't fully answer, say what you found and what's missing
+- Be concise and professional"""
             else:
-                system_prompt = """You are JARVIS, a helpful AI assistant.
-
-The web research returned no verified 2026 data for this query. 
+                # MODE 2: No web search or web search returned nothing - use built-in knowledge
+                system_prompt = """You are JARVIS, an advanced AI assistant with extensive knowledge up to 2023.
 
 Instructions:
-- Politely inform the user that you couldn't find fresh 2026 web data
-- Offer to help with the question using your general knowledge
-- Suggest the user try a more specific query or check back later
-- Keep the tone professional and helpful"""
+- Answer the user's question using your training knowledge
+- Be confident and helpful - you know a lot!
+- For general knowledge questions (history, science, math, etc.), provide detailed answers
+- For programming/coding questions, provide working examples
+- For explanations, be clear and educational
+- Only say "I don't know" if you genuinely lack information
+- If asked about very recent events (after 2023), politely mention your knowledge cutoff"""
             
             # Step 4: Call Groq LLM
             print("🤖 Generating response with Groq Llama-3.3-70B...")
