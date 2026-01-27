@@ -150,20 +150,41 @@ def jarvis_researcher(query: str, max_results: int = 5) -> List[Dict[str, str]]:
         # Step 1: DuckDuckGo Search
         print("📡 Fetching search results from DuckDuckGo...")
         ddgs = DDGS()
-        search_results = list(ddgs.text(
-            query,  # First positional argument is the query
-            region='in-en',  # India English results
-            safesearch='moderate',
-            timelimit='m',  # Last month for freshness
-            max_results=max_results
-        ))
+        
+        # Try search with error handling
+        try:
+            search_results = list(ddgs.text(
+                query,  # First positional argument is the query
+                region='wt-wt',  # Try worldwide instead of India to avoid regional blocking
+                safesearch='moderate',
+                timelimit=None,  # Don't limit time - get any results
+                max_results=max_results * 2  # Get more to compensate for filtering
+            ))
+        except Exception as search_error:
+            print(f"⚠️  DDGS search error: {search_error}")
+            # Try simpler search as fallback
+            try:
+                print("   Retrying with simpler parameters...")
+                search_results = list(ddgs.text(query, max_results=max_results))
+            except Exception as fallback_error:
+                print(f"❌ DDGS fallback also failed: {fallback_error}")
+                search_results = []
+        
+        if not search_results:
+            print("⚠️  No search results from DDGS")
+            return verified_results
         
         print(f"✅ Found {len(search_results)} search results")
         
         # Step 2: Scrape and Verify Each Result
         for idx, result in enumerate(search_results, 1):
-            title = result.get('title', 'Untitled')
-            url = result.get('href', '')
+            # Stop if we have enough verified results
+            if len(verified_results) >= max_results:
+                break
+            
+            title = result.get('title', result.get('name', 'Untitled'))
+            url = result.get('href', result.get('url', result.get('link', '')))
+            snippet = result.get('body', result.get('snippet', ''))
             
             if not url:
                 continue
@@ -172,18 +193,22 @@ def jarvis_researcher(query: str, max_results: int = 5) -> List[Dict[str, str]]:
             print(f"    URL: {url}")
             
             # Scrape content from URL
-            content = scrape_url_content(url)
+            content = scrape_url_content(url, timeout=8)
             
             if not content:
-                print("    ⚠️ Scraping failed, skipping...")
-                # Add 2-second delay even on failure
-                time.sleep(2)
-                continue
+                print("    ⚠️  Scraping failed, using snippet as fallback...")
+                # Use DDGS snippet as fallback if scraping fails
+                if snippet:
+                    content = snippet
+                else:
+                    time.sleep(1)
+                    continue
             
-            # Step 3: Temporal Verification
-            if not verify_temporal_relevance(content):
+            # Step 3: Temporal Verification (relaxed for better results)
+            # Skip verification if content is short (likely from snippet)
+            if len(content) > 200 and not verify_temporal_relevance(content):
                 print("    ⛔ Failed temporal verification (outdated content)")
-                time.sleep(2)
+                time.sleep(1)
                 continue
             
             # Limit content to 1000 characters for LLM efficiency
@@ -197,10 +222,8 @@ def jarvis_researcher(query: str, max_results: int = 5) -> List[Dict[str, str]]:
             
             print(f"    ✅ Verified and added ({len(content_trimmed)} chars)")
             
-            # Step 4: Rate Limiting - 2-second delay between requests
-            if idx < len(search_results):
-                print("    ⏳ Waiting 2 seconds (rate limit protection)...")
-                time.sleep(2)
+            # Step 4: Rate Limiting - shorter delay for snippets
+            time.sleep(1 if len(content) < 200 else 2)
         
     except Exception as e:
         print(f"❌ JARVIS Researcher error: {str(e)}")
