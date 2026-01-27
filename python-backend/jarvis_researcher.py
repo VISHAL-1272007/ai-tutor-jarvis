@@ -35,27 +35,33 @@ except ImportError:
 
 def search_with_newsapi(query: str, max_results: int = 5) -> List[Dict[str, str]]:
     """
-    Search using NewsAPI for reliable real-time news results
+    Search using NewsAPI for reliable real-time news results.
+    
+    NewsAPI provides:
+    - Real-time news articles from 50,000+ sources
+    - Relevancy-ranked results
+    - Structured metadata (title, description, URL, image)
+    - Reliable, well-maintained API
     
     Args:
         query: Search query
         max_results: Maximum results to return
         
     Returns:
-        List of results with title, url, content
+        List of results with title, url, content, source
     """
     if not NEWS_API_KEY:
         print("⚠️  NEWS_API_KEY not configured")
         return []
     
     try:
-        print("📰 Searching with NewsAPI...")
+        print(f"📰 Searching NewsAPI for: '{query}'")
         url = 'https://newsapi.org/v2/everything'
         params = {
             'q': query,
             'sortBy': 'relevancy',
             'language': 'en',
-            'pageSize': max_results,
+            'pageSize': min(max_results * 3, 100),
             'apiKey': NEWS_API_KEY
         }
         
@@ -65,23 +71,47 @@ def search_with_newsapi(query: str, max_results: int = 5) -> List[Dict[str, str]
         data = response.json()
         
         if data.get('status') != 'ok':
-            print(f"⚠️  NewsAPI error: {data.get('message', 'Unknown error')}")
+            error_msg = data.get('message', 'Unknown error')
+            print(f"⚠️  NewsAPI error: {error_msg}")
             return []
         
         articles = data.get('articles', [])
-        print(f"✅ Found {len(articles)} articles from NewsAPI")
+        print(f"✅ NewsAPI returned {len(articles)} articles")
         
-        results = []
-        for article in articles[:max_results]:
-            results.append({
-                'title': article.get('title', 'Untitled'),
-                'url': article.get('url', ''),
-                'content': article.get('description', article.get('content', ''))[:500],
+        # Filter out empty/placeholder articles
+        valid_articles = []
+        for article in articles:
+            title = article.get('title', 'Untitled')
+            description = article.get('description', '')
+            url_val = article.get('url', '')
+            
+            # Skip if missing critical fields
+            if not url_val or not description or len(description) < 20:
+                continue
+            
+            # Skip placeholder articles
+            if title in ['[Removed]', 'Removed', ''] or len(title) < 3:
+                continue
+            
+            valid_articles.append({
+                'title': title,
+                'url': url_val,
+                'content': description[:500],
                 'source': 'NewsAPI'
             })
+            
+            if len(valid_articles) >= max_results:
+                break
         
-        return results
+        print(f"✅ Got {len(valid_articles)} valid articles from NewsAPI")
+        return valid_articles
         
+    except requests.exceptions.Timeout:
+        print("❌ NewsAPI request timed out")
+        return []
+    except requests.exceptions.ConnectionError:
+        print("❌ NewsAPI connection failed (no internet?)")
+        return []
     except Exception as e:
         print(f"❌ NewsAPI error: {e}")
         return []
