@@ -1,13 +1,14 @@
 /**
  * JARVIS AI Proxy Middleware
- * Routes user queries from Node.js Express to Python Flask backend
- * Provides integration layer between frontend and Python ML services
+ * Handles user queries with DDGS web search + Groq LLM synthesis
+ * Previously routed to Python Flask - now uses Node.js DDGS RAG directly
  */
 
 const axios = require('axios');
-const logger = require('./logger'); // Assuming you have a logger module
+const logger = require('./logger');
+const { ddgsRagPipeline } = require('./ddgs-rag-integration'); // Direct DDGS RAG integration
 
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:3000';
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:3000'; // Legacy, not used
 
 /**
  * Error handling helper
@@ -28,7 +29,7 @@ const handleError = (error, res) => {
 
 /**
  * POST /api/jarvis/ask
- * Main endpoint that proxies queries to Python Flask backend
+ * Main endpoint that uses DDGS web search + Groq LLM for synthesis
  * 
  * Request body:
  * {
@@ -71,70 +72,47 @@ async function askJarvis(req, res) {
     // Log the incoming request
     logger.info(`🤖 JARVIS Query Received: "${query.substring(0, 100)}..."`);
 
-    // Forward to Python backend with timeout
+    // Use DDGS RAG integration directly (no Python backend needed!)
     const startTime = Date.now();
     
-    const pythonResponse = await axios.post(
-      `${PYTHON_BACKEND_URL}/ask-jarvis`,
-      { query: query.trim() },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'JARVIS-Node-Proxy/1.0'
-        },
-        timeout: 120000 // 120 second timeout for web scraping + LLM
-      }
-    );
-
+    const ragResult = await ddgsRagPipeline(query.trim());
+    
     const duration = Date.now() - startTime;
+
+    // Transform RAG result to match expected frontend format
+    const result = {
+      success: ragResult.success,
+      response: ragResult.answer || ragResult.response,
+      sources: ragResult.sources || [],
+      verified_sources_count: ragResult.sources?.length || 0,
+      context_length: ragResult.context?.length || 0,
+      model: 'llama-3.3-70b-versatile',
+      source: ragResult.source || 'web'
+    };
 
     // Log successful response
     logger.info(`✅ JARVIS Response Generated in ${duration}ms`);
-    logger.info(`   - Sources: ${pythonResponse.data.verified_sources_count}`);
-    logger.info(`   - Context: ${pythonResponse.data.context_length} chars`);
+    logger.info(`   - Sources: ${result.verified_sources_count}`);
+    logger.info(`   - Response length: ${result.response?.length || 0} chars`);
 
     // Return successful response to client
     return res.status(200).json({
-      ...pythonResponse.data,
+      ...result,
       processingTime: duration,
-      backend: 'python-flask',
+      backend: 'node-ddgs-groq',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    // Specific error handling
-    if (error.code === 'ECONNREFUSED') {
-      logger.error('❌ Python Backend Connection Refused - Server may be offline');
-      return res.status(503).json({
-        success: false,
-        error: 'Python backend is not responding',
-        response: 'JARVIS research engine is currently offline. Please start the Python backend at port 3000.',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    if (error.code === 'ENOTFOUND') {
-      logger.error('❌ Python Backend Not Found - Host resolution failed');
-      return res.status(503).json({
-        success: false,
-        error: 'Python backend host not found',
-        response: 'Cannot connect to JARVIS research engine. Check the backend URL.',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
-      logger.error('❌ Python Backend Timeout - Request took too long');
-      return res.status(504).json({
-        success: false,
-        error: 'Backend request timeout',
-        response: 'JARVIS is thinking too long! The research engine might be overwhelmed. Try again shortly.',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Generic error handling
-    return handleError(error, res);
+    // Error handling
+    logger.error(`❌ JARVIS Error: ${error.message}`);
+    
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Internal server error',
+      response: 'JARVIS encountered an error while processing your query. Please try again!',
+      timestamp: new Date().toISOString()
+    });
   }
 }
 
