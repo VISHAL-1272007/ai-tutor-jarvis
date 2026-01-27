@@ -2,8 +2,9 @@
 JARVIS AI - Python Flask Backend
 Primary endpoints:
 - GET /health
-- GET /status
+- GET /status  
 - POST /ask-jarvis
+- POST /api/jarvis/ask (alias for Node.js compatibility)
 """
 
 import io
@@ -26,12 +27,13 @@ LOG_PATH = os.path.join(ROOT_DIR, 'python-backend.log')
 # Load environment variables
 load_dotenv(ENV_PATH)
 
-# Safely get GROQ API Key
+# Safely get GROQ API Key with warning (don't crash if missing)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 if not GROQ_API_KEY:
-    print("⚠️ WARNING: GROQ_API_KEY is not set in environment variables!")
+    print("⚠️  WARNING: GROQ_API_KEY is not set in environment variables!")
+    print("   The app will start but JARVIS queries will fail.")
     print("   Please add GROQ_API_KEY to Render environment variables.")
-    print("   Get it from: https://console.groq.com/keys")
+    print("   Get your key from: https://console.groq.com/keys")
 
 
 def configure_logging() -> logging.Logger:
@@ -65,43 +67,46 @@ CORS(app)
 
 
 # Attempt to load ML service
+ML_AVAILABLE = False
+ml_service = None
+
 try:
     from ml_service import MLService
-
     ml_service = MLService()
     ML_AVAILABLE = True
     logger.info("✅ ML services loaded successfully")
-except Exception as exc:  # broad to catch missing deps
-    ML_AVAILABLE = False
-    ml_service = None
-    logger.warning(f"⚠️ ML services not available: {exc}")
+except Exception as exc:
+    logger.warning(f"⚠️  ML services not available: {exc}")
+    logger.warning("   App will run but ML endpoints will return 503")
 
 
 PORT = int(os.environ.get("FLASK_PORT", 3000))
 
 
+# ===== CORE ROUTES =====
+
 @app.route("/", methods=["GET"])
 def root():
-    return jsonify(
-        {
-            "status": "online",
-            "service": "JARVIS Python ML Backend",
-            "version": "1.0.0",
-            "port": PORT,
-            "ml_available": ML_AVAILABLE,
-            "groq_configured": bool(GROQ_API_KEY),
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-    )
+    """Root endpoint - service info"""
+    return jsonify({
+        "status": "online",
+        "service": "JARVIS Python ML Backend",
+        "version": "1.0.0",
+        "port": PORT,
+        "ml_available": ML_AVAILABLE,
+        "groq_configured": bool(GROQ_API_KEY),
+        "timestamp": datetime.utcnow().isoformat(),
+    })
 
 
 @app.route("/health", methods=["GET"])
-def health_check():
-    """Health check endpoint - verifies backend is alive"""
+def health_check_final():
+    """Health check endpoint - verifies backend is alive (UNIQUE NAME)"""
     return jsonify({
         "status": "healthy",
         "ml_available": ML_AVAILABLE,
         "groq_configured": bool(GROQ_API_KEY),
+        "uptime": "running",
         "timestamp": datetime.utcnow().isoformat(),
     })
 
@@ -119,41 +124,43 @@ def system_status():
     })
 
 
+# ===== JARVIS AI ENDPOINTS =====
+
 @app.route("/ask-jarvis", methods=["POST"])
 def ask_jarvis_endpoint():
-    """Main JARVIS endpoint: accepts {query} and returns structured response."""
+    """
+    Main JARVIS endpoint: accepts {query} and returns structured response.
+    
+    Request: {"query": "What are latest AI trends?"}
+    Response: {
+        "success": true,
+        "response": "AI synthesis...",
+        "sources": [...],
+        "verified_sources_count": 3
+    }
+    """
     if not ML_AVAILABLE or ml_service is None:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": "ML services not available",
-                    "response": "JARVIS research engine is offline. Please start ML services.",
-                }
-            ),
-            503,
-        )
+        return jsonify({
+            "success": False,
+            "error": "ML services not available",
+            "response": "JARVIS research engine is offline. Please check ML service configuration.",
+        }), 503
 
     if not GROQ_API_KEY:
-        return (
-            jsonify(
-                {
-                    "success": False,
-                    "error": "GROQ_API_KEY not configured",
-                    "response": "Backend is missing GROQ_API_KEY. Please add it to Render environment variables.",
-                }
-            ),
-            503,
-        )
+        return jsonify({
+            "success": False,
+            "error": "GROQ_API_KEY not configured",
+            "response": "Backend is missing GROQ_API_KEY. Please add it to Render environment variables.",
+        }), 503
 
     payload = request.get_json(silent=True) or {}
     query = (payload.get("query") or "").strip()
 
     if not query:
-        return (
-            jsonify({"success": False, "error": "Query cannot be empty"}),
-            400,
-        )
+        return jsonify({
+            "success": False,
+            "error": "Query cannot be empty"
+        }), 400
 
     try:
         logger.info(f"🤖 JARVIS query received: '{query[:120]}'")
@@ -162,22 +169,90 @@ def ask_jarvis_endpoint():
         return jsonify(result), status_code
     except Exception as exc:
         logger.error(f"❌ JARVIS processing error: {exc}")
-        return (
-            jsonify({
-                "success": False,
-                "error": str(exc),
-                "response": "JARVIS hit an unexpected issue. Please try again.",
-            }),
-            500,
-        )
+        return jsonify({
+            "success": False,
+            "error": str(exc),
+            "response": "JARVIS hit an unexpected issue. Please try again.",
+        }), 500
 
 
-if __name__ == "__main__":
-    logger.info(f"🚀 Starting Flask server on port {PORT}")
-    app.run(host="0.0.0.0", port=PORT)
+@app.route("/api/jarvis/ask", methods=["POST"])
+def api_jarvis_ask():
+    """
+    Alias endpoint for Node.js compatibility: /api/jarvis/ask
+    Returns synthesis and steps for frontend research progress display.
+    
+    Request: {"query": "latest news"}
+    Response: {
+        "success": true,
+        "response": "Synthesis answer...",  // This is the synthesis!
+        "sources": [...],
+        "steps": [
+            "Searching verified 2026 sources...",
+            "Filtering trusted results...",
+            "Synthesizing with Llama 3.3..."
+        ],
+        "verified_sources_count": 4,
+        "model": "llama-3.3-70b-versatile"
+    }
+    """
+    if not ML_AVAILABLE or ml_service is None:
+        return jsonify({
+            "success": False,
+            "error": "ML services not available",
+            "response": "JARVIS research engine is offline.",
+            "steps": ["❌ ML service unavailable"]
+        }), 503
+
+    if not GROQ_API_KEY:
+        return jsonify({
+            "success": False,
+            "error": "GROQ_API_KEY not configured",
+            "response": "Backend missing GROQ_API_KEY.",
+            "steps": ["❌ API key not configured"]
+        }), 503
+
+    payload = request.get_json(silent=True) or {}
+    query = (payload.get("query") or "").strip()
+
+    if not query:
+        return jsonify({
+            "success": False,
+            "error": "Query cannot be empty",
+            "steps": ["❌ Empty query"]
+        }), 400
+
+    try:
+        logger.info(f"🤖 [/api/jarvis/ask] Query: '{query[:100]}'")
+        
+        # Generate JARVIS response
+        result = ml_service.generate_jarvis_response(query)
+        
+        # Add research steps for frontend progress display
+        if result.get("success"):
+            result["steps"] = [
+                "✅ Searched verified 2026 sources",
+                f"✅ Found {result.get('verified_sources_count', 0)} trusted results",
+                f"✅ Synthesized with {result.get('model', 'Llama 3.3')}"
+            ]
+        else:
+            result["steps"] = ["❌ Research failed"]
+        
+        status_code = 200 if result.get("success") else 500
+        logger.info(f"✅ Response generated: {len(result.get('response', ''))} chars")
+        return jsonify(result), status_code
+        
+    except Exception as exc:
+        logger.error(f"❌ [/api/jarvis/ask] Error: {exc}")
+        return jsonify({
+            "success": False,
+            "error": str(exc),
+            "response": "JARVIS encountered an error. Please try again.",
+            "steps": ["❌ Error during processing"]
+        }), 500
 
 
-@app.route('/predict', methods=['POST'])
+# ===== ML SERVICE ENDPOINTS =====
 def predict_endpoint():
     """ML prediction endpoint with fallback support"""
     if not ML_AVAILABLE:
@@ -356,7 +431,8 @@ def train_model_endpoint():
         return jsonify({'error': str(e)}), 500
 
 
-# Error handlers
+# ===== ERROR HANDLERS =====
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Endpoint not found'}), 404
@@ -365,3 +441,12 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
+
+
+# ===== MAIN ENTRY POINT (MUST BE AT THE END!) =====
+
+if __name__ == "__main__":
+    logger.info(f"🚀 Starting Flask server on port {PORT}")
+    logger.info(f"🔧 ML Services: {'✅ Available' if ML_AVAILABLE else '❌ Unavailable'}")
+    logger.info(f"🔑 GROQ API: {'✅ Configured' if GROQ_API_KEY else '❌ Missing'}")
+    app.run(host="0.0.0.0", port=PORT, debug=False)
