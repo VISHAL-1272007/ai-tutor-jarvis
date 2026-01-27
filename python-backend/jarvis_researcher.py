@@ -22,15 +22,17 @@ GNEWS_API_KEY = os.getenv('GNEWS_API_KEY')
 
 # Fallback to DDGS only if NewsAPI unavailable
 try:
-    from ddgs import DDGS
+    from duckduckgo_search import DDGS
     DDGS_AVAILABLE = True
+    print("✅ duckduckgo_search library loaded successfully")
 except ImportError:
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
         DDGS_AVAILABLE = True
-    except ImportError:
+        print("✅ ddgs library loaded (fallback)")
+    except ImportError as e:
         DDGS_AVAILABLE = False
-        print("⚠️  DDGS library not available - will use NewsAPI instead")
+        print(f"⚠️  DDGS library not available: {e}")
 
 
 def search_with_newsapi(query: str, max_results: int = 5) -> List[Dict[str, str]]:
