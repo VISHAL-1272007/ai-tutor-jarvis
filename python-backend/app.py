@@ -1,10 +1,13 @@
 """
-JARVIS AI - Python Flask Backend
-Primary endpoints:
-- GET /health
-- GET /status  
-- POST /ask-jarvis
-- POST /api/jarvis/ask (alias for Node.js compatibility)
+JARVIS AI - Python Flask Backend with Agentic Search Workflow
+Using Groq Llama-3.3-70B + Tavily Advanced Search
+==============================================================
+
+Architecture:
+- classify_intent() -> Determines if research is needed + generates 3 optimized queries
+- conduct_research() -> Tavily search with advanced depth and aggregation
+- generate_final_response() -> Llama synthesis with research context
+- ask_jarvis() -> Main endpoint orchestrating the agentic workflow
 """
 
 import io
@@ -13,440 +16,355 @@ import logging
 import os
 import sys
 from datetime import datetime
+from typing import Dict, List
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
+from groq import Groq
+
+# Try to import Tavily (may not be installed)
+try:
+    from tavily import TavilyClient
+    TAVILY_AVAILABLE = True
+except ImportError:
+    TAVILY_AVAILABLE = False
+    print("WARNING: Tavily SDK not installed - install with: pip install tavily-python")
 
 
 ROOT_DIR = os.path.dirname(__file__)
 ENV_PATH = os.path.join(ROOT_DIR, '..', 'backend', '.env')
 LOG_PATH = os.path.join(ROOT_DIR, 'python-backend.log')
 
-
 # Load environment variables
 load_dotenv(ENV_PATH)
 
-# Safely get GROQ API Key with warning (don't crash if missing)
+# API Keys
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
+
 if not GROQ_API_KEY:
-    print("⚠️  WARNING: GROQ_API_KEY is not set in environment variables!")
-    print("   The app will start but JARVIS queries will fail.")
-    print("   Please add GROQ_API_KEY to Render environment variables.")
-    print("   Get your key from: https://console.groq.com/keys")
+    print("WARNING: GROQ_API_KEY is not set!")
+if not TAVILY_API_KEY:
+    print("WARNING: TAVILY_API_KEY is not set!")
 
 
-def configure_logging() -> logging.Logger:
-    """Configure UTF-8 safe logging for Windows consoles."""
+def configure_logging():
+    """Configure UTF-8 safe logging"""
     if sys.platform == 'win32':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-    class UTF8StreamHandler(logging.StreamHandler):
-        def __init__(self):
-            super().__init__()
-            self.stream = sys.stderr
-
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(LOG_PATH, encoding='utf-8'),
-            UTF8StreamHandler(),
-        ],
+        format='%(asctime)s - %(levelname)s - %(message)s'
     )
-    return logging.getLogger("jarvis-backend")
+    return logging.getLogger("jarvis-agentic")
 
 
 logger = configure_logging()
-
 
 # Initialize Flask
 app = Flask(__name__)
 CORS(app)
 
+# Initialize Groq client
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# Attempt to load ML service
-ML_AVAILABLE = False
-ml_service = None
-
-try:
-    from ml_service import MLService
-    ml_service = MLService()
-    ML_AVAILABLE = True
-    logger.info("✅ ML services loaded successfully")
-except Exception as exc:
-    logger.warning(f"⚠️  ML services not available: {exc}")
-    logger.warning("   App will run but ML endpoints will return 503")
-
+# Initialize Tavily client
+tavily_client = TavilyClient(api_key=TAVILY_API_KEY) if (TAVILY_AVAILABLE and TAVILY_API_KEY) else None
 
 PORT = int(os.environ.get("FLASK_PORT", 3000))
 
 
-# ===== CORE ROUTES =====
+# ============================================================================
+# AGENTIC WORKFLOW FUNCTIONS
+# ============================================================================
+
+def classify_intent(user_query: str) -> Dict:
+    """
+    Step 1: Analyze query intent using Llama-3.3
+    Determines if query needs real-time 2026 data and generates 3 optimized searches
+    """
+    if not groq_client:
+        return {"needs_search": False, "reason": "Groq not configured"}
+    
+    try:
+        logger.info(f"[CLASSIFY] Analyzing: '{user_query}'")
+        
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{
+                "role": "user",
+                "content": f"""Analyze query - does it need real-time 2026 data?
+
+Query: "{user_query}"
+
+NEEDS WEB SEARCH if mentions: today, now, latest, current, 2026, news, breaking, live, trending, recent
+NO SEARCH for: general knowledge, concepts, how-to, history, definitions
+
+If YES, generate 3 different search queries:
+1. Natural language question
+2. Keyword optimized
+3. Alternative angle
+
+RESPOND ONLY with valid JSON:
+{{"needs_search": true, "queries": ["q1", "q2", "q3"]}}
+or
+{{"needs_search": false}}"""
+            }],
+            temperature=0.3,
+            max_tokens=200,
+        )
+        
+        result = json.loads(response.choices[0].message.content.strip())
+        logger.info(f"OK Intent: needs_search={result.get('needs_search')}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Classification error: {e}")
+        return {"needs_search": False}
+
+
+def conduct_research(queries: List[str]) -> str:
+    """
+    Step 2: Execute Tavily searches and aggregate results
+    Uses advanced depth and quality-over-quantity approach
+    """
+    if not tavily_client:
+        logger.warning("Tavily not configured")
+        return ""
+    
+    try:
+        logger.info(f"[RESEARCH] Searching {len(queries)} queries...")
+        
+        all_results = []
+        
+        for i, query in enumerate(queries, 1):
+            try:
+                logger.info(f"  Query {i}: {query[:50]}...")
+                
+                search_result = tavily_client.search(
+                    query=query,
+                    search_depth="advanced",
+                    max_results=2,
+                    include_answer=True
+                )
+                
+                if search_result.get("results"):
+                    for result in search_result["results"]:
+                        all_results.append({
+                            "title": result.get("title", ""),
+                            "snippet": result.get("snippet", ""),
+                            "url": result.get("url", "")
+                        })
+                
+                if search_result.get("answer"):
+                    all_results.append({
+                        "title": "Direct Answer",
+                        "snippet": search_result.get("answer"),
+                        "url": ""
+                    })
+                    
+            except Exception as e:
+                logger.warning(f"Search error for query {i}: {e}")
+                continue
+        
+        # Aggregate results
+        context = ""
+        for idx, result in enumerate(all_results, 1):
+            context += f"[Source {idx}: {result['title']}]\n{result['snippet']}\n"
+            if result['url']:
+                context += f"URL: {result['url']}\n"
+            context += "\n"
+        
+        logger.info(f"OK Found {len(all_results)} sources")
+        return context.strip()
+        
+    except Exception as e:
+        logger.error(f"Research error: {e}")
+        return ""
+
+
+def generate_final_response(user_query: str, research_context: str) -> str:
+    """
+    Step 3: Generate final response using Llama-3.3 with research context
+    """
+    if not groq_client:
+        return "JARVIS is offline"
+    
+    try:
+        logger.info("[SYNTHESIZE] Generating response...")
+        
+        system_prompt = """You are JARVIS, a witty and sophisticated AI assistant with deep knowledge.
+
+Your traits:
+- Articulate and refined communication
+- Humorous when appropriate
+- Accurate and fact-based
+- Well-cited responses
+- Intelligent connections
+
+Guidelines:
+- Use research context for accurate answers
+- Cite sources: "According to [Source 1]..."
+- If context incomplete, acknowledge and explain
+- Be professional but conversational"""
+        
+        if research_context.strip():
+            full_system = f"{system_prompt}\n\nRESEARCH CONTEXT:\n{research_context}"
+        else:
+            full_system = system_prompt
+        
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": full_system},
+                {"role": "user", "content": user_query}
+            ],
+            temperature=0.7,
+            max_tokens=1024,
+            top_p=0.9
+        )
+        
+        final_response = response.choices[0].message.content
+        logger.info(f"OK Response generated: {len(final_response)} chars")
+        return final_response
+        
+    except Exception as e:
+        logger.error(f"Synthesis error: {e}")
+        return f"Error: {str(e)}"
+
+
+# ============================================================================
+# CORE ROUTES
+# ============================================================================
 
 @app.route("/", methods=["GET"])
 def root():
-    """Root endpoint - service info"""
+    """Service info"""
     return jsonify({
         "status": "online",
-        "service": "JARVIS Python ML Backend",
-        "version": "1.0.0",
-        "port": PORT,
-        "ml_available": ML_AVAILABLE,
-        "groq_configured": bool(GROQ_API_KEY),
+        "service": "JARVIS Agentic AI Backend v2.0",
+        "groq": "configured" if groq_client else "missing",
+        "tavily": "configured" if tavily_client else "missing",
         "timestamp": datetime.utcnow().isoformat(),
     })
 
 
 @app.route("/health", methods=["GET"])
-def health_check_final():
-    """Health check endpoint - verifies backend is alive (UNIQUE NAME)"""
+def health():
+    """Health check"""
     return jsonify({
         "status": "healthy",
-        "ml_available": ML_AVAILABLE,
-        "groq_configured": bool(GROQ_API_KEY),
-        "uptime": "running",
+        "groq": "ok" if groq_client else "missing",
+        "tavily": "ok" if tavily_client else "missing",
         "timestamp": datetime.utcnow().isoformat(),
     })
-
-
-@app.route("/status", methods=["GET"])
-def system_status():
-    """System status endpoint - detailed service info"""
-    return jsonify({
-        "status": "operational",
-        "service": "JARVIS Python Backend",
-        "ml_services": ML_AVAILABLE,
-        "groq_api": "configured" if GROQ_API_KEY else "missing",
-        "port": PORT,
-        "timestamp": datetime.utcnow().isoformat(),
-    })
-
-
-# ===== JARVIS AI ENDPOINTS =====
-
-@app.route("/ask-jarvis", methods=["POST"])
-def ask_jarvis_endpoint():
-    """
-    Main JARVIS endpoint: accepts {query} and returns structured response.
-    
-    Request: {"query": "What are latest AI trends?"}
-    Response: {
-        "success": true,
-        "response": "AI synthesis...",
-        "sources": [...],
-        "verified_sources_count": 3
-    }
-    """
-    if not ML_AVAILABLE or ml_service is None:
-        return jsonify({
-            "success": False,
-            "error": "ML services not available",
-            "response": "JARVIS research engine is offline. Please check ML service configuration.",
-        }), 503
-
-    if not GROQ_API_KEY:
-        return jsonify({
-            "success": False,
-            "error": "GROQ_API_KEY not configured",
-            "response": "Backend is missing GROQ_API_KEY. Please add it to Render environment variables.",
-        }), 503
-
-    payload = request.get_json(silent=True) or {}
-    query = (payload.get("query") or "").strip()
-
-    if not query:
-        return jsonify({
-            "success": False,
-            "error": "Query cannot be empty"
-        }), 400
-
-    try:
-        logger.info(f"🤖 JARVIS query received: '{query[:120]}'")
-        result = ml_service.generate_jarvis_response(query)
-        status_code = 200 if result.get("success") else 500
-        return jsonify(result), status_code
-    except Exception as exc:
-        logger.error(f"❌ JARVIS processing error: {exc}")
-        return jsonify({
-            "success": False,
-            "error": str(exc),
-            "response": "JARVIS hit an unexpected issue. Please try again.",
-        }), 500
 
 
 @app.route("/api/jarvis/ask", methods=["POST"])
-def api_jarvis_ask():
+def ask_jarvis():
     """
-    Alias endpoint for Node.js compatibility: /api/jarvis/ask
-    Returns synthesis and steps for frontend research progress display.
+    Main JARVIS endpoint - Agentic workflow orchestration
     
-    Request: {"query": "latest news"}
-    Response: {
-        "success": true,
-        "response": "Synthesis answer...",  // This is the synthesis!
-        "sources": [...],
-        "steps": [
-            "Searching verified 2026 sources...",
-            "Filtering trusted results...",
-            "Synthesizing with Llama 3.3..."
-        ],
-        "verified_sources_count": 4,
-        "model": "llama-3.3-70b-versatile"
-    }
+    Workflow:
+    1. Classify intent (does query need web search?)
+    2. Conduct research (Tavily search if needed)
+    3. Generate response (Llama synthesis with context)
     """
-    if not ML_AVAILABLE or ml_service is None:
+    if not groq_client:
         return jsonify({
             "success": False,
-            "error": "ML services not available",
-            "response": "JARVIS research engine is offline.",
-            "steps": ["❌ ML service unavailable"]
-        }), 503
-
-    if not GROQ_API_KEY:
-        return jsonify({
-            "success": False,
-            "error": "GROQ_API_KEY not configured",
-            "response": "Backend missing GROQ_API_KEY.",
-            "steps": ["❌ API key not configured"]
+            "error": "Groq not configured",
+            "response": "JARVIS is offline"
         }), 503
 
     payload = request.get_json(silent=True) or {}
-    query = (payload.get("query") or "").strip()
+    user_query = (payload.get("query") or "").strip()
 
-    if not query:
-        return jsonify({
-            "success": False,
-            "error": "Query cannot be empty",
-            "steps": ["❌ Empty query"]
-        }), 400
+    if not user_query:
+        return jsonify({"success": False, "error": "Empty query"}), 400
 
     try:
-        logger.info(f"🤖 [/api/jarvis/ask] Query: '{query[:100]}'")
+        logger.info(f"\n{'='*70}\n[AGENTIC] {user_query[:100]}")
         
-        # Generate JARVIS response
-        result = ml_service.generate_jarvis_response(query)
+        # STEP 1: Classify intent
+        intent = classify_intent(user_query)
+        needs_search = intent.get("needs_search", False)
         
-        # Add research steps for frontend progress display
-        if result.get("success"):
-            result["steps"] = [
-                "✅ Searched verified 2026 sources",
-                f"✅ Found {result.get('verified_sources_count', 0)} trusted results",
-                f"✅ Synthesized with {result.get('model', 'Llama 3.3')}"
-            ]
-        else:
-            result["steps"] = ["❌ Research failed"]
+        # STEP 2: Conduct research
+        research_context = ""
+        if needs_search and tavily_client:
+            queries = intent.get("queries", [])
+            if queries:
+                research_context = conduct_research(queries)
         
-        status_code = 200 if result.get("success") else 500
-        logger.info(f"✅ Response generated: {len(result.get('response', ''))} chars")
-        return jsonify(result), status_code
+        # STEP 3: Generate response
+        response = generate_final_response(user_query, research_context)
         
-    except Exception as exc:
-        logger.error(f"❌ [/api/jarvis/ask] Error: {exc}")
+        logger.info(f"[COMPLETE]\n{'='*70}\n")
+        
+        return jsonify({
+            "success": True,
+            "response": response,
+            "model": "llama-3.3-70b-versatile",
+            "needs_search": needs_search,
+            "has_research": bool(research_context),
+            "timestamp": datetime.utcnow().isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error: {e}")
         return jsonify({
             "success": False,
-            "error": str(exc),
-            "response": "JARVIS encountered an error. Please try again.",
-            "steps": ["❌ Error during processing"]
+            "error": str(e),
+            "response": "JARVIS encountered an error"
         }), 500
 
 
-# ===== ML SERVICE ENDPOINTS =====
-def predict_endpoint():
-    """ML prediction endpoint with fallback support"""
-    if not ML_AVAILABLE:
-        return jsonify({'error': 'ML services not available'}), 503
+@app.route("/api/jarvis/workflow", methods=["POST"])
+def jarvis_workflow():
+    """Debug endpoint - see full workflow"""
+    payload = request.get_json(silent=True) or {}
+    query = (payload.get("query") or "").strip()
+    
+    if not query:
+        return jsonify({"error": "Query required"}), 400
     
     try:
-        data = request.get_json()
+        intent = classify_intent(query)
+        context = ""
+        if intent.get("needs_search") and tavily_client:
+            context = conduct_research(intent.get("queries", []))
+        response = generate_final_response(query, context)
         
-        # Support both 'features' and 'context'/'query' formats
-        if 'features' in data:
-            features = data.get('features', [])
-            if not features:
-                return jsonify({'error': 'No features provided'}), 400
-            
-            if ml_service and hasattr(ml_service, 'predict_with_model'):
-                result = ml_service.predict_with_model(features)
-                return jsonify(result)
-            else:
-                return jsonify({'error': 'Prediction service not available'}), 503
-        
-        else:
-            return jsonify({
-                'error': 'Invalid request format',
-                'expected': 'Send {features: [...]}'
-            }), 400
-    
+        return jsonify({
+            "query": query,
+            "step_1_intent": intent,
+            "step_2_research": context[:300] if context else "No web search needed",
+            "step_3_response": response
+        }), 200
     except Exception as e:
-        logger.error(f"Prediction error: {e}")
-        return jsonify({'error': str(e), 'success': False}), 500
+        return jsonify({"error": str(e)}), 500
 
-
-@app.route('/analyze-image', methods=['POST'])
-def analyze_image_endpoint():
-    """Image analysis endpoint"""
-    if not ML_AVAILABLE:
-        return jsonify({'error': 'ML services not available'}), 503
-    
-    try:
-        if 'image' not in request.files:
-            return jsonify({'error': 'No image provided'}), 400
-        
-        image = request.files['image']
-        
-        if ml_service and hasattr(ml_service, 'analyze_image'):
-            result = ml_service.analyze_image(image)
-            logger.info("Image analysis completed")
-            
-            return jsonify({
-                'success': True,
-                'analysis': result,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-        else:
-            return jsonify({'error': 'Image analysis service not available'}), 503
-    except Exception as e:
-        logger.error(f"Image analysis error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/sentiment', methods=['POST'])
-def sentiment_endpoint():
-    """Sentiment analysis endpoint"""
-    if not ML_AVAILABLE:
-        return jsonify({'error': 'ML services not available'}), 503
-    
-    try:
-        data = request.get_json()
-        text = data.get('text', '')
-        
-        if not text:
-            return jsonify({'error': 'No text provided'}), 400
-        
-        if ml_service and hasattr(ml_service, 'analyze_sentiment'):
-            result = ml_service.analyze_sentiment(text)
-            logger.info(f"Sentiment analysis completed")
-            
-            return jsonify({
-                'success': True,
-                'result': result,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-        else:
-            return jsonify({'error': 'Sentiment analysis service not available'}), 503
-    except Exception as e:
-        logger.error(f"Sentiment analysis error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/summarize', methods=['POST'])
-def summarize_endpoint():
-    """Text summarization endpoint"""
-    if not ML_AVAILABLE:
-        return jsonify({'error': 'ML services not available'}), 503
-    
-    try:
-        data = request.get_json()
-        text = data.get('text', '')
-        max_length = data.get('max_length', 150)
-        
-        if not text:
-            return jsonify({'error': 'No text provided'}), 400
-        
-        if ml_service and hasattr(ml_service, 'summarize_text'):
-            result = ml_service.summarize_text(text, max_length)
-            logger.info("Text summarization completed")
-            
-            return jsonify({
-                'success': True,
-                'summary': result,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-        else:
-            return jsonify({'error': 'Summarization service not available'}), 503
-    except Exception as e:
-        logger.error(f"Summarization error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/analyze-code', methods=['POST'])
-def analyze_code_endpoint():
-    """Code quality analysis endpoint"""
-    if not ML_AVAILABLE:
-        return jsonify({'error': 'ML services not available'}), 503
-    
-    try:
-        data = request.get_json()
-        code = data.get('code', '')
-        language = data.get('language', 'python')
-        
-        if not code:
-            return jsonify({'error': 'No code provided'}), 400
-        
-        if ml_service and hasattr(ml_service, 'analyze_code'):
-            result = ml_service.analyze_code(code, language)
-            logger.info(f"Code analysis completed")
-            
-            return jsonify({
-                'success': True,
-                'analysis': result,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-        else:
-            return jsonify({'error': 'Code analysis service not available'}), 503
-    except Exception as e:
-        logger.error(f"Code analysis error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/train-model', methods=['POST'])
-def train_model_endpoint():
-    """Model training endpoint"""
-    if not ML_AVAILABLE:
-        return jsonify({'error': 'ML services not available'}), 503
-    
-    try:
-        data = request.get_json()
-        X = data.get('X', [])
-        y = data.get('y', [])
-        
-        if not X or not y:
-            return jsonify({'error': 'Training data not provided'}), 400
-        
-        if ml_service and hasattr(ml_service, 'train_model'):
-            result = ml_service.train_model(X, y)
-            logger.info(f"Model training completed")
-            
-            return jsonify({
-                'success': True,
-                'training_result': result,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-        else:
-            return jsonify({'error': 'Model training service not available'}), 503
-    except Exception as e:
-        logger.error(f"Training error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-
-# ===== ERROR HANDLERS =====
 
 @app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
+def not_found(e):
+    return jsonify({"error": "Not found"}), 404
 
 
 @app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
+def server_error(e):
+    return jsonify({"error": "Server error"}), 500
 
-
-# ===== MAIN ENTRY POINT (MUST BE AT THE END!) =====
 
 if __name__ == "__main__":
-    logger.info(f"🚀 Starting Flask server on port {PORT}")
-    logger.info(f"🔧 ML Services: {'✅ Available' if ML_AVAILABLE else '❌ Unavailable'}")
-    logger.info(f"🔑 GROQ API: {'✅ Configured' if GROQ_API_KEY else '❌ Missing'}")
+    print("\n" + "="*70)
+    print("JARVIS AGENTIC AI BACKEND v2.0")
+    print("="*70)
+    print(f"Groq: {'Configured' if groq_client else 'MISSING'}")
+    print(f"Tavily: {'Configured' if tavily_client else 'MISSING'}")
+    print(f"Port: {PORT}")
+    print("="*70 + "\n")
     app.run(host="0.0.0.0", port=PORT, debug=False)
