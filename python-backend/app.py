@@ -2,6 +2,7 @@
 JARVIS AI - Python Flask Backend
 Primary endpoints:
 - GET /health
+- GET /status
 - POST /ask-jarvis
 """
 
@@ -24,6 +25,13 @@ LOG_PATH = os.path.join(ROOT_DIR, 'python-backend.log')
 
 # Load environment variables
 load_dotenv(ENV_PATH)
+
+# Safely get GROQ API Key
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+if not GROQ_API_KEY:
+    print("⚠️ WARNING: GROQ_API_KEY is not set in environment variables!")
+    print("   Please add GROQ_API_KEY to Render environment variables.")
+    print("   Get it from: https://console.groq.com/keys")
 
 
 def configure_logging() -> logging.Logger:
@@ -81,19 +89,39 @@ def root():
             "version": "1.0.0",
             "port": PORT,
             "ml_available": ML_AVAILABLE,
+            "groq_configured": bool(GROQ_API_KEY),
             "timestamp": datetime.utcnow().isoformat(),
         }
     )
 
 
 @app.route("/health", methods=["GET"])
-def health():
-    return jsonify({"status": "healthy", "ml_available": ML_AVAILABLE})
+def health_check():
+    """Health check endpoint - verifies backend is alive"""
+    return jsonify({
+        "status": "healthy",
+        "ml_available": ML_AVAILABLE,
+        "groq_configured": bool(GROQ_API_KEY),
+        "timestamp": datetime.utcnow().isoformat(),
+    })
+
+
+@app.route("/status", methods=["GET"])
+def system_status():
+    """System status endpoint - detailed service info"""
+    return jsonify({
+        "status": "operational",
+        "service": "JARVIS Python Backend",
+        "ml_services": ML_AVAILABLE,
+        "groq_api": "configured" if GROQ_API_KEY else "missing",
+        "port": PORT,
+        "timestamp": datetime.utcnow().isoformat(),
+    })
 
 
 @app.route("/ask-jarvis", methods=["POST"])
-def ask_jarvis():
-    """Main endpoint: accepts {query} and returns structured response."""
+def ask_jarvis_endpoint():
+    """Main JARVIS endpoint: accepts {query} and returns structured response."""
     if not ML_AVAILABLE or ml_service is None:
         return (
             jsonify(
@@ -101,6 +129,18 @@ def ask_jarvis():
                     "success": False,
                     "error": "ML services not available",
                     "response": "JARVIS research engine is offline. Please start ML services.",
+                }
+            ),
+            503,
+        )
+
+    if not GROQ_API_KEY:
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "GROQ_API_KEY not configured",
+                    "response": "Backend is missing GROQ_API_KEY. Please add it to Render environment variables.",
                 }
             ),
             503,
@@ -120,7 +160,7 @@ def ask_jarvis():
         result = ml_service.generate_jarvis_response(query)
         status_code = 200 if result.get("success") else 500
         return jsonify(result), status_code
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error(f"❌ JARVIS processing error: {exc}")
         return (
             jsonify({
@@ -136,18 +176,13 @@ if __name__ == "__main__":
     logger.info(f"🚀 Starting Flask server on port {PORT}")
     app.run(host="0.0.0.0", port=PORT)
 
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({
-        'status': 'healthy',
-        'uptime': 'running',
-        'ml_services': ML_AVAILABLE
-    })
 
-# ML Prediction endpoint
 @app.route('/predict', methods=['POST'])
-def predict():
+def predict_endpoint():
     """ML prediction endpoint with fallback support"""
+    if not ML_AVAILABLE:
+        return jsonify({'error': 'ML services not available'}), 503
+    
     try:
         data = request.get_json()
         
@@ -157,48 +192,26 @@ def predict():
             if not features:
                 return jsonify({'error': 'No features provided'}), 400
             
-            # Use class method if available
-            from ml_service import MLService
-            ml = MLService()
-            result = ml.predict_with_model(features)
-            return jsonify(result)
-        
-        elif 'context' in data and 'query' in data:
-            context = data.get('context', '')
-            query = data.get('query', '')
-            
-            if not context or not query:
-                return jsonify({'error': 'Context and query are required'}), 400
-            
-            # Use standalone predict_model function
-            result = predict_model(context, query)
-            return jsonify(result)
+            if ml_service and hasattr(ml_service, 'predict_with_model'):
+                result = ml_service.predict_with_model(features)
+                return jsonify(result)
+            else:
+                return jsonify({'error': 'Prediction service not available'}), 503
         
         else:
             return jsonify({
                 'error': 'Invalid request format',
-                'expected': 'Either {features: [...]} or {context: "...", query: "..."}'
+                'expected': 'Send {features: [...]}'
             }), 400
     
     except Exception as e:
         logger.error(f"Prediction error: {e}")
         return jsonify({'error': str(e), 'success': False}), 500
-        
-        result = predict_model(features)
-        logger.info(f"Prediction completed: {result}")
-        
-        return jsonify({
-            'success': True,
-            'prediction': result,
-            'timestamp': datetime.now().isoformat()
-        })
-    except Exception as e:
-        logger.error(f"Prediction error: {e}")
-        return jsonify({'error': str(e)}), 500
 
-# Image Analysis endpoint
+
 @app.route('/analyze-image', methods=['POST'])
 def analyze_image_endpoint():
+    """Image analysis endpoint"""
     if not ML_AVAILABLE:
         return jsonify({'error': 'ML services not available'}), 503
     
@@ -207,21 +220,26 @@ def analyze_image_endpoint():
             return jsonify({'error': 'No image provided'}), 400
         
         image = request.files['image']
-        result = analyze_image(image)
-        logger.info("Image analysis completed")
         
-        return jsonify({
-            'success': True,
-            'analysis': result,
-            'timestamp': datetime.now().isoformat()
-        })
+        if ml_service and hasattr(ml_service, 'analyze_image'):
+            result = ml_service.analyze_image(image)
+            logger.info("Image analysis completed")
+            
+            return jsonify({
+                'success': True,
+                'analysis': result,
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            return jsonify({'error': 'Image analysis service not available'}), 503
     except Exception as e:
         logger.error(f"Image analysis error: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Sentiment Analysis endpoint
+
 @app.route('/sentiment', methods=['POST'])
-def sentiment():
+def sentiment_endpoint():
+    """Sentiment analysis endpoint"""
     if not ML_AVAILABLE:
         return jsonify({'error': 'ML services not available'}), 503
     
@@ -232,21 +250,25 @@ def sentiment():
         if not text:
             return jsonify({'error': 'No text provided'}), 400
         
-        result = sentiment_analysis(text)
-        logger.info(f"Sentiment analysis completed: {result['sentiment']}")
-        
-        return jsonify({
-            'success': True,
-            'result': result,
-            'timestamp': datetime.now().isoformat()
-        })
+        if ml_service and hasattr(ml_service, 'analyze_sentiment'):
+            result = ml_service.analyze_sentiment(text)
+            logger.info(f"Sentiment analysis completed")
+            
+            return jsonify({
+                'success': True,
+                'result': result,
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            return jsonify({'error': 'Sentiment analysis service not available'}), 503
     except Exception as e:
         logger.error(f"Sentiment analysis error: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Text Summarization endpoint
+
 @app.route('/summarize', methods=['POST'])
-def summarize():
+def summarize_endpoint():
+    """Text summarization endpoint"""
     if not ML_AVAILABLE:
         return jsonify({'error': 'ML services not available'}), 503
     
@@ -258,21 +280,25 @@ def summarize():
         if not text:
             return jsonify({'error': 'No text provided'}), 400
         
-        result = summarize_text(text, max_length)
-        logger.info("Text summarization completed")
-        
-        return jsonify({
-            'success': True,
-            'summary': result,
-            'timestamp': datetime.now().isoformat()
-        })
+        if ml_service and hasattr(ml_service, 'summarize_text'):
+            result = ml_service.summarize_text(text, max_length)
+            logger.info("Text summarization completed")
+            
+            return jsonify({
+                'success': True,
+                'summary': result,
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            return jsonify({'error': 'Summarization service not available'}), 503
     except Exception as e:
         logger.error(f"Summarization error: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Code Quality Analysis endpoint
+
 @app.route('/analyze-code', methods=['POST'])
-def analyze_code():
+def analyze_code_endpoint():
+    """Code quality analysis endpoint"""
     if not ML_AVAILABLE:
         return jsonify({'error': 'ML services not available'}), 503
     
@@ -284,21 +310,25 @@ def analyze_code():
         if not code:
             return jsonify({'error': 'No code provided'}), 400
         
-        result = analyze_code_quality(code, language)
-        logger.info(f"Code analysis completed: Score {result['quality_score']}")
-        
-        return jsonify({
-            'success': True,
-            'analysis': result,
-            'timestamp': datetime.now().isoformat()
-        })
+        if ml_service and hasattr(ml_service, 'analyze_code'):
+            result = ml_service.analyze_code(code, language)
+            logger.info(f"Code analysis completed")
+            
+            return jsonify({
+                'success': True,
+                'analysis': result,
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            return jsonify({'error': 'Code analysis service not available'}), 503
     except Exception as e:
         logger.error(f"Code analysis error: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Model Training endpoint
+
 @app.route('/train-model', methods=['POST'])
-def train_model():
+def train_model_endpoint():
+    """Model training endpoint"""
     if not ML_AVAILABLE:
         return jsonify({'error': 'ML services not available'}), 503
     
@@ -310,99 +340,28 @@ def train_model():
         if not X or not y:
             return jsonify({'error': 'Training data not provided'}), 400
         
-        result = train_simple_model(X, y)
-        logger.info(f"Model training completed: Accuracy {result['accuracy']}")
-        
-        return jsonify({
-            'success': True,
-            'training_result': result,
-            'timestamp': datetime.now().isoformat()
-        })
+        if ml_service and hasattr(ml_service, 'train_model'):
+            result = ml_service.train_model(X, y)
+            logger.info(f"Model training completed")
+            
+            return jsonify({
+                'success': True,
+                'training_result': result,
+                'timestamp': datetime.utcnow().isoformat()
+            })
+        else:
+            return jsonify({'error': 'Model training service not available'}), 503
     except Exception as e:
         logger.error(f"Training error: {e}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/ask-jarvis', methods=['POST'])
-def ask_jarvis():
-    """
-    JARVIS AI Assistant Endpoint
-    
-    Uses JARVIS Researcher + Groq LLM pipeline to answer user queries
-    with verified 2026 web context
-    
-    Request Body:
-        {
-            "query": "What are the latest AI trends in Tamil Nadu?"
-        }
-    
-    Response:
-        {
-            "success": true,
-            "response": "AI assistant's answer...",
-            "sources": [
-                {"title": "Article Title", "url": "https://..."},
-                ...
-            ],
-            "context_length": 1234,
-            "verified_sources_count": 3,
-            "model": "llama3-70b-8192",
-            "timestamp": "2026-01-27T..."
-        }
-    """
-    try:
-        if not ML_AVAILABLE or not generate_jarvis_response:
-            logger.error("JARVIS service not available")
-            return jsonify({
-                'success': False,
-                'error': 'JARVIS service is not available. Please check ML service configuration.',
-                'response': 'The AI assistant is currently unavailable.'
-            }), 503
-        
-        # Get query from request
-        data = request.get_json()
-        if not data or 'query' not in data:
-            return jsonify({
-                'success': False,
-                'error': 'Missing required field: query'
-            }), 400
-        
-        user_query = data['query'].strip()
-        if not user_query:
-            return jsonify({
-                'success': False,
-                'error': 'Query cannot be empty'
-            }), 400
-        
-        logger.info(f"🤖 JARVIS query received: '{user_query}'")
-        
-        # Generate response using JARVIS pipeline
-        result = generate_jarvis_response(user_query)
-        
-        if result['success']:
-            logger.info(f"✅ JARVIS response generated ({result.get('verified_sources_count', 0)} sources)")
-        else:
-            logger.error(f"❌ JARVIS response failed: {result.get('error', 'Unknown error')}")
-        
-        return jsonify(result), 200 if result['success'] else 500
-        
-    except Exception as e:
-        logger.error(f"JARVIS endpoint error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'response': 'An unexpected error occurred while processing your request.'
-        }), 500
 
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Endpoint not found'}), 404
 
+
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
-
-if __name__ == '__main__':
-    logger.info(f"🐍 Starting Python Flask Backend on port {PORT}")
-    logger.info(f"🔧 ML Services Available: {ML_AVAILABLE}")
-    app.run(host='0.0.0.0', port=PORT, debug=True)

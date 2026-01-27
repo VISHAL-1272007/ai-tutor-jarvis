@@ -15,7 +15,7 @@ if (!DEBUG_MODE) {
 // ===== Configuration =====
 // Backend API URL - Auto-detects environment (local/production)
 const BACKEND_BASE_URL = getBackendURL();
-const API_URL = `${BACKEND_BASE_URL}/ask`;
+const API_URL = `${BACKEND_BASE_URL}/api/jarvis/ask`; // Use JARVIS proxy endpoint for Llama 3.3 synthesis
 const MAX_CHARS = 2000;
 let isBackendReady = false;
 let backendWakeupAttempts = 0;
@@ -1205,71 +1205,32 @@ async function sendMessage() {
             }
         }
         
-        // 🌐 WEB SEARCH: Check if we need to search FIRST (Perplexity-style)
-        let webSearchResults = null;
-        let searchContext = '';
-        
-        if (window.jarvisWebSearch && window.jarvisWebSearch.initialized) {
-            // Always check for real-time queries or uncertain topics
-            const needsSearch = window.jarvisWebSearch.needsWebSearch(question, '');
-            
-            if (needsSearch) {
-                console.log('[JARVIS Web Search] Performing web search BEFORE response...');
-                
-                // Replace typing indicator with search indicator
-                removeTypingIndicator();
-                const searchingDiv = document.createElement('div');
-                searchingDiv.className = 'message ai searching-web';
-                searchingDiv.id = 'webSearchIndicator';
-                searchingDiv.innerHTML = `
-                    <div class="web-search-inline">
-                        <div class="search-inline-header">
-                            <div class="search-spinner"></div>
-                            <span class="search-status">Searching the web...</span>
-                        </div>
-                        <div class="search-inline-sources" id="searchSources">
-                            <div class="source-item loading">
-                                <i class="fas fa-globe"></i> DuckDuckGo
-                            </div>
-                            <div class="source-item loading">
-                                <i class="fas fa-newspaper"></i> News APIs
-                            </div>
-                            <div class="source-item loading">
-                                <i class="fas fa-book"></i> Wikipedia
-                            </div>
-                        </div>
+        // 🤖 JARVIS RESEARCH PROGRESS: Show research steps before synthesis
+        removeTypingIndicator();
+        const researchingDiv = document.createElement('div');
+        researchingDiv.className = 'message ai jarvis-researching';
+        researchingDiv.id = 'jarvisResearchIndicator';
+        researchingDiv.innerHTML = `
+            <div class="jarvis-research-progress">
+                <div class="research-header">
+                    <div class="research-spinner"></div>
+                    <span class="research-status">🔍 JARVIS is researching...</span>
+                </div>
+                <div class="research-steps" id="researchSteps">
+                    <div class="step-item loading">
+                        <i class="fas fa-search"></i> Searching verified 2026 sources...
                     </div>
-                `;
-                elements.messagesArea.appendChild(searchingDiv);
-                scrollToBottom();
-                
-                // Perform search
-                webSearchResults = await window.jarvisWebSearch.performWebSearch(question);
-                
-                // Update search indicator to show sources found
-                if (webSearchResults && webSearchResults.results && webSearchResults.results.length > 0) {
-                    const sourcesDiv = document.getElementById('searchSources');
-                    if (sourcesDiv) {
-                        sourcesDiv.innerHTML = webSearchResults.results.slice(0, 3).map((result, i) => `
-                            <div class="source-item found" style="animation-delay: ${i * 0.1}s">
-                                <i class="fas fa-check-circle"></i> 
-                                <span>${result.source}: ${result.title.substring(0, 40)}...</span>
-                            </div>
-                        `).join('');
-                    }
-                    
-                    // Build context from search results
-                    searchContext = `\n\n[Web Search Results]:\n`;
-                    webSearchResults.results.slice(0, 5).forEach((result, i) => {
-                        searchContext += `${i + 1}. ${result.title} (${result.source})\n${result.snippet}\n\n`;
-                    });
-                    
-                    console.log('[JARVIS Web Search] Found', webSearchResults.results.length, 'sources');
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 800)); // Brief pause to show sources
-            }
-        }
+                    <div class="step-item loading">
+                        <i class="fas fa-filter"></i> Filtering trusted web results...
+                    </div>
+                    <div class="step-item loading">
+                        <i class="fas fa-brain"></i> Synthesizing with Llama 3.3 70B...
+                    </div>
+                </div>
+            </div>
+        `;
+        elements.messagesArea.appendChild(researchingDiv);
+        scrollToBottom();
 
         // Check if backend is ready, wake it up if needed
         if (window.backendKeepAlive && !window.backendKeepAlive.isReady()) {
@@ -1327,13 +1288,9 @@ async function sendMessage() {
         // This prevents API failures with long conversation histories
         const recentHistory = currentChatMessages.slice(0, -1).slice(-5); // Last 5 messages before current
 
-        // Prepare request data
+        // Prepare request data for JARVIS backend
         const requestData = {
-            question: question + searchContext, // Add search context to question
-            history: recentHistory,
-            mode: currentMode,
-            model: currentModel,
-            systemPrompt: finalPrompt
+            query: question // Backend handles web research and synthesis
         };
 
         // Add image if uploaded
@@ -1343,7 +1300,7 @@ async function sendMessage() {
         }
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout (faster)
+        const timeout = setTimeout(() => controller.abort(), 120000); // 120 second timeout for research + LLM
 
         const response = await fetch(API_URL, {
             method: 'POST',
@@ -1365,11 +1322,30 @@ async function sendMessage() {
         hideBackendStatus();
 
         const data = await response.json();
+        
+        console.log('[JARVIS Response]', data);
 
-        // Remove search indicator if exists
-        const searchIndicator = document.getElementById('webSearchIndicator');
-        if (searchIndicator) {
-            searchIndicator.remove();
+        // Update research progress to show completion
+        const researchIndicator = document.getElementById('jarvisResearchIndicator');
+        if (researchIndicator && data.success) {
+            const stepsDiv = document.getElementById('researchSteps');
+            if (stepsDiv) {
+                stepsDiv.innerHTML = `
+                    <div class="step-item completed">
+                        <i class="fas fa-check-circle"></i> Found ${data.verified_sources_count || 0} verified sources
+                    </div>
+                    <div class="step-item completed">
+                        <i class="fas fa-check-circle"></i> Analyzed ${data.context_length || 0} chars of context
+                    </div>
+                    <div class="step-item completed">
+                        <i class="fas fa-check-circle"></i> Generated synthesis with ${data.model || 'Llama 3.3'}
+                    </div>
+                `;
+            }
+            await new Promise(resolve => setTimeout(resolve, 800)); // Brief pause to show completion
+            researchIndicator.remove();
+        } else if (researchIndicator) {
+            researchIndicator.remove();
         }
 
         // Remove typing indicator
@@ -1393,54 +1369,38 @@ async function sendMessage() {
             scrollToBottom();
         }
 
-        // Check if image was generated
-        if (data.imageGenerated && data.imageUrl) {
+        // ✅ Display JARVIS synthesized response
+        if (data.success && data.response) {
+            // Format response with sources
+            let finalResponse = data.response;
+            
+            // Add source citations if available
+            if (data.sources && data.sources.length > 0) {
+                finalResponse += '\n\n**📚 Sources:**\n';
+                data.sources.slice(0, 5).forEach((source, i) => {
+                    finalResponse += `${i + 1}. [${source.title}](${source.url})\n`;
+                });
+            }
+            
+            // Display synthesized answer
+            await addMessageWithTypingEffect(finalResponse, 'ai');
+            
+            // Speak the response if voice enabled
+            if (typeof speak === 'function') {
+                speak(data.response); // Speak only the answer, not sources
+            }
+            
+            // No fallback search links needed - we have synthesis!
+            console.log(`✅ JARVIS synthesis complete: ${data.verified_sources_count} sources, ${data.context_length} chars context`);
+        } else if (data.imageGenerated && data.imageUrl) {
             // Display image message
             const imageMessage = `🎨 **Image Generated!**\n\n<img src="${data.imageUrl}" alt="${data.prompt}" style="max-width: 100%; border-radius: 12px; margin: 10px 0;" />\n\n**Prompt:** ${data.prompt}\n\n*Generated using AI Image Model*`;
             await addMessageWithTypingEffect(imageMessage, 'ai');
             currentChatMessages.push({ role: 'assistant', content: imageMessage });
         } else {
-            // Regular text response
-            let finalAnswer = data.answer;
-            
-            // 🧠 MASTER AI: Enhance response with news, personalization, and deep knowledge
-            if (window.jarvisMasterAI && window.jarvisMasterAI.initialized) {
-                try {
-                    finalAnswer = await window.jarvisMasterAI.generateEnhancedResponse(question, data.answer);
-                    console.log('[JARVIS Master AI] Response enhanced with personalized context');
-                } catch (error) {
-                    console.warn('[JARVIS Master AI] Enhancement failed, using original response:', error);
-                    finalAnswer = data.answer;
-                }
-            }
-            
-            // Add random emoji to response
-            const randomEmoji = responseEmojis[Math.floor(Math.random() * responseEmojis.length)];
-            const answerWithEmoji = finalAnswer + ' ' + randomEmoji;
-
-            // Add AI message to UI and context
-            await addMessageWithTypingEffect(answerWithEmoji, 'ai');
-            currentChatMessages.push({ role: 'assistant', content: answerWithEmoji });
-
-            // 🌐 Display web search sources inline if we searched
-            if (webSearchResults && webSearchResults.results && webSearchResults.results.length > 0) {
-                const sourcesHTML = window.jarvisWebSearch.formatSearchResults(webSearchResults);
-                if (sourcesHTML) {
-                    const sourcesDiv = document.createElement('div');
-                    sourcesDiv.className = 'message ai web-sources-inline';
-                    sourcesDiv.innerHTML = sourcesHTML;
-                    elements.messagesArea.appendChild(sourcesDiv);
-                    scrollToBottom();
-                }
-            }
-
-            // 🧠 JARVIS 5.2: Add smart follow-up suggestion buttons
-            if (data.followUpSuggestions && data.followUpSuggestions.length > 0) {
-                addFollowUpButtons(data.followUpSuggestions);
-            }
-
-            // Speak the response
-            speak(data.answer);
+            // Error response or no synthesis available
+            const errorMsg = data.response || data.error || 'Sorry, I could not generate a response. Please try again.';
+            await addMessageWithTypingEffect(errorMsg, 'ai');
         }
 
         // Save updated chat history

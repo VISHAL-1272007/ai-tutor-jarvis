@@ -2266,3 +2266,122 @@ body.plan-business .business-only {
 @keyframes orbListening { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
 @keyframes orbThinking { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes orbSpeaking { 0% { transform: scale(1); box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); } 100% { transform: scale(1.2); box-shadow: 0 0 50px rgba(0, 212, 255, 0.9); } }
+
+/* ===== JARVIS Research Progress Indicator ===== */
+.jarvis-researching {
+    background: var(--message-ai-bg);
+    border: 2px solid var(--jarvis-blue);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.jarvis-research-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.research-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--jarvis-cyan);
+}
+
+.research-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(0, 212, 255, 0.2);
+    border-top-color: var(--jarvis-cyan);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.research-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-left: 36px;
+}
+
+.step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    background: rgba(0, 212, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.step-item.loading {
+    border-left-color: var(--jarvis-blue);
+    animation: pulse-step 2s ease-in-out infinite;
+}
+
+.step-item.completed {
+    border-left-color: #00ff88;
+    color: var(--text-primary);
+}
+
+.step-item.completed i {
+    color: #00ff88;
+}
+
+.step-item.loading i {
+    color: var(--jarvis-blue);
+    animation: pulse-icon 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-step {
+    0%, 100% {
+        background: rgba(0, 212, 255, 0.05);
+        box-shadow: 0 0 0 rgba(0, 212, 255, 0.3);
+    }
+    50% {
+        background: rgba(0, 212, 255, 0.15);
+        box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+    }
+}
+
+@keyframes pulse-icon {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.2);
+    }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .jarvis-research-progress {
+        padding: 16px;
+    }
+    
+    .research-header {
+        font-size: 14px;
+    }
+    
+    .research-steps {
+        margin-left: 24px;
+    }
+    
+    .step-item {
+        font-size: 13px;
+        padding: 6px 10px;
+    }
+}
+
