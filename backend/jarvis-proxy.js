@@ -1,14 +1,12 @@
 /**
  * JARVIS AI Proxy Middleware
- * Handles user queries with DDGS web search + Groq LLM synthesis
- * Previously routed to Python Flask - now uses Node.js DDGS RAG directly
+ * Routes queries to Python Flask backend for DDGS + Groq synthesis
  */
 
 const axios = require('axios');
 const logger = require('./logger');
-const { ddgsRagPipeline } = require('./ddgs-rag-integration'); // Direct DDGS RAG integration
 
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:3000'; // Legacy, not used
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'https://jarvis-python-ml-service.onrender.com';
 
 /**
  * Error handling helper
@@ -29,24 +27,7 @@ const handleError = (error, res) => {
 
 /**
  * POST /api/jarvis/ask
- * Main endpoint that uses DDGS web search + Groq LLM for synthesis
- * 
- * Request body:
- * {
- *   "query": "What are the latest AI trends?"
- * }
- * 
- * Response:
- * {
- *   "success": true,
- *   "response": "AI-generated answer...",
- *   "sources": [
- *     { "title": "...", "url": "..." }
- *   ],
- *   "verified_sources_count": 4,
- *   "context_length": 2345,
- *   "model": "llama-3.3-70b-versatile"
- * }
+ * Routes to Python Flask backend for DDGS search + Groq synthesis
  */
 async function askJarvis(req, res) {
   try {
@@ -69,63 +50,69 @@ async function askJarvis(req, res) {
       });
     }
 
-    // Log the incoming request
-    logger.info(`🤖 JARVIS Query Received: "${query.substring(0, 100)}..."`);
+    logger.info(`🤖 JARVIS Query: "${query.substring(0, 100)}..."`);
 
-    // Use DDGS RAG integration directly (no Python backend needed!)
+    // Forward to Python Flask backend
     const startTime = Date.now();
     
-    const ragResult = await ddgsRagPipeline(query.trim());
-    
+    const pythonResponse = await axios.post(
+      `${PYTHON_BACKEND_URL}/api/jarvis/ask`,
+      { query: query.trim() },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'JARVIS-Node-Proxy/2.0'
+        },
+        timeout: 60000 // 60 second timeout
+      }
+    );
+
     const duration = Date.now() - startTime;
 
-    // Transform RAG result to match expected frontend format
-    const result = {
-      success: ragResult.success,
-      response: ragResult.answer || ragResult.response,
-      sources: ragResult.sources || [],
-      verified_sources_count: ragResult.sources?.length || 0,
-      context_length: ragResult.context?.length || 0,
-      model: 'llama-3.3-70b-versatile',
-      source: ragResult.source || 'web'
-    };
+    logger.info(`✅ Response in ${duration}ms`);
+    logger.info(`   Sources: ${pythonResponse.data.verified_sources_count || 0}`);
 
-    // Log successful response
-    logger.info(`✅ JARVIS Response Generated in ${duration}ms`);
-    logger.info(`   - Sources: ${result.verified_sources_count}`);
-    logger.info(`   - Response length: ${result.response?.length || 0} chars`);
-
-    // Return successful response to client
+    // Return Python backend response
     return res.status(200).json({
-      ...result,
+      ...pythonResponse.data,
       processingTime: duration,
-      backend: 'node-ddgs-groq',
+      backend: 'python-flask-ddgs-groq',
       timestamp: new Date().toISOString()
     });
 
   } catch (error) {
-    // Error handling
     logger.error(`❌ JARVIS Error: ${error.message}`);
     
+    // Handle connection errors
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      return res.status(503).json({
+        success: false,
+        error: 'Python backend unavailable',
+        response: 'JARVIS research engine is offline. Please check the Python backend.',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+      return res.status(504).json({
+        success: false,
+        error: 'Request timeout',
+        response: 'JARVIS is taking too long. Please try again.',
+        timestamp: new Date().toISOString()
+      });
+    }
+
     return res.status(500).json({
       success: false,
       error: error.message || 'Internal server error',
-      response: 'JARVIS encountered an error while processing your query. Please try again!',
+      response: 'JARVIS encountered an error. Please try again!',
       timestamp: new Date().toISOString()
     });
   }
 }
 
 /**
- * Health check endpoint
- * Verifies if Python backend is accessible
- * 
- * Response:
- * {
- *   "status": "healthy",
- *   "pythonBackend": "online",
- *   "timestamp": "2026-01-27T..."
- * }
+ * Health check - verify Python backend connectivity
  */
 async function healthCheck(req, res) {
   try {
@@ -136,6 +123,7 @@ async function healthCheck(req, res) {
     return res.status(200).json({
       status: 'healthy',
       pythonBackend: 'online',
+      pythonBackendUrl: PYTHON_BACKEND_URL,
       pythonResponse: response.data,
       timestamp: new Date().toISOString()
     });
@@ -146,6 +134,7 @@ async function healthCheck(req, res) {
     return res.status(503).json({
       status: 'unhealthy',
       pythonBackend: 'offline',
+      pythonBackendUrl: PYTHON_BACKEND_URL,
       error: error.message,
       timestamp: new Date().toISOString()
     });
@@ -175,13 +164,8 @@ function status(req, res) {
  * Express route setup
  */
 function setupJarvisRoutes(app) {
-  // POST - Ask JARVIS
   app.post('/api/jarvis/ask', askJarvis);
-
-  // GET - Health check
   app.get('/api/jarvis/health', healthCheck);
-
-  // GET - Status
   app.get('/api/jarvis/status', status);
 
   console.log('✅ JARVIS proxy routes initialized');
