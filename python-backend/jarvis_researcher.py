@@ -1,236 +1,157 @@
 """
-JARVIS Researcher - Autonomous Web Search & Scraping Service
+JARVIS Researcher - Web Search Service using NewsAPI
 =============================================================
-Senior Python Engineer Implementation
-Independent RAG pipeline without paid APIs (Serper/Jina)
+Reliable web search without subprocess dependencies
 
-Author: JARVIS AI Development Team
-Date: January 27, 2026
+Uses: NewsAPI for real-time news search
+Fallback: DDGS if NewsAPI unavailable
 """
 
 import time
 import random
+import os
 from typing import List, Dict, Optional
-try:
-    from ddgs import DDGS  # New package name
-except ImportError:
-    from duckduckgo_search import DDGS  # Fallback to old name
 import requests
-from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
-# User-Agent rotation to prevent blocking
-USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-]
+# Load environment variables
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'backend', '.env'))
 
+NEWS_API_KEY = os.getenv('NEWS_API_KEY')
+GNEWS_API_KEY = os.getenv('GNEWS_API_KEY')
 
-def verify_temporal_relevance(content: str) -> bool:
-    """
-    Verification Layer: Ensure content is recent and relevant.
-    
-    Rules:
-    - KEEP if '2026' is present (current year)
-    - REJECT if '2024' or '2023' found but no '2026' (outdated data)
-    - KEEP if no year references (neutral content)
-    
-    Args:
-        content: Scraped text content
-        
-    Returns:
-        True if content passes verification, False otherwise
-    """
-    content_lower = content.lower()
-    
-    # Primary check: If 2026 is present, it's current → KEEP
-    if '2026' in content:
-        return True
-    
-    # Secondary check: If old years present without 2026 → REJECT
-    if '2024' in content or '2023' in content:
-        return False
-    
-    # No year references → Neutral content → KEEP
-    return True
-
-
-def scrape_url_content(url: str, timeout: int = 10) -> Optional[str]:
-    """
-    Scrape main text content from a URL using BeautifulSoup.
-    
-    Safety Features:
-    - Random User-Agent rotation
-    - Timeout protection
-    - Exception handling for failed requests
-    - Extracts only <p> tags for clean content
-    
-    Args:
-        url: Target URL to scrape
-        timeout: Request timeout in seconds
-        
-    Returns:
-        Extracted text content or None if scraping failed
-    """
+# Fallback to DDGS only if NewsAPI unavailable
+try:
+    from ddgs import DDGS
+    DDGS_AVAILABLE = True
+except ImportError:
     try:
-        headers = {
-            'User-Agent': random.choice(USER_AGENTS),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
+        from duckduckgo_search import DDGS
+        DDGS_AVAILABLE = True
+    except ImportError:
+        DDGS_AVAILABLE = False
+        print("⚠️  DDGS library not available - will use NewsAPI instead")
+
+
+def search_with_newsapi(query: str, max_results: int = 5) -> List[Dict[str, str]]:
+    """
+    Search using NewsAPI for reliable real-time news results
+    
+    Args:
+        query: Search query
+        max_results: Maximum results to return
+        
+    Returns:
+        List of results with title, url, content
+    """
+    if not NEWS_API_KEY:
+        print("⚠️  NEWS_API_KEY not configured")
+        return []
+    
+    try:
+        print("📰 Searching with NewsAPI...")
+        url = 'https://newsapi.org/v2/everything'
+        params = {
+            'q': query,
+            'sortBy': 'relevancy',
+            'language': 'en',
+            'pageSize': max_results,
+            'apiKey': NEWS_API_KEY
         }
         
-        response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
-        response.raise_for_status()  # Raise exception for 4xx/5xx status codes
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
         
-        # Parse HTML with BeautifulSoup
-        soup = BeautifulSoup(response.content, 'html.parser')
+        data = response.json()
         
-        # Extract all paragraph tags
-        paragraphs = soup.find_all('p')
+        if data.get('status') != 'ok':
+            print(f"⚠️  NewsAPI error: {data.get('message', 'Unknown error')}")
+            return []
         
-        # Combine text from all paragraphs
-        content = ' '.join([p.get_text(strip=True) for p in paragraphs])
+        articles = data.get('articles', [])
+        print(f"✅ Found {len(articles)} articles from NewsAPI")
         
-        # Clean up extra whitespace
-        content = ' '.join(content.split())
+        results = []
+        for article in articles[:max_results]:
+            results.append({
+                'title': article.get('title', 'Untitled'),
+                'url': article.get('url', ''),
+                'content': article.get('description', article.get('content', ''))[:500],
+                'source': 'NewsAPI'
+            })
         
-        return content if content else None
+        return results
         
-    except requests.exceptions.Timeout:
-        print(f"⏱️ Timeout while accessing: {url}")
-        return None
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Request failed for {url}: {str(e)}")
-        return None
     except Exception as e:
-        print(f"⚠️ Unexpected error scraping {url}: {str(e)}")
-        return None
+        print(f"❌ NewsAPI error: {e}")
+        return []
+
+
+def search_with_ddgs(query: str, max_results: int = 5) -> List[Dict[str, str]]:
+    """
+    Fallback search using DDGS
+    """
+    if not DDGS_AVAILABLE:
+        return []
+    
+    try:
+        print("🔍 Searching with DDGS (fallback)...")
+        ddgs = DDGS()
+        search_results = list(ddgs.text(
+            query,
+            max_results=max_results * 2
+        ))
+        
+        print(f"✅ Found {len(search_results)} results from DDGS")
+        
+        results = []
+        for result in search_results[:max_results]:
+            results.append({
+                'title': result.get('title', result.get('name', 'Untitled')),
+                'url': result.get('href', result.get('url', result.get('link', ''))),
+                'content': result.get('body', result.get('snippet', ''))[:500],
+                'source': 'DDGS'
+            })
+        
+        return [r for r in results if r['url']]
+        
+    except Exception as e:
+        print(f"⚠️  DDGS error: {e}")
+        return []
 
 
 def jarvis_researcher(query: str, max_results: int = 5) -> List[Dict[str, str]]:
     """
-    JARVIS Autonomous Web Research Function
+    JARVIS Researcher - Multi-source web search
     
-    Performs independent web search and content extraction for RAG pipeline.
-    
-    Pipeline:
-    1. DuckDuckGo Search → Top 5 results
-    2. Content Scraping → Extract <p> tags with BeautifulSoup
-    3. Temporal Verification → Filter outdated content
-    4. Rate Limiting → 2-second delays between requests
+    Priority:
+    1. NewsAPI (reliable, real-time news)
+    2. DDGS fallback (free, but less reliable)
+    3. Empty list (graceful failure)
     
     Args:
-        query: Search query string
-        max_results: Maximum number of results to return (default: 5)
+        query: Search query
+        max_results: Maximum results to return
         
     Returns:
-        List of verified results with structure:
-        [
-            {
-                'title': 'Article Title',
-                'url': 'https://example.com',
-                'content': 'First 1000 characters of content...'
-            },
-            ...
-        ]
-    
-    Example:
-        >>> results = jarvis_researcher("Tamil Nadu education news")
-        >>> print(f"Found {len(results)} verified sources")
-        >>> for result in results:
-        ...     print(f"- {result['title']}")
+        List of verified results
     """
-    print(f"🔍 JARVIS Researcher starting query: '{query}'")
-    verified_results = []
+    print(f"🔍 JARVIS Researcher: '{query}'")
     
-    try:
-        # Step 1: DuckDuckGo Search
-        print("📡 Fetching search results from DuckDuckGo...")
-        ddgs = DDGS()
-        
-        # Try search with error handling
-        try:
-            search_results = list(ddgs.text(
-                query,  # First positional argument is the query
-                region='wt-wt',  # Try worldwide instead of India to avoid regional blocking
-                safesearch='moderate',
-                timelimit=None,  # Don't limit time - get any results
-                max_results=max_results * 2  # Get more to compensate for filtering
-            ))
-        except Exception as search_error:
-            print(f"⚠️  DDGS search error: {search_error}")
-            # Try simpler search as fallback
-            try:
-                print("   Retrying with simpler parameters...")
-                search_results = list(ddgs.text(query, max_results=max_results))
-            except Exception as fallback_error:
-                print(f"❌ DDGS fallback also failed: {fallback_error}")
-                search_results = []
-        
-        if not search_results:
-            print("⚠️  No search results from DDGS")
-            return verified_results
-        
-        print(f"✅ Found {len(search_results)} search results")
-        
-        # Step 2: Scrape and Verify Each Result
-        for idx, result in enumerate(search_results, 1):
-            # Stop if we have enough verified results
-            if len(verified_results) >= max_results:
-                break
-            
-            title = result.get('title', result.get('name', 'Untitled'))
-            url = result.get('href', result.get('url', result.get('link', '')))
-            snippet = result.get('body', result.get('snippet', ''))
-            
-            if not url:
-                continue
-            
-            print(f"\n[{idx}/{len(search_results)}] Processing: {title}")
-            print(f"    URL: {url}")
-            
-            # Scrape content from URL
-            content = scrape_url_content(url, timeout=8)
-            
-            if not content:
-                print("    ⚠️  Scraping failed, using snippet as fallback...")
-                # Use DDGS snippet as fallback if scraping fails
-                if snippet:
-                    content = snippet
-                else:
-                    time.sleep(1)
-                    continue
-            
-            # Step 3: Temporal Verification (relaxed for better results)
-            # Skip verification if content is short (likely from snippet)
-            if len(content) > 200 and not verify_temporal_relevance(content):
-                print("    ⛔ Failed temporal verification (outdated content)")
-                time.sleep(1)
-                continue
-            
-            # Limit content to 1000 characters for LLM efficiency
-            content_trimmed = content[:1000]
-            
-            verified_results.append({
-                'title': title,
-                'url': url,
-                'content': content_trimmed
-            })
-            
-            print(f"    ✅ Verified and added ({len(content_trimmed)} chars)")
-            
-            # Step 4: Rate Limiting - shorter delay for snippets
-            time.sleep(1 if len(content) < 200 else 2)
-        
-    except Exception as e:
-        print(f"❌ JARVIS Researcher error: {str(e)}")
-        return verified_results
+    # Try NewsAPI first
+    results = search_with_newsapi(query, max_results)
     
-    print(f"\n🎯 Research complete: {len(verified_results)}/{max_results} verified sources")
-    return verified_results
+    # Fallback to DDGS if NewsAPI returns nothing
+    if not results:
+        print("📌 NewsAPI empty, trying DDGS fallback...")
+        results = search_with_ddgs(query, max_results)
+    
+    # Final fallback: return empty (ml_service will handle gracefully)
+    if not results:
+        print("⚠️  No search results from any source")
+    
+    print(f"🎯 Returning {len(results)} results")
+    return results
 
 
 def jarvis_researcher_quick(query: str) -> str:
@@ -246,12 +167,12 @@ def jarvis_researcher_quick(query: str) -> str:
     results = jarvis_researcher(query)
     
     if not results:
-        return "No verified sources found."
+        return "No search results found for the given query."
     
     # Combine all content with source citations
     combined_content = ""
     for idx, result in enumerate(results, 1):
-        combined_content += f"\n\n[Source {idx}: {result['title']}]\n{result['content']}"
+        combined_content += f"\n[Source {idx}: {result['title']} ({result['source']})]\n{result['content']}\n"
     
     return combined_content.strip()
 
@@ -262,8 +183,8 @@ if __name__ == "__main__":
     print("JARVIS RESEARCHER - TEST RUN")
     print("=" * 70)
     
-    test_query = "Tamil Nadu education technology news 2026"
-    results = jarvis_researcher(test_query)
+    test_query = "What is LeetCode?"
+    results = jarvis_researcher(test_query, max_results=3)
     
     print("\n" + "=" * 70)
     print("RESULTS SUMMARY")
@@ -272,11 +193,10 @@ if __name__ == "__main__":
     if results:
         for idx, result in enumerate(results, 1):
             print(f"\n{idx}. {result['title']}")
+            print(f"   Source: {result['source']}")
             print(f"   URL: {result['url']}")
-            print(f"   Content preview: {result['content'][:150]}...")
+            print(f"   Content: {result['content'][:100]}...")
     else:
         print("No results found.")
     
     print("\n" + "=" * 70)
-    print("TEST COMPLETE")
-    print("=" * 70)
