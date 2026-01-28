@@ -236,8 +236,8 @@ Set these targets for monitoring:
 - Debug endpoint: POST /api/jarvis/workflow
 
 ### API Keys
-- Groq: ✅ Configured (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)
-- Tavily: ✅ Configured (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)
+- Groq: ✅ Configured (set in backend/.env)
+- Tavily: ✅ Configured (set in backend/.env)
 - Free tier limits: Tavily 1000/month, Groq unlimited
 
 ---

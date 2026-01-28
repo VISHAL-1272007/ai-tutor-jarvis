@@ -336,7 +336,7 @@ search_result = tavily_client.search(
 
 ### Environment Variables
 ```
-GROQ_API_KEY=gsk_1LtOGxojaWEz345AX5wWGdyb3FYXq2IEbVVz9OCTaOL1b6Znr0r
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 TAVILY_API_KEY=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
 FLASK_PORT=3000
 ```

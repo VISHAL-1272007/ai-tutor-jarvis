@@ -222,9 +222,10 @@ Query → Llama Intent Check
 
 ### Environment Configuration
 ```
-GROQ_API_KEY=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
-TAVILY_API_KEY=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
-NEWS_API_KEY=f000b146329e4dddb6116bfe6457257d
+# Set these in Render Dashboard or backend/.env
+GROQ_API_KEY=your_groq_key_here
+TAVILY_API_KEY=your_tavily_key_here
+NEWS_API_KEY=your_news_api_key_here
 ```
 
 ### Model Configuration
