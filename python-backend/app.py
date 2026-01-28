@@ -126,19 +126,20 @@ or
         return {"needs_search": False}
 
 
-def conduct_research(queries: List[str]) -> str:
+def conduct_research(queries: List[str]) -> tuple:
     """
     Step 2: Execute Tavily searches and aggregate results
-    Uses advanced depth and quality-over-quantity approach
+    Returns: (context_string, sources_list) for LLM and frontend
     """
     if not tavily_client:
         logger.warning("Tavily not configured")
-        return ""
+        return "", []
     
     try:
         logger.info(f"[RESEARCH] Searching {len(queries)} queries...")
         
         all_results = []
+        sources_list = []  # For frontend display
         
         for i, query in enumerate(queries, 1):
             try:
@@ -146,8 +147,9 @@ def conduct_research(queries: List[str]) -> str:
                 
                 search_result = tavily_client.search(
                     query=query,
+                    topic="news",
                     search_depth="advanced",
-                    max_results=2,
+                    max_results=5,
                     include_answer=True
                 )
                 
@@ -161,40 +163,47 @@ def conduct_research(queries: List[str]) -> str:
                 
                 if search_result.get("answer"):
                     all_results.append({
-                        "title": "Direct Answer",
+                        "title": "Tavily Direct Answer",
                         "snippet": search_result.get("answer"),
-                        "url": ""
+                        "url": "https://tavily.com"
                     })
                     
             except Exception as e:
                 logger.warning(f"Search error for query {i}: {e}")
                 continue
         
-        # Aggregate results
+        # Build context string for LLM and sources list for frontend
         context = ""
         for idx, result in enumerate(all_results, 1):
-            context += f"[Source {idx}: {result['title']}]\n{result['snippet']}\n"
+            context += f"[{idx}] {result['title']}\n{result['snippet']}\n"
             if result['url']:
                 context += f"URL: {result['url']}\n"
             context += "\n"
+            
+            # Add to sources list for frontend (with real URLs)
+            sources_list.append({
+                "title": result['title'],
+                "url": result['url'] if result['url'] else "https://tavily.com"
+            })
         
         logger.info(f"OK Found {len(all_results)} sources")
-        return context.strip()
+        return context.strip(), sources_list
         
     except Exception as e:
         logger.error(f"Research error: {e}")
-        return ""
+        return "", []
 
 
-def generate_final_response(user_query: str, research_context: str) -> str:
+def generate_final_response(user_query: str, research_context: str, sources_list: list) -> tuple:
     """
-    Step 3: Generate final response using Llama-3.3 with research context
+    Step 3: Generate final response using Llama-3.3 with Perplexity-style inline citations
+    Returns: (response_text, sources_list)
     """
     if not groq_client:
-        return "JARVIS is offline"
+        return "JARVIS is offline", []
     
     try:
-        logger.info("[SYNTHESIZE] Generating response...")
+        logger.info("[SYNTHESIZE] Generating response with inline citations...")
         
         system_prompt = """You are JARVIS, a witty and sophisticated AI assistant with deep knowledge.
 
@@ -202,17 +211,18 @@ Your traits:
 - Articulate and refined communication
 - Humorous when appropriate
 - Accurate and fact-based
-- Well-cited responses
+- Perplexity-style citations
 - Intelligent connections
 
-Guidelines:
-- Use research context for accurate answers
-- Cite sources: "According to [Source 1]..."
-- If context incomplete, acknowledge and explain
-- Be professional but conversational"""
+CITATION RULES (January 28, 2026):
+1. Use inline citations [1], [2], [3] when referencing sources
+2. Place citations immediately after the fact: "According to latest reports [1], AI has..."
+3. Multiple sources: "Recent studies [1][2] show that..."
+4. Do NOT create a Sources section - frontend will render it automatically
+5. Be precise and verify all claims against the provided sources"""
         
         if research_context.strip():
-            full_system = f"{system_prompt}\n\nRESEARCH CONTEXT:\n{research_context}"
+            full_system = f"{system_prompt}\n\nVERIFIED SOURCES (Jan 28, 2026):\n{research_context}\n\nUSE INLINE CITATIONS [1], [2], [3] FOR ALL FACTS."
         else:
             full_system = system_prompt
         
@@ -229,11 +239,11 @@ Guidelines:
         
         final_response = response.choices[0].message.content
         logger.info(f"OK Response generated: {len(final_response)} chars")
-        return final_response
+        return final_response, sources_list
         
     except Exception as e:
         logger.error(f"Synthesis error: {e}")
-        return f"Error: {str(e)}"
+        return f"Error: {str(e)}", []
 
 
 # ============================================================================
@@ -295,22 +305,26 @@ def ask_jarvis():
         
         # STEP 2: Conduct research
         research_context = ""
+        sources_list = []
         if needs_search and tavily_client:
             queries = intent.get("queries", [])
             if queries:
-                research_context = conduct_research(queries)
+                research_context, sources_list = conduct_research(queries)
         
-        # STEP 3: Generate response
-        response = generate_final_response(user_query, research_context)
+        # STEP 3: Generate response with inline citations
+        response, sources_list = generate_final_response(user_query, research_context, sources_list)
         
         logger.info(f"[COMPLETE]\n{'='*70}\n")
         
         return jsonify({
             "success": True,
             "response": response,
+            "sources": sources_list,  # Real URLs for frontend
             "model": "llama-3.3-70b-versatile",
             "needs_search": needs_search,
             "has_research": bool(research_context),
+            "verified_sources_count": len(sources_list),
+            "context_length": len(research_context),
             "timestamp": datetime.utcnow().isoformat()
         }), 200
         
