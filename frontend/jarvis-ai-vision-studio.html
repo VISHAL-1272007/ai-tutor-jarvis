@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI Vision Studio - Refactored UI</title>
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Global Styles -->
+    <link rel="stylesheet" href="GlobalStyles.css">
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel Standalone for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        /* Additional inline styles for immediate load */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        #root {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <!-- React App Script -->
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+        const { createRoot } = ReactDOM;
+        
+        // Import Layout component
+        import('./Layout.jsx').then(module => {
+            const { JarvisLayout } = module;
+            const root = createRoot(document.getElementById('root'));
+            root.render(<JarvisLayout />);
+        }).catch(() => {
+            // Fallback: Show message if module loading fails
+            document.getElementById('root').innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 20px; background: #0a0e27; color: #00f0ff;">
+                    <h1 style="font-size: 2.5rem; font-weight: 800;">JARVIS AI Vision Studio</h1>
+                    <p style="font-size: 1.2rem; color: #a8b5cf;">Refactored UI Ready</p>
+                    <p style="font-size: 0.9rem; color: #6a7492;">Open Layout.jsx directly with a React build system</p>
+                </div>
+            `;
+        });
+        
+        // Initialize Lucide Icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>

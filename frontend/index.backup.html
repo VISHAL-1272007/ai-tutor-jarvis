@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google-site-verification" content="dGshw6IZO8oy354J1poP6Z7xqafDJ96RlTsG-vtPOgE">
+    <meta name="description" content="JARVIS AI 2026 - Professional Student Assistant developed by VISHAL. Manage 30,000+ students with ease.">
+    <title>VISH AI | JARVIS 2026 - Smart Student Assistant</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+
+    <!-- Early Theme Init - Prevents Flash -->
+    <script src="theme-init.js" async></script>
+
+    <!-- Preload Critical Resources -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="preload" href="global-pro.css" as="style">
+    <link rel="preload" href="script.js" as="script">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4712/4712027.png">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="global-pro.css?v=2026">
+    <link rel="stylesheet" href="style-pro.css?v=2026">
+    <link rel="stylesheet" href="voice-commit.css">
+    <link rel="stylesheet" href="jarvis-welcome.css?v=2026">
+    <link rel="stylesheet" href="web-search.css">
+    <link rel="stylesheet" href="gemini-mobile.css?v=2026">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+
+    <!-- Libraries - Non-blocking load -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+    
+    <!-- Master AI System - Defer to prevent blocking -->
+    <script src="news-integration.js" defer></script>
+    <script src="user-memory.js"></script>
+    <script src="master-ai-engine.js"></script>
+    <script src="web-search.js"></script>
+    <script src="voice-input.js"></script>
+    
+    <!-- Image Upload & Vision AI -->
+    <script src="image-upload.js"></script>
+    <script src="gemini-vision.js"></script>
+    
+    <!-- 2026 Edition Styles -->
+    <style>
+
+        .year-badge {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(240, 147, 251, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 20px 5px rgba(240, 147, 251, 0.2); }
+        }
+        .whats-new-2026 {
+            margin: 24px 0;
+            padding: 20px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 16px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        .whats-new-2026 h3 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            color: var(--text-primary, #fff);
+        }
+        .new-features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .new-feature {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            transition: transform 0.3s, background 0.3s;
+        }
+        .new-feature:hover {
+            transform: translateY(-3px);
+            background: rgba(102, 126, 234, 0.2);
+        }
+        .new-feature i {
+            font-size: 24px;
+            color: #667eea;
+        }
+        .new-feature span {
+            font-size: 12px;
+            color: var(--text-secondary, #aaa);
+            text-align: center;
+        }
+        .quick-links-2026 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .quick-link {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary, #fff);
+            transition: all 0.3s;
+        }
+        .quick-link:hover {
+            background: rgba(102, 126, 234, 0.15);
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+        .quick-link i {
+            font-size: 24px;
+            color: #667eea;
+        }
+        .quick-link span {
+            font-size: 11px;
+            text-align: center;
+            color: var(--text-secondary, #aaa);
+        }
+        .orb-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            animation: ring-rotate 8s linear infinite;
+        }
+        @keyframes ring-rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+            .new-features-grid, .quick-links-2026 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .new-year-banner {
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+
+<body class="home-page">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-robot"></i> JARVIS 2026</h2>
+            <span class="plan-badge" id="planBadge">FREE</span>
+            <button class="sidebar-close-btn" id="sidebarCloseBtn" title="Close sidebar" aria-label="Close sidebar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <button class="new-chat-btn" id="newChatBtn">
+            <i class="fas fa-plus"></i>
+            <span>New Chat</span>
+        </button>
+
+        <div class="chat-history" id="chatHistory">
+            <h3>Recent Chats</h3>
+            <div class="history-list" id="historyList">
+                <div class="history-empty">
+                    <i class="fas fa-comments"></i>
+                    <p>No conversations yet<br>Start chatting with JARVIS!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <button class="sidebar-action-btn" id="syncKnowledgeBtn" style="margin-bottom: 15px; width: 100%; border: 1px solid rgba(102, 126, 234, 0.3); background: rgba(102, 126, 234, 0.1); color: #fff; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;" title="Update AI Knowledge with latest 2026 tech news">
+                <i class="fas fa-sync-alt"></i>
+                <span>Sync Knowledge</span>
+            </button>
+            <div class="theme-selector-container">
+                <label><i class="fas fa-palette"></i> Theme</label>
+                <select id="themeSelect" class="theme-select" title="Select theme" aria-label="Select theme">
+                    <option value="default">🌙 Dark (Default)</option>
+                    <option value="light">☀️ Light Mode</option>
+                    <option value="chatgpt-pro">💎 ChatGPT Style</option>
+                    <option value="2026-neon">🎆 2026 Neon</option>
+                </select>
+            </div>
+            <button class="sidebar-account-btn" id="sidebarAccountBtn">
+                <i class="fas fa-user-circle"></i>
+                <span id="accountBtnText">Sign In</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <button class="mobile-menu-btn" id="mobileMenuBtn" title="Open menu" aria-label="Open menu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="header-center">
+                <button class="brain-btn" id="brainBtn" title="Voice Control (Ctrl+K)" aria-label="Activate voice control">
+                    <i class="fas fa-brain header-brain-icon"></i>
+                </button>
+            </div>
+
+            <nav class="header-actions">
+                <a href="courses.html" class="header-link header-btn"><i class="fas fa-graduation-cap"></i><span>Learn</span></a>
+                <a href="playground.html" class="header-link header-btn"><i class="fas fa-code"></i><span>Playground</span></a>
+                <a href="project-generator.html" class="header-link header-btn"><i class="fas fa-rocket"></i><span>Projects</span></a>
+                <a href="ai-tools.html" class="header-link header-btn"><i class="fas fa-tools"></i><span>Tools</span></a>
+                <a href="perplexity.html" class="header-link header-btn" style="background: linear-gradient(135deg, #60a5fa, #a78bfa); border: none;"><i class="fas fa-search"></i><span>Search</span></a>
+                <button class="settings-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </nav>
+        </header>
+
+        <!-- Mode Selector -->
+        <div class="mode-selector" id="modeSelector">
+            <button class="mode-tab active" data-mode="chat"><i class="fas fa-comments"></i><span>Chat</span></button>
+            <button class="mode-tab" data-mode="tutor"><i class="fas fa-chalkboard-teacher"></i><span>Tutor</span></button>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatContainer">
+            <!-- 2026 Welcome Screen -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-header">
+                    <h1 id="welcomeTitle">How can I help you today?</h1>
+                </div>
+
+                <!-- Professional JARVIS Orb -->
+                <div class="jarvis-orb-minimal" id="welcomeOrb">
+                    <div class="orb-core">
+                        <p class="orb-text">JARVIS<br>6.0</p>
+                    </div>
+                </div>
+
+                <!-- Quick Action Chips -->
+                <div class="action-chips">
+                    <button class="chip" data-prompt="Help me understand a complex concept">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Explain</span>
+                    </button>
+                    <button class="chip" data-prompt="Help me write professional content">
+                        <i class="fas fa-pen-fancy"></i>
+                        <span>Write</span>
+                    </button>
+                    <button class="chip" data-prompt="Help me debug this code">
+                        <i class="fas fa-code"></i>
+                        <span>Debug</span>
+                    </button>
+                    <button class="chip" data-prompt="Analyze this problem step by step">
+                        <i class="fas fa-brain"></i>
+                        <span>Analyze</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div class="messages-area" id="messagesArea"></div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="input-container">
+                <!-- Model Dropdown -->
+                <div class="model-dropdown" id="modelDropdown">
+                    <button class="model-dropdown-btn" id="modelDropdownBtn">
+                        <span class="model-icon">🧠</span>
+                        <span class="model-name">JARVIS 6.0</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="model-dropdown-menu" id="modelDropdownMenu">
+                        <div class="model-option selected" data-model="jarvis60" data-icon="🧠">
+                            <span class="option-icon">🧠</span>
+                            <div class="option-info">
+                                <span class="option-name">JARVIS 6.0</span>
+                                <span class="option-desc">2026 Edition • Advanced reasoning</span>
+                            </div>
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="model-option" data-model="pro" data-icon="👑">
+                            <span class="option-icon">👑</span>
+                            <div class="option-info">
+                                <span class="option-name">Pro Max</span>
+                                <span class="option-desc">Maximum capabilities</span>
+                            </div>
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="model-option" data-model="thinking" data-icon="💡">
+                            <span class="option-icon">💡</span>
+                            <div class="option-info">
+                                <span class="option-name">Deep Think</span>
+                                <span class="option-desc">Step-by-step analysis</span>
+                            </div>
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="model-option" data-model="fast" data-icon="⚡">
+                            <span class="option-icon">⚡</span>
+                            <div class="option-info">
+                                <span class="option-name">Lightning</span>
+                                <span class="option-desc">Instant responses</span>
+                            </div>
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="model-option" data-model="creative" data-icon="🎨">
+                            <span class="option-icon">🎨</span>
+                            <div class="option-info">
+                                <span class="option-name">Creative</span>
+                                <span class="option-desc">Artistic & imaginative</span>
+                            </div>
+                            <i class="fas fa-check"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Media Buttons -->
+                <button class="input-icon-btn" id="photoUploadBtn" title="Upload image"><i class="fas fa-image"></i></button>
+                <button class="input-icon-btn" id="cameraBtn" title="Take photo"><i class="fas fa-camera"></i></button>
+                <input type="file" id="photoInput" accept="image/*" hidden>
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
+
+                <div class="input-divider"></div>
+
+                <textarea id="messageInput" placeholder="Ask JARVIS anything... ✨ Happy 2026!" rows="1" maxlength="4000"></textarea>
+
+                <button class="send-btn" id="sendBtn" title="Send (Enter)"><i class="fas fa-arrow-up"></i></button>
+            </div>
+
+            <!-- Image Preview -->
+            <div class="image-preview-container" id="imagePreviewContainer" style="display: none;">
+                <div class="image-preview-wrapper">
+                    <img id="imagePreview" src="" alt="Preview">
+                    <button class="remove-image-btn" id="removeImageBtn" title="Remove"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="input-footer">
+                <span class="char-count" id="charCount">0 / 4000</span>
+                <span class="info-text">JARVIS 6.0 • 2026 Edition • More powerful than ever</span>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation (Mobile App Feel) -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="courses.html" class="nav-item">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Learn</span>
+            </a>
+            <a href="playground.html" class="nav-item">
+                <i class="fas fa-code"></i>
+                <span>Code</span>
+            </a>
+            <a href="omniscient-interface.html" class="nav-item">
+                <i class="fas fa-search-plus"></i>
+                <span>Research</span>
+            </a>
+            <a href="ai-tools.html" class="nav-item">
+                <i class="fas fa-tools"></i>
+                <span>Tools</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </nav>
+
+        <!-- Developer Credit -->
+        <footer class="developer-credit">
+            <p>Developed by <strong>VISHAL</strong> • Built for 30,000+ Students • 🎆 2026 Edition</p>
+        </footer>
+    </main>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-modal-content">
+            <div class="settings-header">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <button class="close-settings" id="closeSettings" title="Close" aria-label="Close settings"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item">
+                    <label><i class="fas fa-language"></i> Language</label>
+                    <select class="language-selector" id="languageSelector" title="Select language">
+                        <option value="en-US">🇬🇧 English</option>
+                        <option value="ta-IN">🇮🇳 Tamil</option>
+                        <option value="hi-IN">🇮🇳 Hindi</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label><i class="fas fa-volume-up"></i> Voice Response</label>
+                    <button class="voice-toggle-btn" id="voiceToggleBtn"><i class="fas fa-volume-up"></i><span>Voice ON</span></button>
+                </div>
+                <div class="setting-item">
+                    <label><i class="fas fa-user"></i> Account</label>
+                    <div class="auth-buttons">
+                        <button class="signin-btn-modal" id="signinBtnModal"><i class="fab fa-google"></i> Sign In</button>
+                        <button class="signout-btn-modal" id="signoutBtnModal"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label><i class="fas fa-circle"></i> Status</label>
+                    <span class="status-indicator"><i class="fas fa-circle"></i> Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voice Commit Modal -->
+    <div class="voice-commit-modal" id="voiceCommitModal">
+        <div class="voice-commit-backdrop" id="voiceCommitBackdrop"></div>
+        <div class="voice-commit-container">
+            <button class="voice-commit-close" id="voiceCommitClose" aria-label="Close"><i class="fas fa-times"></i></button>
+
+            <div class="voice-commit-header">
+                <div class="voice-commit-logo"><i class="fas fa-brain"></i></div>
+                <h2>Ask JARVIS 6.0</h2>
+                <p>Type or speak your question</p>
+            </div>
+
+            <div class="voice-commit-modes">
+                <button class="voice-mode-btn active" data-voice-mode="all"><i class="fas fa-globe"></i> All</button>
+                <button class="voice-mode-btn" data-voice-mode="academic"><i class="fas fa-graduation-cap"></i> Academic</button>
+                <button class="voice-mode-btn" data-voice-mode="writing"><i class="fas fa-pen"></i> Writing</button>
+                <button class="voice-mode-btn" data-voice-mode="video"><i class="fas fa-video"></i> Video</button>
+                <button class="voice-mode-btn" data-voice-mode="code"><i class="fas fa-code"></i> Code</button>
+            </div>
+
+            <div class="voice-orb-container" id="voiceOrb">
+                <div class="voice-orb-pulse"></div>
+                <div class="voice-orb-core"><i class="fas fa-microphone"></i></div>
+                <div class="voice-listening-wave"><span></span><span></span><span></span><span></span><span></span></div>
+            </div>
+
+            <div class="voice-input-wrapper">
+                <textarea class="voice-commit-input" id="voiceCommitInput" placeholder="Ask anything..." rows="1"></textarea>
+                <button class="voice-submit-btn" id="voiceSubmitBtn"><i class="fas fa-arrow-right"></i></button>
+            </div>
+
+            <div class="voice-status" id="voiceStatus">
+                <i class="fas fa-circle"></i>
+                <span id="voiceStatusText">Ready to listen</span>
+                <button class="voice-continuous-btn active" id="voiceContinuousBtn" title="Continuous conversation"><i class="fas fa-infinity"></i></button>
+                <button class="voice-speaker-btn" id="voiceSpeakerBtn" title="Toggle voice output"><i class="fas fa-volume-up"></i></button>
+            </div>
+
+            <div class="voice-suggestions">
+                <button class="suggestion-chip" data-query="Explain quantum computing"><i class="fas fa-atom"></i> Explain quantum computing</button>
+                <button class="suggestion-chip" data-query="Write a Python function"><i class="fas fa-code"></i> Write a Python function</button>
+                <button class="suggestion-chip" data-query="Summarize machine learning"><i class="fas fa-brain"></i> Summarize machine learning</button>
+                <button class="suggestion-chip" data-query="Debug my code"><i class="fas fa-bug"></i> Debug my code</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JARVIS Voice Mode Orb -->
+    <div id="jarvisOrb" class="idle" title="Click to toggle JARVIS Voice Mode"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="backend-keepalive.js"></script>
+    <script type="module">
+        // Initialize API keys before other scripts
+        import { initializeAPIKeys } from './config.js';
+        initializeAPIKeys();
+    </script>
+    <script src="app-pwa.js"></script>
+    <script src="mobile-enhancements.js"></script>
+    <script src="voice-control.js"></script>
+    <script src="jarvis-voice-mode.js"></script>
+    <script type="module" src="script.js?v=2026"></script>
+    
+    <!-- 2026 Banner Close Script -->
+    <script>
+        document.getElementById('bannerClose')?.addEventListener('click', function() {
+            document.getElementById('newYearBanner').style.display = 'none';
+            localStorage.setItem('banner2026Closed', 'true');
+        });
+        // Check if already closed
+        if (localStorage.getItem('banner2026Closed') === 'true') {
+            const banner = document.getElementById('newYearBanner');
+            if (banner) banner.style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
