@@ -1,12 +1,33 @@
 services:
+  # Node.js Backend (Main Gateway)
   - type: web
     name: ai-tutor-jarvis
     env: node
     plan: free
-    buildCommand: "npm install && cd backend && npm install && pip install -r ../requirements.txt"
+    buildCommand: "npm install && cd backend && npm install"
     startCommand: "cd backend && node index.js"
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PYTHON_VERSION
-        value: 3.10.12
+      - key: PYTHON_BACKEND_URL
+        value: https://jarvis-python-ml-service.onrender.com
+    routes:
+      - path: /
+        priority: 1
+
+  # Python Flask Backend (Agentic Workflow)
+  - type: web
+    name: jarvis-python-ml-service
+    env: python
+    plan: free
+    buildCommand: "pip install -r python-backend/requirements.txt"
+    startCommand: "cd python-backend && gunicorn app:app --bind 0.0.0.0:3000"
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: FLASK_PORT
+        value: "3000"
+      - key: FLASK_ENV
+        value: production
