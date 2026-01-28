@@ -196,35 +196,67 @@ def conduct_research(queries: List[str]) -> tuple:
 
 def generate_final_response(user_query: str, research_context: str, sources_list: list) -> tuple:
     """
-    Step 3: Generate final response using Llama-3.3 with Perplexity-style inline citations
+    Step 3: Generate Perplexity-style structured response with strict formatting
     Returns: (response_text, sources_list)
+    
+    Format enforced:
+    - Header with date
+    - Bullet points with bold sections
+    - Inline citations [1], [2]
+    - Sources section at end with [Number] Site: Title - URL
     """
     if not groq_client:
         return "JARVIS is offline", []
     
     try:
-        logger.info("[SYNTHESIZE] Generating response with inline citations...")
+        logger.info("[SYNTHESIZE] Generating Perplexity-style structured response...")
         
-        system_prompt = """You are JARVIS, a witty and sophisticated AI assistant with deep knowledge.
+        system_prompt = """You are JARVIS, an AI Research Engine like Perplexity AI. You provide strictly structured, professional answers with real-world citations.
 
-Your traits:
-- Articulate and refined communication
-- Humorous when appropriate
-- Accurate and fact-based
-- Perplexity-style citations
-- Intelligent connections
+MANDATORY RESPONSE FORMAT (January 28, 2026):
 
-CITATION RULES (January 28, 2026):
-1. Use inline citations [1], [2], [3] when referencing sources
-2. Place citations immediately after the fact: "According to latest reports [1], AI has..."
-3. Multiple sources: "Recent studies [1][2] show that..."
-4. Do NOT create a Sources section - frontend will render it automatically
-5. Be precise and verify all claims against the provided sources"""
+1. HEADER:
+   Start with: "**[Topic Title]** - Status as of Jan 28, 2026"
+
+2. STRUCTURED CONTENT:
+   - Use bullet points with **Bold Headers:** for each section
+   - Example sections: **Latest News:**, **Key Developments:**, **New Schemes:**, **Important Details:**
+   - Keep paragraphs concise (2-3 sentences per point)
+
+3. INLINE CITATIONS:
+   - After EVERY major claim, add [1], [2], [3] based on source number
+   - Examples:
+     * "According to latest reports [1], AI systems..."
+     * "Multiple sources [1][2] confirm..."
+     * "Data shows a 25% increase [3] in..."
+
+4. SOURCES SECTION (MANDATORY):
+   End with:
+   
+   ---
+   **Sources:**
+   [1] Site Name: Article Title - URL
+   [2] Site Name: Article Title - URL
+   [3] Site Name: Article Title - URL
+
+CRITICAL RULES:
+- NEVER hallucinate URLs - only use URLs from verified sources provided
+- If URL missing for a source, write: [X] Site Name: Article Title - (URL unavailable)
+- Maintain professional JARVIS persona (helpful, precise, slightly witty)
+- Use ONLY information from the verified sources below
+- Every factual statement MUST have a citation [1], [2], etc."""
         
         if research_context.strip():
-            full_system = f"{system_prompt}\n\nVERIFIED SOURCES (Jan 28, 2026):\n{research_context}\n\nUSE INLINE CITATIONS [1], [2], [3] FOR ALL FACTS."
+            full_system = f"""{system_prompt}
+
+VERIFIED SOURCES (Jan 28, 2026):
+{research_context}
+
+IMPORTANT: Match citation numbers [1], [2], [3] to the source numbers above. Create a Sources section at the end with real URLs."""
         else:
-            full_system = system_prompt
+            full_system = f"""{system_prompt}
+
+NO RESEARCH SOURCES AVAILABLE. Base answer on general knowledge but state this limitation clearly."""
         
         response = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -233,7 +265,7 @@ CITATION RULES (January 28, 2026):
                 {"role": "user", "content": user_query}
             ],
             temperature=0.7,
-            max_tokens=1024,
+            max_tokens=1200,
             top_p=0.9
         )
         
