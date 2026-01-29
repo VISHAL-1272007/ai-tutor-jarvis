@@ -90,28 +90,12 @@ PORT = int(os.environ.get("FLASK_PORT", 3000))
 
 def should_search(user_query: str) -> bool:
     """
-    Determine if query needs real-time web search.
+    JARVIS is now a LIVE RESEARCHER - searches for EVERY query to ensure
+    the most up-to-date information (Perplexity style).
     
-    Returns True for queries about:
-    - Current events, news, breaking news
-    - Live prices (crypto, stocks, gold, etc.)
-    - Weather, climate
-    - Today's date, current time
-    - Latest updates, recent developments
-    - 2026-related information
-    - Real-time data
+    Returns True for ALL queries to enable real-time web search.
     """
-    search_keywords = [
-        'now', 'today', 'current', 'latest', 'news', 'breaking', 'live',
-        'trending', 'recent', 'price', 'stock', 'crypto', 'bitcoin', 'weather',
-        'forecast', '2026', 'right now', 'this week', 'this month',
-        'gold price', 'oil price', 'exchange rate', 'market', 'update',
-        'what is', 'who is', 'where is', 'when is', 'how much',
-        'best', 'top', 'new', 'released', 'launched', 'announced'
-    ]
-    
-    query_lower = user_query.lower()
-    return any(keyword in query_lower for keyword in search_keywords)
+    return True  # ✅ Search for everything - Live Researcher mode!
 
 
 def conduct_tavily_search(query: str) -> Tuple[str, List[Dict]]:
@@ -207,38 +191,53 @@ def generate_jarvis_response(user_query: str, search_context: str = "") -> Dict:
     try:
         logger.info(f"[GENERATE] Creating response for: {user_query[:80]}...")
         
-        # JARVIS Personality System Prompt
-        system_prompt = """You are JARVIS, an advanced AI assistant with access to real-time web data.
+        # 🔴 LIVE RESEARCHER SYSTEM PROMPT (Perplexity Style)
+        system_prompt = """You are JARVIS, a Live AI Researcher powered by Tavily search + Groq Llama-3.1.
 
-Your role:
-- Address user as "Boss" occasionally (natural, not forced)
-- Provide accurate, current information (date is January 29, 2026)
-- Use search context when provided (cite as [1], [2], etc.)
-- Professional yet witty - balance efficiency with personality
-- Always honest - say "I don't know" if uncertain
-- Reference Tony Stark/Iron Man when appropriate
+🎯 Your Mission:
+- Provide ONLY current, verified information from recent web search results
+- Analyze search results first - if data is from 2026, use it
+- Always cite sources using [1], [2], [3] format for each fact
+- If information conflicts, explain the discrepancy
+- If data is not found or outdated, state it clearly
 
-Communication:
-- For current info: Lead with facts, then explain
-- For timeless questions: Provide comprehensive answer
-- Use markdown formatting for clarity
-- Keep responses concise but complete"""
+📝 Response Format:
+1. **Direct Answer**: Start with the most relevant, current information
+2. **Key Details**: Expand with supporting facts from sources
+3. **Context**: Explain relevance and timing
+4. **Sources**: End with a clean list: "Sources: [1] URL, [2] URL"
+
+🎭 Personality:
+- Professional AI researcher (like Perplexity, not like ChatGPT)
+- Acknowledge search limitations transparently
+- Say "I found no current information" rather than guessing
+- Occasionally address user as "Boss" (natural, not forced)
+
+⚠️ Critical Rules:
+- NEVER make up sources or facts
+- ALWAYS cite [1], [2] when using search data
+- If search data is missing, say so clearly
+- Current date: January 29, 2026"""
         
-        # Build user message with search context if available
+        # Build user message with search context
         if search_context:
-            user_message = f"""Based on current web data (January 29, 2026):
+            user_message = f"""RESEARCH DATA (from January 29, 2026 web search):
 
 {search_context}
 
 ---
 
-User question: {user_query}
+USER QUESTION: {user_query}
 
-Provide an answer using the search results above. Include citations like [1], [2], etc."""
+Instructions:
+1. Analyze the search results above
+2. Extract the most current, relevant information
+3. Provide a comprehensive answer with [1], [2] citations
+4. End your answer with "Sources:" followed by the URLs"""
         else:
             user_message = user_query
         
-        # Call Groq API
+        # Call Groq API for research-grade response
         response = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
@@ -251,19 +250,19 @@ Provide an answer using the search results above. Include citations like [1], [2
                     "content": user_message
                 }
             ],
-            temperature=0.7,
-            max_tokens=1024,
+            temperature=0.6,  # Lower temp for more factual responses
+            max_tokens=1500,
             top_p=0.9
         )
         
         answer = response.choices[0].message.content.strip()
         
-        logger.info(f"✅ Response generated ({len(answer)} chars)")
+        logger.info(f"✅ Research response generated ({len(answer)} chars)")
         
         return {
             "success": True,
             "answer": answer,
-            "engine": "groq-llama-3.1-8b-instant",
+            "engine": "Groq Llama-3.1-8b + Tavily Researcher",
             "sources": [],  # Sources added by Tavily if search was performed
             "timestamp": datetime.now().isoformat()
         }
