@@ -545,18 +545,23 @@ select:focus {
     outline-offset: 2px;
 }
 
-/* ===== SOURCES LIST (Chat) ===== */
+/* ===== SOURCES LIST (Perplexity Style) ===== */
 .sources-container {
-    margin-top: 8px;
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.04);
+    margin-top: 12px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05));
+    border-left: 3px solid rgba(99, 102, 241, 0.4);
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 13px;
     color: #9aa0a6;
 }
 .sources-header {
-    font-weight: 600;
-    margin-bottom: 6px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #d0d0d0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 .sources-list {
     list-style: none;
@@ -564,15 +569,24 @@ select:focus {
     margin: 0;
 }
 .source-item {
-    margin-bottom: 6px;
+    margin-bottom: 8px;
+    padding: 4px 0;
 }
 .source-item a {
-    color: #9aa0a6;
+    color: #6366f1;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+.source-item a:hover {
+    color: #a855f7;
     text-decoration: underline;
 }
 .source-snippet {
-    margin-top: 2px;
+    margin-top: 4px;
     color: #7d838a;
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 /* ===== PRINT STYLES ===== */
