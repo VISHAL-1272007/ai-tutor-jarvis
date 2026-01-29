@@ -15,6 +15,7 @@ if (!DEBUG_MODE) {
 // ===== Configuration =====
 // Backend API URL - Hugging Face JARVIS endpoint (FIXED CORS)
 const API_URL = 'https://aijarvis2025-jarvis1.hf.space/ask'; // Hugging Face JARVIS endpoint
+console.log('✅ [CONFIG] API_URL set to:', API_URL);
 const MAX_CHARS = 2000;
 let isBackendReady = false;
 let backendWakeupAttempts = 0;
@@ -1304,6 +1305,10 @@ async function sendMessage() {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 120000); // 120 second timeout for research + LLM
 
+        // ===== FETCH CALL WITH DETAILED ERROR LOGGING =====
+        console.log('🚀 [FETCH] Sending request to:', API_URL);
+        console.log('📦 [FETCH] Request body:', { query: question });
+
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 
@@ -1313,11 +1318,31 @@ async function sendMessage() {
             signal: controller.signal
         });
 
+        console.log('📡 [FETCH] Response status:', response.status, response.statusText);
+
         if (!response.ok) {
+            console.error('❌ [ERROR] Response not OK');
+            console.error('❌ [ERROR] Status code:', response.status);
+            console.error('❌ [ERROR] Status text:', response.statusText);
+            console.error('❌ [ERROR] Full URL attempted:', API_URL);
             const errorText = await response.text();
-            console.error('Backend response error:', response.status, errorText);
+            console.error('❌ [ERROR] Response body:', errorText);
+            
+            if (response.status === 404) {
+                console.error('❌ [404 NOT FOUND] The endpoint does not exist at:', API_URL);
+                console.error('❌ [404] Check if Hugging Face backend is running');
+                console.error('❌ [404] Check if endpoint is /ask');
+                throw new Error(`404 NOT FOUND: ${API_URL} - Endpoint not found on backend`);
+            } else if (response.status === 0) {
+                console.error('❌ [NETWORK ERROR] Could not connect to backend');
+                console.error('❌ [NETWORK] URL:', API_URL);
+                throw new Error('Network error: Could not connect to backend');
+            }
+            
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
+
+        console.log('✅ [SUCCESS] Backend responded with status', response.status);
 
         // Clear uploaded image after sending
         if (uploadedImage) {
