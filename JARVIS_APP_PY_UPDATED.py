@@ -1,0 +1,286 @@
+"""
+JARVIS AI - Python Flask Backend with CORS and Groq Integration
+Using Groq Llama-3.1-8b-instant with JARVIS Personality
+==============================================================
+
+Features:
+- CORS enabled for cross-origin requests (Firebase frontend compatible)
+- Groq API for fast LLM inference
+- JARVIS personality (calls user 'Boss')
+- Structured response formatting
+"""
+
+import io
+import json
+import logging
+import os
+import sys
+from datetime import datetime
+from typing import Dict
+
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from dotenv import load_dotenv
+from groq import Groq
+
+
+ROOT_DIR = os.path.dirname(__file__)
+ENV_PATH = os.path.join(ROOT_DIR, '..', 'backend', '.env')
+LOG_PATH = os.path.join(ROOT_DIR, 'python-backend.log')
+
+# Load environment variables
+load_dotenv(ENV_PATH)
+
+# API Keys
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
+if not GROQ_API_KEY:
+    print("⚠️  WARNING: GROQ_API_KEY is not set!")
+
+
+def configure_logging():
+    """Configure UTF-8 safe logging"""
+    if sys.platform == 'win32':
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    return logging.getLogger("jarvis")
+
+
+logger = configure_logging()
+
+# Initialize Flask
+app = Flask(__name__)
+
+# ===== CRITICAL: Enable CORS for Firebase Frontend =====
+CORS(app, resources={
+    r"/ask": {"origins": "*", "methods": ["POST", "OPTIONS"]},
+    r"/health": {"origins": "*", "methods": ["GET", "OPTIONS"]},
+})
+
+# Initialize Groq client
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
+
+PORT = int(os.environ.get("FLASK_PORT", 3000))
+
+
+# ============================================================================
+# JARVIS PERSONALITY AND RESPONSE GENERATION
+# ============================================================================
+
+def generate_jarvis_response(user_query: str) -> Dict:
+    """
+    Generate response using Groq Llama-3.1-8b-instant with JARVIS personality
+    
+    Returns:
+    {
+        "success": bool,
+        "answer": str (the AI response),
+        "engine": str (model used),
+        "timestamp": str
+    }
+    """
+    if not groq_client:
+        return {
+            "success": False,
+            "answer": "❌ JARVIS AI engine is offline. Please check GROQ_API_KEY configuration.",
+            "engine": "groq-llama-3.1-8b-instant",
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    try:
+        logger.info(f"[JARVIS] Processing query: {user_query[:100]}...")
+        
+        # JARVIS Personality System Prompt
+        system_prompt = """You are JARVIS, an advanced AI assistant designed by Tony Stark. 
+        
+Your personality:
+- Address the user as "Boss" occasionally (natural, not overdone)
+- Professional yet witty - balance efficiency with humor
+- Highly knowledgeable about technology, science, and business
+- Direct and concise in explanations
+- You reference your creator's legacy when appropriate (Iron Man/Tony Stark references are fine)
+- Always prioritize user's needs and safety
+
+Communication style:
+- Start with a greeting if it's a new conversation
+- Use clear formatting (bullets, bold, etc.) when needed
+- Be helpful, accurate, and honest
+- If you don't know something, say so - don't hallucinate
+- Maintain a sophisticated but approachable tone"""
+
+        # Call Groq API with Llama-3.1-8b-instant
+        response = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",  # Fast, efficient model
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": user_query
+                }
+            ],
+            temperature=0.7,
+            max_tokens=1000,
+            top_p=0.9
+        )
+        
+        answer = response.choices[0].message.content.strip()
+        
+        logger.info(f"✅ Response generated successfully ({len(answer)} chars)")
+        
+        return {
+            "success": True,
+            "answer": answer,
+            "engine": "groq-llama-3.1-8b-instant",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error generating response: {str(e)}")
+        
+        return {
+            "success": False,
+            "answer": f"⚠️  I encountered an error while processing your request: {str(e)}",
+            "engine": "groq-llama-3.1-8b-instant",
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+# ============================================================================
+# API ENDPOINTS
+# ============================================================================
+
+@app.route('/ask', methods=['POST', 'OPTIONS'])
+def ask_endpoint():
+    """
+    Main endpoint for JARVIS queries
+    
+    Request body:
+    {
+        "query": "Your question here"
+    }
+    
+    Response:
+    {
+        "success": bool,
+        "answer": str,
+        "engine": str,
+        "timestamp": str
+    }
+    """
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'query' not in data:
+            return jsonify({
+                "success": False,
+                "answer": "❌ Missing 'query' field in request body",
+                "engine": "groq-llama-3.1-8b-instant",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        user_query = data.get('query', '').strip()
+        
+        if not user_query:
+            return jsonify({
+                "success": False,
+                "answer": "❌ Query cannot be empty",
+                "engine": "groq-llama-3.1-8b-instant",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        # Generate JARVIS response
+        result = generate_jarvis_response(user_query)
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"Endpoint error: {str(e)}")
+        
+        return jsonify({
+            "success": False,
+            "answer": f"❌ Server error: {str(e)}",
+            "engine": "groq-llama-3.1-8b-instant",
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
+
+@app.route('/health', methods=['GET', 'OPTIONS'])
+def health_check():
+    """
+    Health check endpoint
+    
+    Response:
+    {
+        "status": "healthy" | "degraded",
+        "groq_available": bool,
+        "timestamp": str
+    }
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    return jsonify({
+        "status": "healthy" if groq_client else "degraded",
+        "groq_available": groq_client is not None,
+        "timestamp": datetime.now().isoformat()
+    }), 200
+
+
+# ============================================================================
+# ERROR HANDLERS
+# ============================================================================
+
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({
+        "success": False,
+        "answer": "❌ Endpoint not found. Available endpoints: /ask, /health",
+        "engine": "groq-llama-3.1-8b-instant",
+        "timestamp": datetime.now().isoformat()
+    }), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"Internal server error: {str(error)}")
+    return jsonify({
+        "success": False,
+        "answer": "❌ Internal server error. Please try again later.",
+        "engine": "groq-llama-3.1-8b-instant",
+        "timestamp": datetime.now().isoformat()
+    }), 500
+
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+if __name__ == '__main__':
+    logger.info("=" * 60)
+    logger.info("🤖 JARVIS AI - Python Flask Backend")
+    logger.info("=" * 60)
+    logger.info(f"🚀 Starting server on port {PORT}...")
+    logger.info(f"✅ CORS enabled for cross-origin requests")
+    logger.info(f"✅ Groq API: {'Available' if groq_client else 'NOT configured'}")
+    logger.info(f"📝 Personality: JARVIS (addresses user as 'Boss')")
+    logger.info(f"🧠 Model: Llama-3.1-8b-instant (fast & efficient)")
+    logger.info("=" * 60)
+    
+    app.run(
+        host='0.0.0.0',
+        port=PORT,
+        debug=False,
+        use_reloader=False
+    )

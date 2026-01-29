@@ -11,13 +11,5 @@ gunicorn==23.0.0
 requests==2.31.0
 python-dotenv==1.0.0
 
-# Research + scraping
-duckduckgo-search==6.2.13
-beautifulsoup4==4.14.3
-lxml==5.1.0
-
-# LLM client
+# LLM Client - Groq API
 groq==0.15.0
-
-# Advanced web search (Agentic workflow)
-tavily-python==0.7.19

@@ -13,12 +13,14 @@ if (!DEBUG_MODE) {
 }
 
 // ===== Configuration =====
-// Backend API URL - Auto-detects environment (local/production)
-const BACKEND_BASE_URL = getBackendURL();
-const API_URL = `${BACKEND_BASE_URL}/api/jarvis/ask`; // Use JARVIS proxy endpoint for Llama 3.3 synthesis
+// Backend API URL - Hugging Face JARVIS endpoint (FIXED CORS)
+const API_URL = 'https://aijarvis2025-jarvis1.hf.space/ask'; // Hugging Face JARVIS endpoint
 const MAX_CHARS = 2000;
 let isBackendReady = false;
 let backendWakeupAttempts = 0;
+
+// ===== Timeout Management =====
+let spinnerTimeout; // FIX: Declare spinnerTimeout to prevent ReferenceError
 
 // ===== Chat History Cache Config =====
 const CHAT_CACHE_KEY = 'jarvis_chat_history_cache';
@@ -1306,9 +1308,8 @@ async function sendMessage() {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache'
             },
-            body: JSON.stringify(requestData),
+            body: JSON.stringify({ query: question }), // Hugging Face endpoint expects 'query' field
             signal: controller.signal
         });
 
@@ -1324,6 +1325,7 @@ async function sendMessage() {
         const data = await response.json();
         
         console.log('[JARVIS Response]', data);
+        console.log('[Engine Used]', data.engine || 'unknown');
 
         // Update research progress to show completion
         const researchIndicator = document.getElementById('jarvisResearchIndicator');
@@ -1332,17 +1334,17 @@ async function sendMessage() {
             if (stepsDiv) {
                 stepsDiv.innerHTML = `
                     <div class="step-item completed">
-                        <i class="fas fa-check-circle"></i> Found ${data.verified_sources_count || 0} verified sources
+                        <i class="fas fa-check-circle"></i> Received response from Hugging Face
                     </div>
                     <div class="step-item completed">
-                        <i class="fas fa-check-circle"></i> Analyzed ${data.context_length || 0} chars of context
+                        <i class="fas fa-check-circle"></i> Engine: ${data.engine || 'Groq Llama-3.1'}
                     </div>
                     <div class="step-item completed">
-                        <i class="fas fa-check-circle"></i> Generated synthesis with ${data.model || 'Llama 3.3'}
+                        <i class="fas fa-check-circle"></i> Response ready for display
                     </div>
                 `;
             }
-            await new Promise(resolve => setTimeout(resolve, 800)); // Brief pause to show completion
+            await new Promise(resolve => setTimeout(resolve, 800));
             researchIndicator.remove();
         } else if (researchIndicator) {
             researchIndicator.remove();
@@ -1353,49 +1355,25 @@ async function sendMessage() {
         const orb = document.getElementById('jarvisOrb');
         if (orb) orb.classList.remove('orb-supernova');
 
-        // 🧠 JARVIS Supreme: If thinking steps exist, show them with royal style
-        if (data.thinkingSteps && data.thinkingSteps.length > 0) {
-            const thinkingDiv = document.createElement('div');
-            thinkingDiv.className = 'message ai thinking-process supreme-thinking';
-            thinkingDiv.innerHTML = `
-                <div class="thinking-header">
-                    <i class="fas fa-crown"></i> SUPREME REASONING PASS
-                </div>
-                <ul class="thinking-steps">
-                    ${data.thinkingSteps.map(step => `<li><i class="fas fa-check-circle" style="color: #FFD700;"></i> ${step}</li>`).join('')}
-                </ul>
-            `;
-            elements.messagesArea.appendChild(thinkingDiv);
-            scrollToBottom();
-        }
-
-        // ✅ Display JARVIS synthesized response
-        if (data.success && data.response) {
-            // Format response with sources
-            let finalResponse = data.response;
+        // ✅ Display JARVIS response (new format from Hugging Face)
+        if (data.success && data.answer) {
+            const answer = data.answer;
             
-            // Add source citations if available
-            if (data.sources && data.sources.length > 0) {
-                finalResponse += '\n\n**📚 Sources:**\n';
-                data.sources.slice(0, 5).forEach((source, i) => {
-                    finalResponse += `${i + 1}. [${source.title}](${source.url})\n`;
-                });
-            }
-            
-            // Display synthesized answer
-            await addMessageWithTypingEffect(finalResponse, 'ai');
+            // Display the answer
+            await addMessageWithTypingEffect(answer, 'ai');
             
             // Speak the response if voice enabled
             if (typeof speak === 'function') {
-                speak(data.response); // Speak only the answer, not sources
+                speak(answer);
             }
             
-            // No fallback search links needed - we have synthesis!
-            console.log(`✅ JARVIS synthesis complete: ${data.verified_sources_count} sources, ${data.context_length} chars context`);
-        } else if (data.imageGenerated && data.imageUrl) {
-            // Display image message
-            const imageMessage = `🎨 **Image Generated!**\n\n<img src="${data.imageUrl}" alt="${data.prompt}" style="max-width: 100%; border-radius: 12px; margin: 10px 0;" />\n\n**Prompt:** ${data.prompt}\n\n*Generated using AI Image Model*`;
-            await addMessageWithTypingEffect(imageMessage, 'ai');
+            console.log(`✅ JARVIS response received from ${data.engine}`);
+        } else if (!data.success) {
+            // Handle error response from API
+            const errorMsg = data.answer || "❌ JARVIS encountered an error processing your request.";
+            await addMessageWithTypingEffect(errorMsg, 'ai');
+            console.error('JARVIS Error:', errorMsg);
+
             currentChatMessages.push({ role: 'assistant', content: imageMessage });
         } else {
             // Error response or no synthesis available

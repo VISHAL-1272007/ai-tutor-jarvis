@@ -20,10 +20,29 @@ const ExpertModeSystem = require('./expert-mode-system');
 const setupAdvancedFeaturesAPI = require('./advanced-features-api');
 const { jarvisAutonomousVerifiedSearch } = require('./jarvis-autonomous-rag-verified');
 
-// Initialize advanced systems
-const userProfileSystem = new UserProfileSystem();
-const knowledgeBaseSystem = new KnowledgeBaseSystem();
-const expertModeSystem = new ExpertModeSystem();
+// Initialize Upstash Redis for production (replaces node-localstorage)
+let redisClient = null;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+        const { Redis } = require('@upstash/redis');
+        redisClient = new Redis({
+            url: process.env.UPSTASH_REDIS_REST_URL,
+            token: process.env.UPSTASH_REDIS_REST_TOKEN
+        });
+        console.log('✅ Upstash Redis initialized for Knowledge Base & Expert Mode');
+    } catch (err) {
+        console.warn('⚠️ Upstash Redis initialization failed:', err.message);
+        console.warn('   Expert Persona and Knowledge Base will use file storage fallback.');
+    }
+} else {
+    console.warn('⚠️ UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set');
+    console.warn('   Get free Redis at: https://upstash.com/');
+}
+
+// Initialize advanced systems with Redis client
+const userProfileSystem = new UserProfileSystem({ redis: redisClient });
+const knowledgeBaseSystem = new KnowledgeBaseSystem({ redis: redisClient });
+const expertModeSystem = new ExpertModeSystem({ redis: redisClient });
 
 require('dotenv').config({ override: true });
 
@@ -1254,21 +1273,48 @@ const sessionConfig = {
     }
 };
 
-// Use Redis if available in production, otherwise use memory (with warning)
-if (process.env.REDIS_URL) {
+// Use Upstash Redis if available, otherwise use session-file-store (no memory leaks)
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
-        const RedisStore = require('connect-redis').default;
-        const { createClient } = require('redis');
-        const redisClient = createClient({ url: process.env.REDIS_URL });
-        redisClient.connect().catch(err => console.warn('⚠️ Redis connection failed:', err.message));
-        sessionConfig.store = new RedisStore({ client: redisClient });
-        console.log('✅ Session store: Redis (production-ready)');
+        const { Redis } = require('@upstash/redis');
+        const redis = new Redis({
+            url: process.env.UPSTASH_REDIS_REST_URL,
+            token: process.env.UPSTASH_REDIS_REST_TOKEN
+        });
+        
+        // Create custom store for express-session using Upstash
+        const UpstashStore = require('connect-upstash-redis')(session);
+        sessionConfig.store = new UpstashStore({ client: redis });
+        console.log('✅ Session store: Upstash Redis (production-ready)');
     } catch (err) {
-        console.warn('⚠️ Redis not available, using memory store (development only)');
+        console.warn('⚠️ Upstash Redis initialization failed:', err.message);
+        console.warn('   Falling back to file-based session store...');
     }
-} else if (process.env.NODE_ENV === 'production') {
-    console.warn('⚠️ REDIS_URL not configured - using memory store. This will cause memory leaks in production.');
-    console.warn('   To fix: Set REDIS_URL environment variable on Render.');
+}
+
+// Fallback to session-file-store if Redis not available
+if (!sessionConfig.store) {
+    try {
+        const FileStore = require('session-file-store')(session);
+        const fs = require('fs');
+        const sessionsDir = path.join(__dirname, 'data', 'sessions');
+        
+        // Create sessions directory if it doesn't exist
+        if (!fs.existsSync(sessionsDir)) {
+            fs.mkdirSync(sessionsDir, { recursive: true });
+        }
+        
+        sessionConfig.store = new FileStore({
+            path: sessionsDir,
+            ttl: 86400, // 24 hours in seconds
+            reapInterval: 3600 // Clean up expired sessions every hour
+        });
+        console.log('✅ Session store: File-based (production-safe)');
+    } catch (err) {
+        console.error('❌ CRITICAL: Session store initialization failed:', err.message);
+        console.error('   Install: npm install session-file-store');
+        process.exit(1);
+    }
 }
 
 app.use(session(sessionConfig));
@@ -4567,17 +4613,23 @@ try {
 
 // Telegram Bot removed
 
-// ✅ Updated Code - Render/Cloud compatible
-const PORT = process.env.NODE_PORT || process.env.PORT || 5000;
+// ✅ Render Port Binding Fix - Use process.env.PORT and bind to 0.0.0.0
+const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0'; // Required for Render/Docker to expose port
 
-const server = app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, HOST, () => {
     console.log(`
     ============================================
     🚀  JARVIS SERVER IS NOW LIVE!
     ============================================
+    🌐  Host: ${HOST}
+    🌐  Port: ${PORT}
     🌐  URL: http://localhost:${PORT}
     ============================================
     `);
+    
+    // Confirm open port for Render detection
+    console.log(`✅ Server listening on ${HOST}:${PORT} (Render-compatible)`);
 });
 
 // Port error handling: fail fast on EADDRINUSE
