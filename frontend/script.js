@@ -1313,6 +1313,12 @@ async function sendMessage() {
             signal: controller.signal
         });
 
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Backend response error:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
         // Clear uploaded image after sending
         if (uploadedImage) {
             clearUploadedImage();
@@ -1356,29 +1362,28 @@ async function sendMessage() {
         if (orb) orb.classList.remove('orb-supernova');
 
         // ✅ Display JARVIS response (new format from Hugging Face)
-        if (data.success && data.answer) {
+        if (data.answer) {
             const answer = data.answer;
-            
+
             // Display the answer
             await addMessageWithTypingEffect(answer, 'ai');
-            
+
+            // Display sources if available
+            if (Array.isArray(data.sources) && data.sources.length > 0) {
+                appendSourcesToChat(data.sources);
+            }
+
             // Speak the response if voice enabled
             if (typeof speak === 'function') {
                 speak(answer);
             }
-            
-            console.log(`✅ JARVIS response received from ${data.engine}`);
-        } else if (!data.success) {
-            // Handle error response from API
-            const errorMsg = data.answer || "❌ JARVIS encountered an error processing your request.";
-            await addMessageWithTypingEffect(errorMsg, 'ai');
-            console.error('JARVIS Error:', errorMsg);
 
-            currentChatMessages.push({ role: 'assistant', content: imageMessage });
+            console.log(`✅ JARVIS response received from ${data.engine || 'unknown'}`);
         } else {
             // Error response or no synthesis available
-            const errorMsg = data.response || data.error || 'Sorry, I could not generate a response. Please try again.';
+            const errorMsg = data.error || data.response || data.message || 'Sorry, I could not generate a response. Please try again.';
             await addMessageWithTypingEffect(errorMsg, 'ai');
+            console.error('JARVIS Error:', errorMsg);
         }
 
         // Save updated chat history
@@ -1448,6 +1453,62 @@ function addMessageToUI(content, sender, imageData = null) {
 
     elements.messagesArea.appendChild(messageDiv);
     highlightCode(); // Apply syntax highlighting
+    scrollToBottom();
+}
+
+// ===== Sources Renderer =====
+function appendSourcesToChat(sources) {
+    const container = document.createElement('div');
+    container.className = 'sources-container';
+
+    const header = document.createElement('div');
+    header.className = 'sources-header';
+    header.textContent = 'Sources:';
+    container.appendChild(header);
+
+    const list = document.createElement('ul');
+    list.className = 'sources-list';
+
+    sources.forEach((source) => {
+        const item = document.createElement('li');
+        item.className = 'source-item';
+
+        let url = '';
+        let title = '';
+        let snippet = '';
+
+        if (typeof source === 'string') {
+            url = source;
+            title = source;
+        } else if (source && typeof source === 'object') {
+            url = source.url || '';
+            title = source.title || source.url || 'Source';
+            snippet = source.snippet || '';
+        }
+
+        if (url) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = title;
+            item.appendChild(link);
+        } else {
+            item.textContent = title || 'Source';
+        }
+
+        if (snippet) {
+            const snippetEl = document.createElement('div');
+            snippetEl.className = 'source-snippet';
+            snippetEl.textContent = snippet;
+            item.appendChild(snippetEl);
+        }
+
+        list.appendChild(item);
+    });
+
+    container.appendChild(list);
+    elements.messagesArea.appendChild(container);
     scrollToBottom();
 }
 
@@ -1596,6 +1657,22 @@ function showTypingIndicator() {
 function removeTypingIndicator() {
     const indicator = document.querySelector('.typing-message');
     if (indicator) indicator.remove();
+}
+
+// ===== Hide Loading Spinner (FIXED - Prevents ReferenceError) =====
+function hideLoadingSpinner() {
+    const spinner = document.getElementById('initialLoadingSpinner');
+    if (spinner) spinner.style.display = 'none';
+    const overlay = document.getElementById('spinnerOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+// ===== Show Loading Spinner =====
+function showLoadingSpinner() {
+    const spinner = document.getElementById('initialLoadingSpinner');
+    if (spinner) spinner.style.display = 'flex';
+    const overlay = document.getElementById('spinnerOverlay');
+    if (overlay) overlay.style.display = 'flex';
 }
 
 // ===== 🧠 JARVIS 5.2: Smart Follow-up Suggestions =====
