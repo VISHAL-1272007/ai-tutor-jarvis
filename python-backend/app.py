@@ -1,13 +1,14 @@
 """
-JARVIS AI - Python Flask Backend with Agentic Search Workflow
-Using Groq Llama-3.3-70B + Tavily Advanced Search
+JARVIS AI - Python Flask Backend with Real-Time Tavily Search
+Using Groq Llama-3.1-8b-instant + Tavily for Current Data
 ==============================================================
 
-Architecture:
-- classify_intent() -> Determines if research is needed + generates 3 optimized queries
-- conduct_research() -> Tavily search with advanced depth and aggregation
-- generate_final_response() -> Llama synthesis with research context
-- ask_jarvis() -> Main endpoint orchestrating the agentic workflow
+Features:
+- Real-time web search via Tavily API
+- Current date context (January 29, 2026)
+- Optimized for fast responses
+- Comprehensive error handling
+- CORS enabled for Firebase frontend
 """
 
 import io
@@ -16,20 +17,20 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 from groq import Groq
 
-# Try to import Tavily (may not be installed)
+# Try to import Tavily
 try:
     from tavily import TavilyClient
     TAVILY_AVAILABLE = True
 except ImportError:
     TAVILY_AVAILABLE = False
-    print("WARNING: Tavily SDK not installed - install with: pip install tavily-python")
+    print("⚠️  Tavily SDK not installed - install with: pip install tavily-python")
 
 
 ROOT_DIR = os.path.dirname(__file__)
@@ -44,9 +45,9 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 
 if not GROQ_API_KEY:
-    print("WARNING: GROQ_API_KEY is not set!")
+    print("⚠️  WARNING: GROQ_API_KEY is not set!")
 if not TAVILY_API_KEY:
-    print("WARNING: TAVILY_API_KEY is not set!")
+    print("⚠️  WARNING: TAVILY_API_KEY is not set!")
 
 
 def configure_logging():
@@ -59,358 +60,371 @@ def configure_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
-    return logging.getLogger("jarvis-agentic")
+    return logging.getLogger("jarvis")
 
 
 logger = configure_logging()
 
 # Initialize Flask
 app = Flask(__name__)
-CORS(app)
+
+# ===== CRITICAL: Enable CORS for Firebase Frontend =====
+CORS(app, resources={
+    r"/ask": {"origins": "*", "methods": ["POST", "OPTIONS"]},
+    r"/health": {"origins": "*", "methods": ["GET", "OPTIONS"]},
+})
 
 # Initialize Groq client
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# Initialize Tavily client
+# Initialize Tavily client for real-time search
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY) if (TAVILY_AVAILABLE and TAVILY_API_KEY) else None
 
 PORT = int(os.environ.get("FLASK_PORT", 3000))
 
 
 # ============================================================================
-# AGENTIC WORKFLOW FUNCTIONS
+# INTENT CLASSIFICATION
 # ============================================================================
 
-def classify_intent(user_query: str) -> Dict:
+def should_search(user_query: str) -> bool:
     """
-    Step 1: Analyze query intent using Llama-3.3
-    Determines if query needs real-time 2026 data and generates 3 optimized searches
-    """
-    if not groq_client:
-        return {"needs_search": False, "reason": "Groq not configured"}
+    Determine if query needs real-time web search.
     
-    try:
-        logger.info(f"[CLASSIFY] Analyzing: '{user_query}'")
-        
-        response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{
-                "role": "user",
-                "content": f"""Analyze query - does it need real-time 2026 data?
-
-Query: "{user_query}"
-
-NEEDS WEB SEARCH if mentions: today, now, latest, current, 2026, news, breaking, live, trending, recent
-NO SEARCH for: general knowledge, concepts, how-to, history, definitions
-
-If YES, generate 3 different search queries:
-1. Natural language question
-2. Keyword optimized
-3. Alternative angle
-
-RESPOND ONLY with valid JSON:
-{{"needs_search": true, "queries": ["q1", "q2", "q3"]}}
-or
-{{"needs_search": false}}"""
-            }],
-            temperature=0.3,
-            max_tokens=200,
-        )
-        
-        result = json.loads(response.choices[0].message.content.strip())
-        logger.info(f"OK Intent: needs_search={result.get('needs_search')}")
-        return result
-        
-    except Exception as e:
-        logger.error(f"Classification error: {e}")
-        return {"needs_search": False}
-
-
-def conduct_research(queries: List[str]) -> tuple:
+    Returns True for queries about:
+    - Current events, news, breaking news
+    - Live prices (crypto, stocks, gold, etc.)
+    - Weather, climate
+    - Today's date, current time
+    - Latest updates, recent developments
+    - 2026-related information
+    - Real-time data
     """
-    Step 2: Execute Tavily searches and aggregate results
-    Returns: (context_string, sources_list) for LLM and frontend
+    search_keywords = [
+        'now', 'today', 'current', 'latest', 'news', 'breaking', 'live',
+        'trending', 'recent', 'price', 'stock', 'crypto', 'bitcoin', 'weather',
+        'forecast', '2026', 'right now', 'this week', 'this month',
+        'gold price', 'oil price', 'exchange rate', 'market', 'update',
+        'what is', 'who is', 'where is', 'when is', 'how much',
+        'best', 'top', 'new', 'released', 'launched', 'announced'
+    ]
+    
+    query_lower = user_query.lower()
+    return any(keyword in query_lower for keyword in search_keywords)
+
+
+def conduct_tavily_search(query: str) -> Tuple[str, List[Dict]]:
+    """
+    Execute Tavily web search for real-time information.
+    
+    Returns: (context_string, sources_list)
     """
     if not tavily_client:
-        logger.warning("Tavily not configured")
+        logger.warning("⚠️  Tavily not configured - skipping search")
         return "", []
     
     try:
-        logger.info(f"[RESEARCH] Searching {len(queries)} queries...")
+        logger.info(f"[SEARCH] Tavily searching: {query[:80]}...")
+        
+        # Search with Tavily for current information
+        search_result = tavily_client.search(
+            query=query,
+            topic="general",  # Get comprehensive results
+            search_depth="advanced",
+            max_results=5,
+            include_answer=True
+        )
         
         all_results = []
-        sources_list = []  # For frontend display
+        sources_list = []
         
-        for i, query in enumerate(queries, 1):
-            try:
-                logger.info(f"  Query {i}: {query[:50]}...")
-                
-                search_result = tavily_client.search(
-                    query=query,
-                    topic="news",
-                    search_depth="advanced",
-                    max_results=5,
-                    include_answer=True
-                )
-                
-                if search_result.get("results"):
-                    for result in search_result["results"]:
-                        all_results.append({
-                            "title": result.get("title", ""),
-                            "snippet": result.get("snippet", ""),
-                            "url": result.get("url", "")
-                        })
-                
-                if search_result.get("answer"):
-                    all_results.append({
-                        "title": "Tavily Direct Answer",
-                        "snippet": search_result.get("answer"),
-                        "url": "https://tavily.com"
-                    })
-                    
-            except Exception as e:
-                logger.warning(f"Search error for query {i}: {e}")
-                continue
+        # Collect direct answer if available
+        if search_result.get("answer"):
+            all_results.append({
+                "title": "Tavily Search Answer",
+                "snippet": search_result["answer"],
+                "url": "https://tavily.com"
+            })
         
-        # Build context string for LLM and sources list for frontend
+        # Collect search results
+        if search_result.get("results"):
+            for result in search_result["results"]:
+                all_results.append({
+                    "title": result.get("title", "Untitled"),
+                    "snippet": result.get("snippet", ""),
+                    "url": result.get("url", "https://tavily.com")
+                })
+        
+        # Format context for LLM
         context = ""
         for idx, result in enumerate(all_results, 1):
             context += f"[{idx}] {result['title']}\n{result['snippet']}\n"
             if result['url']:
-                context += f"URL: {result['url']}\n"
+                context += f"Source: {result['url']}\n"
             context += "\n"
             
-            # Add to sources list for frontend (with real URLs)
+            # Add to sources for frontend
             sources_list.append({
                 "title": result['title'],
-                "url": result['url'] if result['url'] else "https://tavily.com"
+                "url": result['url'],
+                "snippet": result['snippet'][:100] + "..." if len(result['snippet']) > 100 else result['snippet']
             })
         
-        logger.info(f"OK Found {len(all_results)} sources")
+        logger.info(f"✅ Found {len(all_results)} results from Tavily")
         return context.strip(), sources_list
         
     except Exception as e:
-        logger.error(f"Research error: {e}")
+        logger.error(f"❌ Tavily search error: {str(e)}")
         return "", []
 
 
-def generate_final_response(user_query: str, research_context: str, sources_list: list) -> tuple:
+# ============================================================================
+# RESPONSE GENERATION
+# ============================================================================
+
+def generate_jarvis_response(user_query: str, search_context: str = "") -> Dict:
     """
-    Step 3: Generate Perplexity-style structured response with strict formatting
-    Returns: (response_text, sources_list)
+    Generate response using Groq with optional Tavily context.
     
-    Format enforced:
-    - Header with date
-    - Bullet points with bold sections
-    - Inline citations [1], [2]
-    - Sources section at end with [Number] Site: Title - URL
+    Returns: {
+        "success": bool,
+        "answer": str,
+        "engine": str,
+        "sources": list,
+        "timestamp": str
+    }
     """
     if not groq_client:
-        return "JARVIS is offline", []
+        return {
+            "success": False,
+            "answer": "❌ JARVIS AI engine is offline. Check GROQ_API_KEY.",
+            "engine": "groq-llama-3.1-8b-instant",
+            "sources": [],
+            "timestamp": datetime.now().isoformat()
+        }
     
     try:
-        logger.info("[SYNTHESIZE] Generating Perplexity-style structured response...")
+        logger.info(f"[GENERATE] Creating response for: {user_query[:80]}...")
         
-        system_prompt = """You are JARVIS, an AI Research Engine like Perplexity AI. You provide strictly structured, professional answers with real-world citations.
+        # JARVIS Personality System Prompt
+        system_prompt = """You are JARVIS, an advanced AI assistant with access to real-time web data.
 
-MANDATORY RESPONSE FORMAT (January 28, 2026):
+Your role:
+- Address user as "Boss" occasionally (natural, not forced)
+- Provide accurate, current information (date is January 29, 2026)
+- Use search context when provided (cite as [1], [2], etc.)
+- Professional yet witty - balance efficiency with personality
+- Always honest - say "I don't know" if uncertain
+- Reference Tony Stark/Iron Man when appropriate
 
-1. HEADER:
-   Start with: "**[Topic Title]** - Status as of Jan 28, 2026"
-
-2. STRUCTURED CONTENT:
-   - Use bullet points with **Bold Headers:** for each section
-   - Example sections: **Latest News:**, **Key Developments:**, **New Schemes:**, **Important Details:**
-   - Keep paragraphs concise (2-3 sentences per point)
-
-3. INLINE CITATIONS:
-   - After EVERY major claim, add [1], [2], [3] based on source number
-   - Examples:
-     * "According to latest reports [1], AI systems..."
-     * "Multiple sources [1][2] confirm..."
-     * "Data shows a 25% increase [3] in..."
-
-4. SOURCES SECTION (MANDATORY):
-   End with:
-   
-   ---
-   **Sources:**
-   [1] Site Name: Article Title - URL
-   [2] Site Name: Article Title - URL
-   [3] Site Name: Article Title - URL
-
-CRITICAL RULES:
-- NEVER hallucinate URLs - only use URLs from verified sources provided
-- If URL missing for a source, write: [X] Site Name: Article Title - (URL unavailable)
-- Maintain professional JARVIS persona (helpful, precise, slightly witty)
-- Use ONLY information from the verified sources below
-- Every factual statement MUST have a citation [1], [2], etc."""
+Communication:
+- For current info: Lead with facts, then explain
+- For timeless questions: Provide comprehensive answer
+- Use markdown formatting for clarity
+- Keep responses concise but complete"""
         
-        if research_context.strip():
-            full_system = f"""{system_prompt}
+        # Build user message with search context if available
+        if search_context:
+            user_message = f"""Based on current web data (January 29, 2026):
 
-VERIFIED SOURCES (Jan 28, 2026):
-{research_context}
+{search_context}
 
-IMPORTANT: Match citation numbers [1], [2], [3] to the source numbers above. Create a Sources section at the end with real URLs."""
+---
+
+User question: {user_query}
+
+Provide an answer using the search results above. Include citations like [1], [2], etc."""
         else:
-            full_system = f"""{system_prompt}
-
-NO RESEARCH SOURCES AVAILABLE. Base answer on general knowledge but state this limitation clearly."""
+            user_message = user_query
         
+        # Call Groq API
         response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": full_system},
-                {"role": "user", "content": user_query}
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": user_message
+                }
             ],
             temperature=0.7,
-            max_tokens=1200,
+            max_tokens=1024,
             top_p=0.9
         )
         
-        final_response = response.choices[0].message.content
-        logger.info(f"OK Response generated: {len(final_response)} chars")
-        return final_response, sources_list
+        answer = response.choices[0].message.content.strip()
         
-    except Exception as e:
-        logger.error(f"Synthesis error: {e}")
-        return f"Error: {str(e)}", []
-
-
-# ============================================================================
-# CORE ROUTES
-# ============================================================================
-
-@app.route("/", methods=["GET"])
-def root():
-    """Service info"""
-    return jsonify({
-        "status": "online",
-        "service": "JARVIS Agentic AI Backend v2.0",
-        "groq": "configured" if groq_client else "missing",
-        "tavily": "configured" if tavily_client else "missing",
-        "timestamp": datetime.utcnow().isoformat(),
-    })
-
-
-@app.route("/health", methods=["GET"])
-def health():
-    """Health check"""
-    return jsonify({
-        "status": "healthy",
-        "groq": "ok" if groq_client else "missing",
-        "tavily": "ok" if tavily_client else "missing",
-        "timestamp": datetime.utcnow().isoformat(),
-    })
-
-
-@app.route("/api/jarvis/ask", methods=["POST"])
-def ask_jarvis():
-    """
-    Main JARVIS endpoint - Agentic workflow orchestration
-    
-    Workflow:
-    1. Classify intent (does query need web search?)
-    2. Conduct research (Tavily search if needed)
-    3. Generate response (Llama synthesis with context)
-    """
-    if not groq_client:
-        return jsonify({
-            "success": False,
-            "error": "Groq not configured",
-            "response": "JARVIS is offline"
-        }), 503
-
-    payload = request.get_json(silent=True) or {}
-    user_query = (payload.get("query") or "").strip()
-
-    if not user_query:
-        return jsonify({"success": False, "error": "Empty query"}), 400
-
-    try:
-        logger.info(f"\n{'='*70}\n[AGENTIC] {user_query[:100]}")
+        logger.info(f"✅ Response generated ({len(answer)} chars)")
         
-        # STEP 1: Classify intent
-        intent = classify_intent(user_query)
-        needs_search = intent.get("needs_search", False)
-        
-        # STEP 2: Conduct research
-        research_context = ""
-        sources_list = []
-        if needs_search and tavily_client:
-            queries = intent.get("queries", [])
-            if queries:
-                research_context, sources_list = conduct_research(queries)
-        
-        # STEP 3: Generate response with inline citations
-        response, sources_list = generate_final_response(user_query, research_context, sources_list)
-        
-        logger.info(f"[COMPLETE]\n{'='*70}\n")
-        
-        return jsonify({
+        return {
             "success": True,
-            "response": response,
-            "sources": sources_list,  # Real URLs for frontend
-            "model": "llama-3.3-70b-versatile",
-            "needs_search": needs_search,
-            "has_research": bool(research_context),
-            "verified_sources_count": len(sources_list),
-            "context_length": len(research_context),
-            "timestamp": datetime.utcnow().isoformat()
-        }), 200
+            "answer": answer,
+            "engine": "groq-llama-3.1-8b-instant",
+            "sources": [],  # Sources added by Tavily if search was performed
+            "timestamp": datetime.now().isoformat()
+        }
         
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"❌ Response generation error: {str(e)}")
+        
+        return {
+            "success": False,
+            "answer": f"⚠️  Error processing request: {str(e)}",
+            "engine": "groq-llama-3.1-8b-instant",
+            "sources": [],
+            "timestamp": datetime.now().isoformat()
+        }
+
+
+# ============================================================================
+# API ENDPOINTS
+# ============================================================================
+
+@app.route('/ask', methods=['POST', 'OPTIONS'])
+def ask_endpoint():
+    """
+    Main endpoint for JARVIS queries with optional Tavily search.
+    
+    Request: {
+        "query": "Your question here"
+    }
+    
+    Response: {
+        "success": bool,
+        "answer": str,
+        "engine": str,
+        "sources": list,
+        "timestamp": str
+    }
+    """
+    # Handle CORS preflight
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'query' not in data:
+            return jsonify({
+                "success": False,
+                "answer": "❌ Missing 'query' field in request body",
+                "engine": "groq-llama-3.1-8b-instant",
+                "sources": [],
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        user_query = data.get('query', '').strip()
+        
+        if not user_query:
+            return jsonify({
+                "success": False,
+                "answer": "❌ Query cannot be empty",
+                "engine": "groq-llama-3.1-8b-instant",
+                "sources": [],
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        logger.info(f"📨 Query received: {user_query[:100]}...")
+        
+        # Step 1: Decide if search is needed
+        needs_search = should_search(user_query)
+        search_context = ""
+        sources = []
+        
+        if needs_search and tavily_client:
+            logger.info("🔍 Real-time search required - calling Tavily...")
+            search_context, sources = conduct_tavily_search(user_query)
+        
+        # Step 2: Generate response with or without context
+        result = generate_jarvis_response(user_query, search_context)
+        result["sources"] = sources
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Endpoint error: {str(e)}")
+        
         return jsonify({
             "success": False,
-            "error": str(e),
-            "response": "JARVIS encountered an error"
+            "answer": f"❌ Server error: {str(e)}",
+            "engine": "groq-llama-3.1-8b-instant",
+            "sources": [],
+            "timestamp": datetime.now().isoformat()
         }), 500
 
 
-@app.route("/api/jarvis/workflow", methods=["POST"])
-def jarvis_workflow():
-    """Debug endpoint - see full workflow"""
-    payload = request.get_json(silent=True) or {}
-    query = (payload.get("query") or "").strip()
+@app.route('/health', methods=['GET', 'OPTIONS'])
+def health_check():
+    """
+    Health check endpoint.
     
-    if not query:
-        return jsonify({"error": "Query required"}), 400
+    Response: {
+        "status": "healthy" | "degraded",
+        "groq_available": bool,
+        "tavily_available": bool,
+        "timestamp": str
+    }
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
     
-    try:
-        intent = classify_intent(query)
-        context = ""
-        if intent.get("needs_search") and tavily_client:
-            context = conduct_research(intent.get("queries", []))
-        response = generate_final_response(query, context)
-        
-        return jsonify({
-            "query": query,
-            "step_1_intent": intent,
-            "step_2_research": context[:300] if context else "No web search needed",
-            "step_3_response": response
-        }), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "status": "healthy" if (groq_client and tavily_client) else "degraded",
+        "groq_available": groq_client is not None,
+        "tavily_available": tavily_client is not None,
+        "timestamp": datetime.now().isoformat()
+    }), 200
 
+
+# ============================================================================
+# ERROR HANDLERS
+# ============================================================================
 
 @app.errorhandler(404)
-def not_found(e):
-    return jsonify({"error": "Not found"}), 404
+def not_found(error):
+    return jsonify({
+        "success": False,
+        "answer": "❌ Endpoint not found. Available: /ask, /health",
+        "engine": "groq-llama-3.1-8b-instant",
+        "sources": [],
+        "timestamp": datetime.now().isoformat()
+    }), 404
 
 
 @app.errorhandler(500)
-def server_error(e):
-    return jsonify({"error": "Server error"}), 500
+def internal_error(error):
+    logger.error(f"❌ Server error: {str(error)}")
+    return jsonify({
+        "success": False,
+        "answer": "❌ Internal server error. Try again later.",
+        "engine": "groq-llama-3.1-8b-instant",
+        "sources": [],
+        "timestamp": datetime.now().isoformat()
+    }), 500
 
 
-if __name__ == "__main__":
-    print("\n" + "="*70)
-    print("JARVIS AGENTIC AI BACKEND v2.0")
-    print("="*70)
-    print(f"Groq: {'Configured' if groq_client else 'MISSING'}")
-    print(f"Tavily: {'Configured' if tavily_client else 'MISSING'}")
-    print(f"Port: {PORT}")
-    print("="*70 + "\n")
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+# ============================================================================
+# MAIN
+# ============================================================================
+
+if __name__ == '__main__':
+    logger.info("=" * 70)
+    logger.info("🤖 JARVIS AI - Real-Time Web Search Backend")
+    logger.info("=" * 70)
+    logger.info(f"🚀 Starting server on port {PORT}...")
+    logger.info(f"✅ CORS enabled for Firebase frontend")
+    logger.info(f"✅ Groq API: {'Available' if groq_client else 'NOT configured'}")
+    logger.info(f"✅ Tavily API: {'Available' if tavily_client else 'NOT configured'}")
+    logger.info(f"🧠 Model: Llama-3.1-8b-instant")
+    logger.info(f"📅 Current Date: January 29, 2026")
+    logger.info("=" * 70)
+    
+    app.run(
+        host='0.0.0.0',
+        port=PORT,
+        debug=False,
+        use_reloader=False
+    )
