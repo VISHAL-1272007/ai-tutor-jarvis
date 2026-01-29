@@ -70,6 +70,7 @@ app = Flask(__name__)
 
 # ===== CRITICAL: Enable CORS for Firebase Frontend =====
 CORS(app, resources={
+    r"/": {"origins": "*", "methods": ["GET", "OPTIONS"]},
     r"/ask": {"origins": "*", "methods": ["POST", "OPTIONS"]},
     r"/health": {"origins": "*", "methods": ["GET", "OPTIONS"]},
 })
@@ -282,6 +283,24 @@ Provide an answer using the search results above. Include citations like [1], [2
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
+
+@app.route('/', methods=['GET'])
+def home():
+    """
+    Root endpoint to verify backend is running.
+    """
+    return jsonify({
+        "status": "online",
+        "message": "JARVIS AI Backend is running",
+        "version": "5.5",
+        "endpoints": {
+            "/": "Status check",
+            "/ask": "POST - Main chat endpoint",
+            "/health": "GET - Health check"
+        },
+        "timestamp": datetime.now().isoformat()
+    }), 200
+
 
 @app.route('/ask', methods=['POST', 'OPTIONS'])
 def ask_endpoint():
