@@ -140,46 +140,9 @@ class NewsIntegration {
     }
 
     async parseRSSFeed(url) {
-        try {
-            // Use RSS2JSON API for parsing - with fallback for 422 errors
-            const rssApiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=';
-            
-            try {
-                const response = await fetch(
-                    `${rssApiUrl}${encodeURIComponent(url)}&api_key=free`,
-                    { signal: AbortSignal.timeout(5000) }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    return (data.items || []).map(item => ({
-                        title: item.title,
-                        description: item.description,
-                        url: item.link,
-                        publishedAt: item.pubDate,
-                        source: { name: data.feed?.title || 'RSS Feed' }
-                    }));
-                }
-            } catch (e) {
-                // Fallback: try without API key
-                const response = await fetch(
-                    `${rssApiUrl}${encodeURIComponent(url)}`,
-                    { signal: AbortSignal.timeout(5000) }
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    return (data.items || []).map(item => ({
-                        title: item.title,
-                        description: item.description,
-                        url: item.link,
-                        publishedAt: item.pubDate,
-                        source: { name: data.feed?.title || 'RSS Feed' }
-                    }));
-                }
-            }
-            return [];
-        } catch (error) {
-            return [];
-        }
+        // Disabled: RSS2JSON calls cause 422/426 errors.
+        // Use backend Hugging Face /ask + Tavily for all news.
+        return [];
     }
 
     processAndMergeNews(newsDataArray) {
