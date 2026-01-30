@@ -23,14 +23,23 @@ except ImportError:
     logger_temp = logging.getLogger("jarvis.brain")
     logger_temp.warning("⚠️ vision_module not available - vision analysis disabled")
 
+# Try to import PDF module (optional)
+try:
+    from pdf_module import extract_text_from_pdf
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
+    logger_temp = logging.getLogger("jarvis.brain")
+    logger_temp.warning("⚠️ pdf_module not available - PDF extraction disabled")
+
 # Setup
 load_dotenv()
 logger = logging.getLogger("jarvis.brain")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Image path regex patterns
-IMAGE_PATH_PATTERN = r'(?:[a-zA-Z]:[\\/]|\.[\\/])[^\s]+\.(?:jpg|jpeg|png|gif|bmp|webp)'
-
+IMAGE_PATH_PATTERN = r'(?:[a-zA-Z]:[\\/]|\.[\\/])[^\s]+\.(?:jpg|jpeg|png|gif|bmp|webp)'# PDF path regex pattern
+PDF_PATH_PATTERN = r'(?:[a-zA-Z]:[\/]|\.[\/])[^\s]+\.pdf'
 # JARVIS System Prompt with Brain, Eyes, Hands, and Vision
 SYSTEM_PROMPT = """You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), 
 an advanced autonomous AI agent with brain, eyes, hands, and vision.
@@ -40,6 +49,7 @@ CORE CAPABILITIES:
 - EYES: Real-time web search via SearXNG
 - HANDS: Task automation via n8n workflows (email, reminders, notes, calendar, Telegram)
 - VISION: Image analysis and visual understanding
+- DOCUMENTS: PDF text extraction and analysis
 
 CORE DIRECTIVES:
 - Be professional, witty, and highly technical.
@@ -145,6 +155,40 @@ def _analyze_image_vision(image_path: str) -> str:
         return ""
 
 
+def _detect_pdf_path(user_input: str) -> Tuple[str, bool]:
+    """
+    Detect if user input contains a PDF file path.
+    
+    Returns:
+        (pdf_path: str, found: bool)
+    """
+    match = re.search(PDF_PATH_PATTERN, user_input)
+    if match:
+        return match.group(0), True
+    return "", False
+
+
+def _extract_pdf_text(pdf_path: str) -> str:
+    """
+    Wrapper for PDF text extraction with error handling.
+    
+    Returns:
+        Extracted text or empty string on failure.
+    """
+    if not PDF_AVAILABLE:
+        logger.warning("⚠️ PDF module not available")
+        return ""
+    
+    try:
+        logger.info(f"📄 Extracting text from PDF: {pdf_path}")
+        text = extract_text_from_pdf(pdf_path)
+        logger.info(f"✅ PDF extraction complete ({len(text)} chars)")
+        return text
+    except Exception as e:
+        logger.error(f"❌ PDF extraction failed: {str(e)}")
+        return ""
+
+
 def _format_search_results(results: List[dict]) -> str:
     """Format search results for LLM consumption."""
     if not results:
@@ -160,19 +204,21 @@ def _format_search_results(results: List[dict]) -> str:
 
 def process_query(user_input: str) -> str:
     """
-    Main JARVIS reasoning engine with Brain, Eyes, Hands, and Vision.
+    Main JARVIS reasoning engine with Brain, Eyes, Hands, Vision, and Documents.
     
     FLOW:
     1. Load recent chat history (last 5 messages).
     2. Detect if image path is in input (Vision).
-    3. Detect if real-time search is needed (Eyes).
-    4. Detect if action execution is needed (Hands).
-    5. If image: analyze and extract visual context.
-    6. If search: fetch web results via SearXNG.
-    7. Pass history + context to Llama 3.1 (Brain).
-    8. If action: trigger n8n workflow (Hands).
-    9. Save user query and response to memory.
-    10. Return final answer.
+    3. Detect if PDF path is in input (Documents).
+    4. Detect if real-time search is needed (Eyes).
+    5. Detect if action execution is needed (Hands).
+    6. If image: analyze and extract visual context.
+    7. If PDF: extract text as document context.
+    8. If search: fetch web results via SearXNG.
+    9. Pass history + context to Llama 3.1 (Brain).
+    10. If action: trigger n8n workflow (Hands).
+    11. Save user query and response to memory.
+    12. Return final answer.
     
     Args:
         user_input: User query string (may contain image path).
@@ -192,6 +238,12 @@ def process_query(user_input: str) -> str:
         visual_context = ""
         if has_image:
             visual_context = _analyze_image_vision(image_path)
+        
+        # Step 2.5: Detect if PDF path is present (Documents)
+        pdf_path, has_pdf = _detect_pdf_path(user_input)
+        document_context = ""
+        if has_pdf:
+            document_context = _extract_pdf_text(pdf_path)
         
         # Step 3: Detect action intent
         action_type, is_action = _detect_action_intent(user_input)
@@ -221,6 +273,9 @@ def process_query(user_input: str) -> str:
         
         if visual_context:
             context_sections.append(f"### VISUAL CONTEXT (from image: {image_path}):\n{visual_context}")
+        
+        if document_context:
+            context_sections.append(f"### DOCUMENT CONTEXT (from PDF: {pdf_path}):\n{document_context}")
         
         if search_context:
             context_sections.append(search_context)
@@ -290,4 +345,9 @@ if __name__ == "__main__":
     test_query3 = "Analyze this image C:\\test.jpg and tell me what you see, Boss"
     print(f"Query: {test_query3}")
     print(f"Response: {process_query(test_query3)}")
+    
+    print("\n=== TEST 4: PDF Query (if pdf_module available) ===")
+    test_query4 = "Summarize this document C:\\research.pdf for me, Boss"
+    print(f"Query: {test_query4}")
+    print(f"Response: {process_query(test_query4)}")
 
