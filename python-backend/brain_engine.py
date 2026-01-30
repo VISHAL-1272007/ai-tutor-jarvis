@@ -46,6 +46,21 @@ except ImportError:
     logger_temp = logging.getLogger("jarvis.brain")
     logger_temp.warning("⚠️ pdf_module not available - PDF extraction disabled")
 
+# Try to import communication module (optional - voice I/O)
+try:
+    from communication_module import initialize_communication, speak, listen_one_time, full_conversation
+    COMMUNICATION_AVAILABLE = True
+    # Initialize communication module at startup
+    voice_comm = initialize_communication(wake_word="jarvis", voice_gender="male")
+except ImportError:
+    COMMUNICATION_AVAILABLE = False
+    logger_temp = logging.getLogger("jarvis.brain")
+    logger_temp.warning("⚠️ communication_module not available - voice I/O disabled")
+except Exception as e:
+    COMMUNICATION_AVAILABLE = False
+    logger_temp = logging.getLogger("jarvis.brain")
+    logger_temp.warning(f"⚠️ communication_module initialization failed: {str(e)}")
+
 # Setup
 load_dotenv()
 logger = logging.getLogger("jarvis.brain")
@@ -54,9 +69,9 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 # Image path regex patterns
 IMAGE_PATH_PATTERN = r'(?:[a-zA-Z]:[\\/]|\.[\\/])[^\s]+\.(?:jpg|jpeg|png|gif|bmp|webp)'# PDF path regex pattern
 PDF_PATH_PATTERN = r'(?:[a-zA-Z]:[\/]|\.[\/])[^\s]+\.pdf'
-# JARVIS System Prompt with Brain, Eyes, Hands, and Vision
+# JARVIS System Prompt with Brain, Eyes, Hands, Vision, and Communication
 SYSTEM_PROMPT = """You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), 
-an advanced autonomous AI agent with brain, eyes, hands, and vision.
+an advanced autonomous AI agent with brain, eyes, hands, vision, and voice communication.
 
 CORE CAPABILITIES:
 - BRAIN: Groq Llama 3.1 reasoning engine
@@ -64,6 +79,8 @@ CORE CAPABILITIES:
 - HANDS: Task automation via n8n workflows (email, reminders, notes, calendar, Telegram)
 - VISION: Image analysis and visual understanding
 - DOCUMENTS: PDF text extraction and analysis
+- COMMUNICATION: Professional voice I/O with wake-word detection
+- DESKTOP: PyAutoGUI desktop automation (Notepad, screenshots, typing)
 
 CORE DIRECTIVES:
 - Be professional, witty, and highly technical.
@@ -72,7 +89,7 @@ CORE DIRECTIVES:
 - When search results are provided, cite them as [1], [2], [3], etc.
 - When executing actions, say "Initiating action, Sir..." or "On it, Boss."
 - Maintain 100% data privacy; never expose API keys or server secrets.
-- Current date: January 30, 2026.
+- Current date: January 31, 2026.
 
 RESPONSE FORMAT:
 1. Lead with the most important answer.
