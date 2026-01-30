@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS Backend Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        h1 { text-align: center; margin-bottom: 30px; }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin: 10px 0;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        .result {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .info { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 JARVIS Backend Connection Test</h1>
+        
+        <div class="test-section">
+            <h3>Test 1: Check Root Endpoint</h3>
+            <button onclick="testRoot()">Test GET /</button>
+            <div id="rootResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Check /ask Endpoint</h3>
+            <button onclick="testAsk()">Test POST /ask</button>
+            <div id="askResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 3: Send Actual Query</h3>
+            <input type="text" id="queryInput" placeholder="Enter your question..." 
+                   style="width: 100%; padding: 10px; border-radius: 5px; border: none; margin-bottom: 10px;">
+            <button onclick="sendQuery()">Send Query</button>
+            <div id="queryResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://aijarvis2025-jarvis1.hf.space';
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            element.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function testRoot() {
+            const result = document.getElementById('rootResult');
+            result.innerHTML = '';
+            
+            try {
+                log('rootResult', `🚀 Testing: ${API_BASE}/`, 'info');
+                
+                const response = await fetch(`${API_BASE}/`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                log('rootResult', `📡 Status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('rootResult', `✅ Response:\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    const text = await response.text();
+                    log('rootResult', `❌ Error: ${text}`, 'error');
+                }
+            } catch (error) {
+                log('rootResult', `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAsk() {
+            const result = document.getElementById('askResult');
+            result.innerHTML = '';
+            
+            try {
+                log('askResult', `🚀 Testing: ${API_BASE}/ask`, 'info');
+                log('askResult', `📦 Sending: {"query": "test"}`, 'info');
+                
+                const response = await fetch(`${API_BASE}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: 'test' })
+                });
+                
+                log('askResult', `📡 Status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('askResult', `✅ Response:\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    const text = await response.text();
+                    log('askResult', `❌ Error: ${text}`, 'error');
+                }
+            } catch (error) {
+                log('askResult', `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendQuery() {
+            const result = document.getElementById('queryResult');
+            const input = document.getElementById('queryInput');
+            const query = input.value.trim();
+            
+            if (!query) {
+                log('queryResult', '❌ Please enter a question', 'error');
+                return;
+            }
+            
+            result.innerHTML = '';
+            
+            try {
+                log('queryResult', `🚀 Sending query: "${query}"`, 'info');
+                
+                const response = await fetch(`${API_BASE}/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                log('queryResult', `📡 Status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('queryResult', `✅ Answer: ${data.answer}`, 'success');
+                    log('queryResult', `🔧 Engine: ${data.engine}`, 'info');
+                    if (data.sources && data.sources.length > 0) {
+                        log('queryResult', `📚 Sources: ${data.sources.length} found`, 'info');
+                    }
+                } else {
+                    const text = await response.text();
+                    log('queryResult', `❌ Error: ${text}`, 'error');
+                }
+            } catch (error) {
+                log('queryResult', `❌ Network Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run root test on page load
+        window.addEventListener('load', () => {
+            setTimeout(testRoot, 500);
+        });
+    </script>
+</body>
+</html>
