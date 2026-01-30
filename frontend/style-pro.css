@@ -517,6 +517,64 @@ body {
     justify-content: space-between;
     padding: 0 20px;
     gap: 16px;
+    position: relative;
+    z-index: 50;
+}
+
+/* Main Navigation - Horizontal Links */
+.header-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 24px;
+    flex: 1;
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.header-nav::-webkit-scrollbar {
+    display: none;
+}
+
+/* Navigation Links - Simple Purple/White Style */
+.nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    color: #a0a0a0;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 200ms ease;
+    border-radius: 6px;
+}
+
+.nav-link:hover {
+    color: #a78bfa;
+}
+
+.nav-link.active {
+    color: #a78bfa;
+    font-weight: 600;
+}
+
+.nav-link i {
+    font-size: 14px;
+    color: inherit;
+}
+
+/* Header Actions (Right Side) */
+.header-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .mobile-menu-btn {
@@ -534,14 +592,6 @@ body {
 .mobile-menu-btn:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.1);
-}
-
-.header-center {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
 }
 
 .brain-btn {
