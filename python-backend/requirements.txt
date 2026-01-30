@@ -1,4 +1,4 @@
-# JARVIS Python Backend - Minimal Dependencies
+# JARVIS Python Backend - Complete Dependencies
 # Optimized for fast deployment on Render Free Tier
 
 # Web Framework
@@ -16,3 +16,27 @@ groq==0.15.0
 
 # Web Search - Real-time Data Integration
 tavily-python==0.7.19
+
+# Vision Analysis
+pillow==11.3.0
+
+# PDF Processing & RAG
+PyPDF2==4.0.1
+langchain==0.1.5
+faiss-cpu==1.7.4
+sentence-transformers==2.6.1
+
+# Speech Recognition & Voice I/O
+SpeechRecognition==3.14.5
+pyttsx3==2.99
+sounddevice==0.4.7
+soundfile==0.13.1
+numpy==2.4.0
+user-agents==2.2.0
+
+# Web Search Integrations
+duckduckgo-search==6.1.1
+
+# Desktop Automation
+pyautogui==0.9.54
+pygetwindow==0.0.9
