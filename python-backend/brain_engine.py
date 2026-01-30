@@ -14,6 +14,20 @@ from memory_manager import get_history, save_message
 from eyes_search import search_web
 from hands import trigger_n8n_action
 
+# Try to import action module (optional - desktop automation)
+try:
+    from action_module import JarvisActionModule
+    ACTION_MODULE_AVAILABLE = True
+    action_executor = JarvisActionModule()
+except ImportError:
+    ACTION_MODULE_AVAILABLE = False
+    logger_temp = logging.getLogger("jarvis.brain")
+    logger_temp.warning("⚠️ action_module not available - desktop automation disabled")
+except Exception as e:
+    ACTION_MODULE_AVAILABLE = False
+    logger_temp = logging.getLogger("jarvis.brain")
+    logger_temp.warning(f"⚠️ action_module initialization failed: {str(e)}")
+
 # Try to import vision module (optional)
 try:
     from vision_module import analyze_image
@@ -85,6 +99,15 @@ REALTIME_KEYWORDS = [
     'best', 'top', 'new', 'released', 'launched', 'announced'
 ]
 
+# Keywords that trigger desktop actions
+DESKTOP_ACTION_KEYWORDS = {
+    'open notepad': 'notepad',
+    'write': 'write',
+    'type': 'type',
+    'screenshot': 'screenshot',
+    'search for': 'search'
+}
+
 # Keywords that trigger n8n actions
 ACTION_KEYWORDS = {
     'send': 'send_email',
@@ -118,6 +141,20 @@ def _detect_action_intent(query: str) -> Tuple[str, bool]:
     for keyword, action in ACTION_KEYWORDS.items():
         if keyword in query_lower:
             return action, True
+    return "", False
+
+
+def _detect_desktop_action(user_input: str) -> Tuple[str, bool]:
+    """
+    Detect if user intends to perform a desktop action (notepad, screenshot, etc).
+    
+    Returns:
+        (command: str, found: bool)
+    """
+    query_lower = user_input.lower()
+    for keyword in DESKTOP_ACTION_KEYWORDS:
+        if keyword in query_lower:
+            return user_input, True
     return "", False
 
 
@@ -245,7 +282,20 @@ def process_query(user_input: str) -> str:
         if has_pdf:
             document_context = _extract_pdf_text(pdf_path)
         
-        # Step 3: Detect action intent
+        # Step 2.75: Detect desktop action (Actions like open notepad, type, screenshot)
+        desktop_cmd, has_desktop_action = _detect_desktop_action(user_input)
+        desktop_result = ""
+        if has_desktop_action and ACTION_MODULE_AVAILABLE:
+            logger.info(f"🖥️ Executing desktop action: {user_input[:50]}...")
+            try:
+                desktop_result = action_executor.execute(user_input)
+                if desktop_result:
+                    logger.info(f"✅ Desktop action result: {desktop_result}")
+            except Exception as e:
+                logger.error(f"❌ Desktop action failed: {str(e)}")
+                desktop_result = f"Desktop action failed: {str(e)}"
+        
+        # Step 3: Detect action intent (n8n actions)
         action_type, is_action = _detect_action_intent(user_input)
         
         # Step 4: Check if search is needed
@@ -315,7 +365,11 @@ def process_query(user_input: str) -> str:
         # Step 9: Combine response
         final_response = answer + action_result
         
-        # Step 10: Save to memory
+        # Step 10: Add desktop action result if applicable
+        if desktop_result:
+            final_response += f"\n\n🖥️ Desktop: {desktop_result}"
+        
+        # Step 11: Save to memory
         save_message("user", user_input.strip())
         save_message("assistant", final_response)
         
