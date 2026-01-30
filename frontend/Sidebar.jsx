@@ -48,10 +48,10 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
 
     return (
         <>
-            {/* Toggle Button (Fixed, always visible) */}
+            {/* Toggle Button (Fixed, always visible on mobile) */}
             <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="fixed left-4 top-4 z-50 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 ease-in-out lg:hidden"
+                className="fixed left-4 top-4 z-50 p-2 rounded-lg bg-neutral-800 border border-neutral-700 hover:bg-neutral-700 transition-all duration-200 lg:hidden"
                 title={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
                 aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
             >
@@ -65,43 +65,39 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
             {/* Overlay (Mobile only, when sidebar is open) */}
             {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/60 z-[999] lg:hidden transition-opacity duration-300 ease-in-out"
-                    style={{ backdropFilter: 'blur(4px)' }}
+                    className="fixed inset-0 bg-black/50 z-[999] lg:hidden transition-opacity duration-200"
                     onClick={() => setIsSidebarOpen(false)}
                     aria-hidden="true"
                 />
             )}
 
-            {/* Sidebar Container with smooth collapse animation */}
+            {/* Sidebar Container - simple solid styling */}
             <aside
-                className={`fixed left-0 top-0 h-screen z-[1000] transition-all duration-300 ease-in-out overflow-hidden ${
+                className={`fixed left-0 top-0 h-screen z-[1000] transition-all duration-200 overflow-hidden ${
                     isSidebarOpen 
-                        ? 'w-64 opacity-100 shadow-xl' 
+                        ? 'w-64 opacity-100' 
                         : 'w-0 opacity-0 -translate-x-full'
                 }`}
                 style={{
-                    background: 'rgba(15, 15, 15, 0.95)',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.05)',
-                    boxShadow: 'inset 1px 0 0 rgba(255, 255, 255, 0.02), 4px 0 20px rgba(0, 0, 0, 0.5)'
+                    background: '#1a1a1a',
+                    borderRight: '1px solid #2a2a2a'
                 }}
             >
                 {/* Sidebar Header */}
-                <div className="flex items-center justify-between p-4 border-b border-white/5">
+                <div className="flex items-center justify-between p-4 border-b border-neutral-800">
                     <div className="flex items-center gap-3">
                         <div className="text-2xl">🤖</div>
                         <div>
                             <div className="text-white font-bold text-sm">JARVIS</div>
-                            <div className="text-white/40 text-xs">AI Vision Studio</div>
+                            <div className="text-neutral-500 text-xs">AI Vision Studio</div>
                         </div>
                     </div>
                     <button
                         onClick={() => setIsSidebarOpen(false)}
-                        className="lg:hidden p-1 rounded hover:bg-white/10 transition-colors"
+                        className="lg:hidden p-1 rounded hover:bg-neutral-700 transition-colors"
                         aria-label="Close sidebar"
                     >
-                        <X size={20} className="text-white/60" />
+                        <X size={20} className="text-neutral-400" />
                     </button>
                 </div>
 
@@ -110,15 +106,15 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
                     {/* Recent Chats Section */}
                     {isSidebarOpen && (
                         <div className="mb-6">
-                            <div className="text-xs uppercase font-bold text-white/40 mb-3 px-2">
+                            <div className="text-xs uppercase font-bold text-neutral-500 mb-3 px-2">
                                 Recent Chats
                             </div>
-                            <ul className="space-y-2">
+                            <ul className="space-y-1">
                                 {recentChats.map((chat, i) => (
                                     <li key={i}>
                                         <button
                                             onClick={() => onTabChange(`chat-${i}`)}
-                                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-all duration-300 ease-in-out flex items-center gap-2"
+                                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all duration-200 flex items-center gap-2"
                                         >
                                             <MessageSquare size={16} className="flex-shrink-0" />
                                             <span className="truncate">{chat}</span>
@@ -131,10 +127,10 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
 
                     {/* Main Navigation */}
                     <div className="mb-6">
-                        <div className="text-xs uppercase font-bold text-white/40 mb-3 px-2">
+                        <div className="text-xs uppercase font-bold text-neutral-500 mb-3 px-2">
                             Navigation
                         </div>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1">
                             {menuItems.map(item => {
                                 const Icon = item.icon;
                                 return (
@@ -144,10 +140,10 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
                                                 onTabChange(item.id);
                                                 setIsSidebarOpen(false);
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-300 ease-in-out flex items-center gap-3 ${
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-3 ${
                                                 activeTab === item.id
-                                                    ? 'bg-white/10 text-white border border-white/20'
-                                                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                                                    ? 'bg-neutral-800 text-white border border-neutral-700'
+                                                    : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
                                             }`}
                                         >
                                             <Icon size={18} className="flex-shrink-0" />
@@ -160,11 +156,11 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
                     </div>
 
                     {/* Account Section */}
-                    <div className="mt-auto pt-6 border-t border-white/5">
-                        <div className="text-xs uppercase font-bold text-white/40 mb-3 px-2">
+                    <div className="mt-auto pt-6 border-t border-neutral-800">
+                        <div className="text-xs uppercase font-bold text-neutral-500 mb-3 px-2">
                             Account
                         </div>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1">
                             {bottomItems.map(item => {
                                 const Icon = item.icon;
                                 return (
@@ -174,10 +170,10 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
                                                 onTabChange(item.id);
                                                 setIsSidebarOpen(false);
                                             }}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-300 ease-in-out flex items-center gap-3 ${
+                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-3 ${
                                                 activeTab === item.id
-                                                    ? 'bg-white/10 text-white border border-white/20'
-                                                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                                                    ? 'bg-neutral-800 text-white border border-neutral-700'
+                                                    : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
                                             }`}
                                         >
                                             <Icon size={18} className="flex-shrink-0" />
@@ -194,7 +190,7 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
                                         onLogout();
                                         setIsSidebarOpen(false);
                                     }}
-                                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-orange-400/60 hover:text-orange-400 hover:bg-white/5 transition-all duration-300 ease-in-out flex items-center gap-3"
+                                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-orange-400 hover:text-orange-300 hover:bg-neutral-800 transition-all duration-200 flex items-center gap-3"
                                 >
                                     <LogOut size={18} className="flex-shrink-0" />
                                     {isSidebarOpen && <span>Logout</span>}
