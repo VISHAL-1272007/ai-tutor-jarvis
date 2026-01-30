@@ -1,10 +1,14 @@
 """
 J.A.R.V.I.S. Communication Module
 Professional voice input/output with wake-word detection and ambient noise handling.
+Uses sounddevice instead of pyaudio for audio capture (compatible with Python 3.14).
 """
 
 import pyttsx3
 import speech_recognition as sr
+import sounddevice as sd
+import soundfile as sf
+import numpy as np
 import logging
 import time
 from typing import Optional, Tuple
@@ -17,16 +21,23 @@ logger = logging.getLogger(__name__)
 class JarvisCommunicationModule:
     """Handles voice I/O with professional tone and wake-word detection."""
 
-    def __init__(self, wake_word: str = "jarvis", voice_gender: str = "male"):
+    def __init__(self, wake_word: str = "jarvis", voice_gender: str = "male", 
+                 sample_rate: int = 16000, channels: int = 1):
         """
-        Initialize communication module.
+        Initialize communication module with sounddevice audio capture.
         
         Args:
             wake_word: Wake word to listen for (default: "jarvis")
             voice_gender: "male" or "female" (male = index 0, female = index 1)
+            sample_rate: Audio sample rate in Hz (default: 16000 - Google API requirement)
+            channels: Number of audio channels (default: 1 - mono)
         """
         self.wake_word = wake_word.lower()
         self.voice_gender = voice_gender
+        self.sample_rate = sample_rate
+        self.channels = channels
+        
+        # Initialize recognizer (for transcription via Google API)
         self.recognizer = sr.Recognizer()
         
         # Initialize TTS engine
@@ -36,7 +47,14 @@ class JarvisCommunicationModule:
         # Stop flag for listening
         self.stop_listening = Event()
         
-        logger.info(f"✅ J.A.R.V.I.S. Communication Module initialized ({voice_gender} voice)")
+        # Verify sounddevice can access microphone
+        try:
+            device_info = sd.query_devices(kind='input')
+            logger.info(f"🎤 Audio device: {device_info['name']} @ {device_info['max_input_channels']} channels")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not query audio device: {e}")
+        
+        logger.info(f"✅ J.A.R.V.I.S. Communication Module initialized (sounddevice, {voice_gender} voice, {sample_rate}Hz)")
 
     def _configure_voice(self):
         """Configure voice properties for professional tone."""
@@ -76,35 +94,49 @@ class JarvisCommunicationModule:
 
     def listen(self, timeout: int = 5, phrase_time_limit: int = 10) -> Optional[str]:
         """
-        Listen for voice input with error handling.
+        Listen for voice input using sounddevice with error handling.
         
         Args:
-            timeout: Seconds to wait for speech to start
+            timeout: Seconds to wait before aborting if no speech starts
             phrase_time_limit: Max seconds to listen for a phrase
             
         Returns:
             Recognized text or None if failed
         """
         try:
-            with sr.Microphone() as source:
-                # Calibrate for ambient noise (critical for background noise rejection)
-                logger.info("🎤 Calibrating for ambient noise...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=1)
-                
-                # Set dynamic energy threshold
-                self.recognizer.dynamic_energy_threshold = True
-                self.recognizer.energy_threshold = 4000  # Tuned for desktop environment
-                
-                logger.info("🎤 Listening...")
-                audio = self.recognizer.listen(
-                    source,
-                    timeout=timeout,
-                    phrase_time_limit=phrase_time_limit
-                )
-                
-            # Recognize speech using Google
-            text = self.recognizer.recognize_google(audio, language='en-in')
-            logger.info(f"👤 Recognized: {text}")
+            logger.info(f"🎤 Initializing sounddevice recording ({self.sample_rate}Hz, {phrase_time_limit}s limit)...")
+            
+            # Step 1: Calibrate for ambient noise (simulate sr.Recognizer behavior)
+            logger.info("🎤 Calibrating for ambient noise...")
+            ambient_data = self._record_audio(duration=1)  # 1 second calibration
+            
+            # Estimate noise level (RMS of ambient data)
+            noise_level = np.sqrt(np.mean(ambient_data ** 2))
+            logger.info(f"📊 Ambient noise level: {noise_level:.4f}")
+            
+            # Step 2: Record actual speech
+            logger.info(f"🎤 Recording speech ({phrase_time_limit}s)...")
+            audio_data = self._record_audio(duration=phrase_time_limit)
+            
+            if len(audio_data) == 0:
+                logger.warning("⚠️ No audio data recorded")
+                return None
+            
+            # Step 3: Convert numpy array to sr.AudioData format
+            # sr.AudioData expects bytes in PCM format
+            audio_int16 = (audio_data * 32767).astype(np.int16)
+            audio_bytes = audio_int16.tobytes()
+            
+            # Step 4: Create sr.AudioData object
+            # sr.AudioData(frame_data, sample_rate, sample_width)
+            # sample_width = 2 for 16-bit PCM (2 bytes per sample)
+            audio_data_obj = sr.AudioData(audio_bytes, self.sample_rate, 2)
+            
+            logger.info("🧠 Sending to Google Speech Recognition API...")
+            
+            # Step 5: Recognize speech using Google
+            text = self.recognizer.recognize_google(audio_data_obj, language='en-in')
+            logger.info(f"✅ Recognized: {text}")
             return text.lower()
             
         except sr.UnknownValueError:
@@ -113,12 +145,48 @@ class JarvisCommunicationModule:
         except sr.RequestError as e:
             logger.error(f"❌ Google API error: {e}")
             return None
-        except sr.Timeout:
-            logger.warning("⏱️ No speech detected. Timeout.")
-            return None
         except Exception as e:
             logger.error(f"❌ Listening error: {e}")
             return None
+
+    def _record_audio(self, duration: float) -> np.ndarray:
+        """
+        Record audio using sounddevice.
+        
+        Args:
+            duration: Recording duration in seconds
+            
+        Returns:
+            Numpy array with audio data (float32, normalized to [-1, 1])
+        """
+        try:
+            logger.debug(f"🎙️ Recording {duration}s of audio...")
+            
+            # Record audio using sounddevice
+            # Returns numpy array of shape (frames, channels)
+            audio = sd.rec(
+                int(self.sample_rate * duration),
+                samplerate=self.sample_rate,
+                channels=self.channels,
+                dtype='float32',
+                blocking=True  # Wait for recording to complete
+            )
+            
+            # If stereo, convert to mono by averaging channels
+            if audio.ndim > 1 and audio.shape[1] > 1:
+                audio = np.mean(audio, axis=1)
+            
+            # Ensure 1D array
+            if audio.ndim > 1:
+                audio = audio.flatten()
+            
+            logger.debug(f"✅ Recorded {len(audio)} samples ({duration}s @ {self.sample_rate}Hz)")
+            return audio
+            
+        except Exception as e:
+            logger.error(f"❌ Recording error: {e}")
+            return np.array([])
+
 
     def wait_for_wake_word(self, timeout: Optional[int] = None) -> bool:
         """
