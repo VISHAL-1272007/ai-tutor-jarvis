@@ -1,6 +1,6 @@
 """
 J.A.R.V.I.S. Brain Engine
-Integrates Groq Llama 3.1 with memory management, real-time web search, and n8n actions.
+Integrates Groq Llama 3.1 with memory, web search, vision analysis, and n8n automation.
 """
 
 import os
@@ -14,19 +14,32 @@ from memory_manager import get_history, save_message
 from eyes_search import search_web
 from hands import trigger_n8n_action
 
+# Try to import vision module (optional)
+try:
+    from vision_module import analyze_image
+    VISION_AVAILABLE = True
+except ImportError:
+    VISION_AVAILABLE = False
+    logger_temp = logging.getLogger("jarvis.brain")
+    logger_temp.warning("⚠️ vision_module not available - vision analysis disabled")
+
 # Setup
 load_dotenv()
 logger = logging.getLogger("jarvis.brain")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# JARVIS System Prompt with Hands capability
+# Image path regex patterns
+IMAGE_PATH_PATTERN = r'(?:[a-zA-Z]:[\\/]|\.[\\/])[^\s]+\.(?:jpg|jpeg|png|gif|bmp|webp)'
+
+# JARVIS System Prompt with Brain, Eyes, Hands, and Vision
 SYSTEM_PROMPT = """You are J.A.R.V.I.S. (Just A Rather Very Intelligent System), 
-an advanced autonomous AI agent with brain, eyes, and hands.
+an advanced autonomous AI agent with brain, eyes, hands, and vision.
 
 CORE CAPABILITIES:
 - BRAIN: Groq Llama 3.1 reasoning engine
 - EYES: Real-time web search via SearXNG
 - HANDS: Task automation via n8n workflows (email, reminders, notes, calendar, Telegram)
+- VISION: Image analysis and visual understanding
 
 CORE DIRECTIVES:
 - Be professional, witty, and highly technical.
@@ -98,6 +111,40 @@ def _detect_action_intent(query: str) -> Tuple[str, bool]:
     return "", False
 
 
+def _detect_image_path(user_input: str) -> Tuple[str, bool]:
+    """
+    Detect if user input contains an image file path.
+    
+    Returns:
+        (image_path: str, found: bool)
+    """
+    match = re.search(IMAGE_PATH_PATTERN, user_input)
+    if match:
+        return match.group(0), True
+    return "", False
+
+
+def _analyze_image_vision(image_path: str) -> str:
+    """
+    Wrapper for image analysis with error handling.
+    
+    Returns:
+        Visual description or empty string on failure.
+    """
+    if not VISION_AVAILABLE:
+        logger.warning("⚠️ Vision module not available")
+        return ""
+    
+    try:
+        logger.info(f"👁️ Analyzing image: {image_path}")
+        description = analyze_image(image_path)
+        logger.info(f"✅ Image analysis complete ({len(description)} chars)")
+        return description
+    except Exception as e:
+        logger.error(f"❌ Vision analysis failed: {str(e)}")
+        return ""
+
+
 def _format_search_results(results: List[dict]) -> str:
     """Format search results for LLM consumption."""
     if not results:
@@ -113,20 +160,22 @@ def _format_search_results(results: List[dict]) -> str:
 
 def process_query(user_input: str) -> str:
     """
-    Main JARVIS reasoning engine with Brain, Eyes, and Hands.
+    Main JARVIS reasoning engine with Brain, Eyes, Hands, and Vision.
     
     FLOW:
     1. Load recent chat history (last 5 messages).
-    2. Detect if real-time search is needed (Eyes).
-    3. Detect if action execution is needed (Hands).
-    4. If search: fetch web results via SearXNG.
-    5. Pass history + context to Llama 3.1 (Brain).
-    6. If action: trigger n8n workflow (Hands).
-    7. Save user query and response to memory.
-    8. Return final answer.
+    2. Detect if image path is in input (Vision).
+    3. Detect if real-time search is needed (Eyes).
+    4. Detect if action execution is needed (Hands).
+    5. If image: analyze and extract visual context.
+    6. If search: fetch web results via SearXNG.
+    7. Pass history + context to Llama 3.1 (Brain).
+    8. If action: trigger n8n workflow (Hands).
+    9. Save user query and response to memory.
+    10. Return final answer.
     
     Args:
-        user_input: User query string.
+        user_input: User query string (may contain image path).
     
     Returns:
         JARVIS response string with citations and action confirmation.
@@ -138,10 +187,16 @@ def process_query(user_input: str) -> str:
         # Step 1: Fetch recent history
         history: List[Tuple[str, str]] = get_history(limit=5)
         
-        # Step 2: Detect action intent
+        # Step 2: Detect if image path is present (Vision)
+        image_path, has_image = _detect_image_path(user_input)
+        visual_context = ""
+        if has_image:
+            visual_context = _analyze_image_vision(image_path)
+        
+        # Step 3: Detect action intent
         action_type, is_action = _detect_action_intent(user_input)
         
-        # Step 3: Check if search is needed
+        # Step 4: Check if search is needed
         search_context = ""
         if _needs_realtime_search(user_input):
             logger.info(f"👀 Engaging Eyes for: {user_input[:60]}...")
@@ -153,21 +208,30 @@ def process_query(user_input: str) -> str:
             except Exception as e:
                 logger.warning(f"⚠️ Search failed: {str(e)}")
         
-        # Step 4: Build messages for Groq
+        # Step 5: Build messages for Groq
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         
         # Add history
         for role, content in history:
             messages.append({"role": role, "content": content})
         
-        # Add search context + current query
+        # Step 6: Build comprehensive user message with all context
         user_message = user_input
+        context_sections = []
+        
+        if visual_context:
+            context_sections.append(f"### VISUAL CONTEXT (from image: {image_path}):\n{visual_context}")
+        
         if search_context:
-            user_message = f"{search_context}\n\nBoss's Query: {user_input}\n\nProvide a comprehensive answer based on the search results. Cite sources as [1], [2], etc."
+            context_sections.append(search_context)
+        
+        if context_sections:
+            all_context = "\n\n".join(context_sections)
+            user_message = f"{all_context}\n\n### Boss's Query:\n{user_input}\n\nProvide a comprehensive answer using the visual and search context provided. Cite sources as [1], [2], etc."
         
         messages.append({"role": "user", "content": user_message})
         
-        # Step 5: Get response from Llama 3.1 (Brain)
+        # Step 7: Get response from Llama 3.1 (Brain)
         logger.info("🧠 Invoking Brain (Llama 3.1)...")
         response = client.chat.completions.create(
             model="llama-3.1-70b-versatile",
@@ -180,11 +244,10 @@ def process_query(user_input: str) -> str:
         answer = response.choices[0].message.content.strip()
         logger.info(f"✅ Brain responded ({len(answer)} chars)")
         
-        # Step 6: Execute action if needed (Hands)
+        # Step 8: Execute action if needed (Hands)
         action_result = ""
         if is_action:
             logger.info(f"✋ Engaging Hands for: {action_type}")
-            action_msg = f"Initiating action, Sir... ({action_type})"
             success, hand_response = trigger_n8n_action(action_type, user_input)
             
             if success:
@@ -194,10 +257,10 @@ def process_query(user_input: str) -> str:
                 action_result = f"\n\n❌ {hand_response}"
                 logger.error(f"❌ Action failed: {action_type}")
         
-        # Step 7: Combine response
+        # Step 9: Combine response
         final_response = answer + action_result
         
-        # Step 8: Save to memory
+        # Step 10: Save to memory
         save_message("user", user_input.strip())
         save_message("assistant", final_response)
         
@@ -222,4 +285,9 @@ if __name__ == "__main__":
     test_query2 = "Send an email to my boss about the project completion"
     print(f"Query: {test_query2}")
     print(f"Response: {process_query(test_query2)}")
+    
+    print("\n=== TEST 3: Vision Query (if vision_module available) ===")
+    test_query3 = "Analyze this image C:\\test.jpg and tell me what you see, Boss"
+    print(f"Query: {test_query3}")
+    print(f"Response: {process_query(test_query3)}")
 
