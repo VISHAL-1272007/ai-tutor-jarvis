@@ -178,10 +178,10 @@ body {
 
 /* ===== SIDEBAR ===== */
 .sidebar {
-    width: 260px;
-    min-width: 260px;
-    height: 100vh;
-    background: #1a1a1a;
+    width: 256px;
+    min-width: 256px;
+    height: 100%;
+    background: #1e1e1e;
     border-right: 1px solid #2a2a2a;
     display: flex;
     flex-direction: column;
@@ -501,24 +501,23 @@ body {
     display: flex;
     flex-direction: column;
     background: #0f0f0f;
-    min-height: 100vh;
+    height: 100%;
     overflow-x: hidden;
+    overflow-y: auto;
 }
 
 /* ===== HEADER ===== */
 .header {
     height: 56px;
     min-height: 56px;
-    background: #1a1a1a;
+    background: #1e1e1e;
     border-bottom: 1px solid #2a2a2a;
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 16px;
     gap: 16px;
-    position: relative;
-    z-index: 50;
+    flex-shrink: 0;
 }
 
 /* Main Navigation - Horizontal Links */
@@ -526,55 +525,47 @@ body {
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
-    gap: 24px;
+    gap: 16px;
     flex: 1;
     white-space: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-
-.header-nav::-webkit-scrollbar {
-    display: none;
 }
 
 /* Navigation Links - Simple Purple/White Style */
 .nav-link {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    color: #a0a0a0;
-    font-size: 14px;
+    gap: 6px;
+    padding: 6px 10px;
+    color: #b0b0b0;
+    font-size: 13px;
     font-weight: 500;
     text-decoration: none;
     white-space: nowrap;
-    transition: color 200ms ease;
+    transition: color 150ms ease;
     border-radius: 6px;
 }
 
 .nav-link:hover {
     color: #a78bfa;
+    background: rgba(167, 139, 250, 0.1);
 }
 
 .nav-link.active {
     color: #a78bfa;
-    font-weight: 600;
+    background: rgba(167, 139, 250, 0.15);
 }
 
 .nav-link i {
-    font-size: 14px;
-    color: inherit;
+    font-size: 13px;
 }
 
 /* Header Actions (Right Side) */
 .header-actions {
     display: flex;
-    flex-direction: row;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 .mobile-menu-btn {
@@ -840,20 +831,27 @@ body {
 /* ===== CHAT CONTAINER ===== */
 .chat-container {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     overflow-y: auto;
     overflow-x: hidden;
     width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 0 24px;
+    padding: 24px;
 }
 
 /* Welcome Screen */
 .welcome-screen {
+    width: 100%;
     max-width: 768px;
     margin: 0 auto;
     padding: 40px 24px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .welcome-content h1 {
