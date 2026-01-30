@@ -65,7 +65,8 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
             {/* Overlay (Mobile only, when sidebar is open) */}
             {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/40 z-30 lg:hidden transition-opacity duration-300 ease-in-out"
+                    className="fixed inset-0 bg-black/60 z-[999] lg:hidden transition-opacity duration-300 ease-in-out"
+                    style={{ backdropFilter: 'blur(4px)' }}
                     onClick={() => setIsSidebarOpen(false)}
                     aria-hidden="true"
                 />
@@ -73,16 +74,17 @@ export const Sidebar = ({ activeTab, onTabChange, onLogout }) => {
 
             {/* Sidebar Container with smooth collapse animation */}
             <aside
-                className={`fixed left-0 top-0 h-screen z-40 transition-all duration-300 ease-in-out overflow-hidden ${
+                className={`fixed left-0 top-0 h-screen z-[1000] transition-all duration-300 ease-in-out overflow-hidden ${
                     isSidebarOpen 
                         ? 'w-64 opacity-100 shadow-xl' 
                         : 'w-0 opacity-0 -translate-x-full'
                 }`}
                 style={{
-                    background: 'rgba(15, 15, 15, 0.8)',
+                    background: 'rgba(15, 15, 15, 0.95)',
                     backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
                     border: '1px solid rgba(255, 255, 255, 0.05)',
-                    boxShadow: 'inset 1px 0 0 rgba(255, 255, 255, 0.02)'
+                    boxShadow: 'inset 1px 0 0 rgba(255, 255, 255, 0.02), 4px 0 20px rgba(0, 0, 0, 0.5)'
                 }}
             >
                 {/* Sidebar Header */}

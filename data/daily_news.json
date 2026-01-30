@@ -1,6 +1,41 @@
 {
-  "lastUpdate": "2026-01-27T11:37:29.899Z",
+  "lastUpdate": "2026-01-30T19:39:07.076Z",
   "news": [
+    {
+      "title": "தற்போதைய செய்தி",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-30T19:39:03.800Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "எடிட்டர் லைக்ஸ்",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-30T19:39:03.800Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "முந்தைய பதிப்புகள்",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-30T19:39:03.801Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "வெப் ஸ்டோரீஸ்",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-30T19:39:03.801Z",
+      "url": "https://www.dinamalar.com/"
+    },
+    {
+      "title": "Our Apps Available On",
+      "source": "Dinamalar",
+      "category": "general",
+      "timestamp": "2026-01-30T19:39:03.801Z",
+      "url": "https://www.dinamalar.com/"
+    },
     {
       "title": "புதுக்கோட்டை மாவட்டத்திற்கு நாளை உள்ளூர் விடுமுறை",
       "source": "Dailythanthi",
@@ -84,41 +119,6 @@
       "category": "general",
       "timestamp": "2026-01-27T11:37:26.249Z",
       "url": "https://www.dailythanthi.com/News"
-    },
-    {
-      "title": "தற்போதைய செய்தி",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-27T11:37:27.690Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "எடிட்டர் லைக்ஸ்",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-27T11:37:27.690Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "முந்தைய பதிப்புகள்",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-27T11:37:27.691Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "வெப் ஸ்டோரீஸ்",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-27T11:37:27.691Z",
-      "url": "https://www.dinamalar.com/"
-    },
-    {
-      "title": "Our Apps Available On",
-      "source": "Dinamalar",
-      "category": "general",
-      "timestamp": "2026-01-27T11:37:27.691Z",
-      "url": "https://www.dinamalar.com/"
     },
     {
       "title": "Cattle | Robbery | கால்நடை கடத்தல் கும்பல் மீது துப்பாக்கிச் சூடு.. களத்தில் இறங்கிய போலீசார்",
@@ -3334,5 +3334,5 @@
       "url": "https://www.thanthitv.com/news"
     }
   ],
-  "trainingCount": 57
+  "trainingCount": 58
 }
