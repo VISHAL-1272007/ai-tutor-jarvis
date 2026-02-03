@@ -54,8 +54,9 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
-# Render kudukkura PORT-ah use pannaṇum, illai-nā default-aa 10000
-PORT = int(os.environ.get("PORT", 10000))
+# process.env.PORT Render-aala assign sĕiyappadum.
+# Illai-naal (local-la) 3000 use pannum.
+PORT = int(os.environ.get("PORT", 3000))
 
 TODAY_DATE_STR = "February 3, 2026"
 MAX_CONTEXT_TOKENS = 3000  # Prevent Groq 400 error [cite: 03-02-2026]
@@ -635,6 +636,6 @@ if __name__ == "__main__":
     print(f"👁️  Vision Module: {'Active' if GEMINI_AVAILABLE else 'Inactive'}")
     print(f"✅ Groq Models: Available" if GROQ_AVAILABLE else "❌ Groq: Unavailable")
     print("=" * 80)
-    print(f"🚀 J.A.R.V.I.S is live on port {PORT}")
+    print(f"🚀 J.A.R.V.I.S is running on port {PORT}")
     print("=" * 80)
     app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
