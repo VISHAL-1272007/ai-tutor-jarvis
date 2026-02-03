@@ -11,3 +11,6 @@ httpx==0.26.0
 
 # Web Search - Tavily API [cite: 31-01-2026]
 tavily-python==0.5.0
+
+# Vision Module - Gemini 1.5 Flash [cite: 03-02-2026]
+google-generativeai==0.8.4
