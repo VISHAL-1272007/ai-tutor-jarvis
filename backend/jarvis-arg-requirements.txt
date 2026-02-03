@@ -1,0 +1,30 @@
+# JARVIS ARG v3.0 Requirements
+# Autonomous Reasoning Gateway - All Dependencies
+
+# Core AI/LLM Framework
+langchain==0.1.17
+langchain-community==0.0.38
+langchain-core==0.1.48
+langgraph==0.0.47
+
+# Language Models
+openai>=1.3.0
+langchain-openai>=0.1.0
+
+# Vector Database & Search
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.2
+requests>=2.31.0
+
+# Data Processing
+pydantic>=2.0.0
+pydantic-core>=2.0.0
+
+# Logging & Monitoring
+python-json-logger>=2.0.7
+
+# Security & Cryptography
+cryptography>=41.0.0
+
+# Optional: For enhanced search
+duckduckgo-search>=3.9.0

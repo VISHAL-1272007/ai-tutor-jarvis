@@ -27,64 +27,13 @@
     <meta name="theme-color" content="#667eea">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/4712/4712027.png">
 
-    <!-- Critical Inline Styles (Fallback) -->
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { 
-            background: #121212 !important; 
-            color: #e7e9ea !important; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-            min-height: 100vh;
-        }
-        .sidebar, .sidebar-overlay { display: none !important; }
-        .main-content { 
-            width: 100% !important; 
-            min-height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            background: #121212; 
-        }
-        .header { 
-            width: 100%; 
-            height: 56px; 
-            background: #1a1a1a !important; 
-            border-bottom: 1px solid #333; 
-            display: flex !important; 
-            align-items: center; 
-            padding: 0 24px; 
-            gap: 20px; 
-        }
-        .header-nav { display: flex; gap: 8px; align-items: center; }
-        .nav-link { 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 6px; 
-            padding: 8px 12px; 
-            color: #ccc !important; 
-            font-size: 14px; 
-            font-weight: 500; 
-            text-decoration: none; 
-            border-radius: 6px; 
-        }
-        .nav-link:hover { color: #a78bfa !important; }
-        .header-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-        .chat-container { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px; 
-        }
-    </style>
-
     <!-- Styles -->
-    <link rel="stylesheet" href="global-pro.css?v=20260131">
-    <link rel="stylesheet" href="style-pro.css?v=20260131">
-    <link rel="stylesheet" href="voice-commit.css?v=20260131">
-    <link rel="stylesheet" href="jarvis-welcome.css?v=20260131">
-    <link rel="stylesheet" href="web-search.css?v=20260131">
-    <link rel="stylesheet" href="gemini-mobile.css?v=20260131">
+    <link rel="stylesheet" href="global-pro.css?v=2026">
+    <link rel="stylesheet" href="style-pro.css?v=2026">
+    <link rel="stylesheet" href="voice-commit.css">
+    <link rel="stylesheet" href="jarvis-welcome.css?v=2026">
+    <link rel="stylesheet" href="web-search.css">
+    <link rel="stylesheet" href="gemini-mobile.css?v=2026">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 
@@ -220,11 +169,14 @@
 </head>
 
 <body class="home-page">
-    <!-- White Sidebar -->
+    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h2><i class="fas fa-robot"></i> JARVIS 2026</h2>
-            <span class="plan-badge">FREE</span>
+            <span class="plan-badge" id="planBadge">FREE</span>
+            <button class="sidebar-close-btn" id="sidebarCloseBtn" title="Close sidebar" aria-label="Close sidebar">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
 
         <button class="new-chat-btn" id="newChatBtn">
@@ -243,11 +195,17 @@
         </div>
 
         <div class="sidebar-footer">
+            <button class="sidebar-action-btn" id="syncKnowledgeBtn" style="margin-bottom: 15px; width: 100%; border: 1px solid rgba(102, 126, 234, 0.3); background: rgba(102, 126, 234, 0.1); color: #fff; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;" title="Update AI Knowledge with latest 2026 tech news">
+                <i class="fas fa-sync-alt"></i>
+                <span>Sync Knowledge</span>
+            </button>
             <div class="theme-selector-container">
                 <label><i class="fas fa-palette"></i> Theme</label>
-                <select id="themeSelect" class="theme-select">
-                    <option value="neon-light">🌟 Neon Light</option>
-                    <option value="dark">🌙 Dark Mode</option>
+                <select id="themeSelect" class="theme-select" title="Select theme" aria-label="Select theme">
+                    <option value="default">🌙 Dark (Default)</option>
+                    <option value="light">☀️ Light Mode</option>
+                    <option value="chatgpt-pro">💎 ChatGPT Style</option>
+                    <option value="2026-neon">🎆 2026 Neon</option>
                 </select>
             </div>
             <button class="sidebar-account-btn" id="sidebarAccountBtn">
@@ -257,26 +215,34 @@
         </div>
     </aside>
 
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Main Content -->
     <main class="main-content">
-        <!-- Simple Purple Header -->
+        <!-- Header -->
         <header class="header">
-            <nav class="header-nav">
-                <a href="index.html" class="nav-link"><i class="fas fa-home"></i> Home</a>
-                <a href="project-generator.html" class="nav-link"><i class="fas fa-rocket"></i> Generate</a>
-                <a href="course-generator.html" class="nav-link"><i class="fas fa-wand-magic-sparkles"></i> Course Generator</a>
-                <a href="ai-tools.html" class="nav-link"><i class="fas fa-tools"></i> Study</a>
-                <a href="perplexity.html" class="nav-link"><i class="fas fa-search"></i> Research</a>
-                <a href="profile.html" class="nav-link"><i class="fas fa-user"></i> Profile</a>
-            </nav>
-            <div class="header-actions">
-                <button class="brain-btn" id="brainBtn" title="Voice Control">
-                    <i class="fas fa-brain"></i>
-                </button>
-                <button class="settings-btn" id="settingsBtn" title="Settings">
-                    <i class="fas fa-cog"></i>
+            <button class="mobile-menu-btn" id="mobileMenuBtn" title="Open menu" aria-label="Open menu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="header-center">
+                <button class="brain-btn" id="brainBtn" title="Voice Control (Ctrl+K)" aria-label="Activate voice control">
+                    <i class="fas fa-brain header-brain-icon"></i>
                 </button>
             </div>
+
+            <nav class="header-actions">
+                <a href="courses.html" class="header-link header-btn"><i class="fas fa-graduation-cap"></i><span>Learn</span></a>
+                <a href="playground.html" class="header-link header-btn"><i class="fas fa-code"></i><span>Playground</span></a>
+                <a href="project-generator.html" class="header-link header-btn"><i class="fas fa-rocket"></i><span>Projects</span></a>
+                <a href="course-generator.html" class="header-link header-btn"><i class="fas fa-wand-magic-sparkles"></i><span>Generators</span></a>
+                <a href="ai-tools.html" class="header-link header-btn"><i class="fas fa-tools"></i><span>Study Tools</span></a>
+                <a href="perplexity.html" class="header-link header-btn" style="background: linear-gradient(135deg, #60a5fa, #a78bfa); border: none;"><i class="fas fa-search"></i><span>Search</span></a>
+                <button class="settings-btn" id="settingsBtn" title="Settings" aria-label="Open settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </nav>
         </header>
 
         <!-- Mode Selector -->
