@@ -13,8 +13,9 @@ if (!DEBUG_MODE) {
 }
 
 // ===== Configuration =====
-// Backend API URL - Hugging Face JARVIS endpoint (FIXED CORS)
-const API_URL = 'https://aijarvis2025-jarvis1.hf.space/ask'; // Hugging Face JARVIS endpoint
+// Backend API URL - Dynamic from config.js
+const BACKEND_URL = getBackendURL();
+const API_URL = `${BACKEND_URL}/ask`; // Use Render backend
 console.log('✅ [CONFIG] API_URL set to:', API_URL);
 const MAX_CHARS = 2000;
 let isBackendReady = false;
@@ -1314,7 +1315,7 @@ async function sendMessage() {
             headers: { 
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ query: question }), // Hugging Face endpoint expects 'query' field
+            body: JSON.stringify({ question: question }), // Backend expects 'question' field
             signal: controller.signal
         });
 
