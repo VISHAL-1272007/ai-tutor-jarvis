@@ -23,3 +23,6 @@ psutil==5.9.8
 
 # Voice Module - Edge TTS
 edge-tts==6.1.12
+
+# DuckDuckGo Search
+duckduckgo_search==6.3.5

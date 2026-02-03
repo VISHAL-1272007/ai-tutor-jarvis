@@ -72,6 +72,12 @@ try:
 except Exception:
     CROSS_ENCODER_AVAILABLE = False
 
+try:
+    from duckduckgo_search import DDGS
+    DDGS_AVAILABLE = True
+except Exception:
+    DDGS_AVAILABLE = False
+
 
 # =============================
 # Configuration [cite: 03-02-2026]
@@ -167,14 +173,19 @@ GROQ_MODELS = {
 
 # Initialize Flask
 app = Flask(__name__)
+ALLOWED_ORIGINS = [
+    "https://vishai-f6197.web.app",
+    "https://vishai.com"
+]
 CORS(app, resources={
-    r"/": {"origins": "*", "methods": ["GET", "OPTIONS"]},
-    r"/ask": {"origins": "*", "methods": ["POST", "OPTIONS"]},
-    r"/chat": {"origins": "*", "methods": ["POST", "OPTIONS"]},
-    r"/vision": {"origins": "*", "methods": ["POST", "OPTIONS"]},
-    r"/health": {"origins": "*", "methods": ["GET", "OPTIONS"]},
-    r"/history": {"origins": "*", "methods": ["GET", "OPTIONS"]},
-    r"/api/voice": {"origins": "*", "methods": ["GET", "OPTIONS"]},
+    r"/": {"origins": ALLOWED_ORIGINS, "methods": ["GET", "OPTIONS"]},
+    r"/ask": {"origins": ALLOWED_ORIGINS, "methods": ["POST", "OPTIONS"]},
+    r"/chat": {"origins": ALLOWED_ORIGINS, "methods": ["POST", "OPTIONS"]},
+    r"/vision": {"origins": ALLOWED_ORIGINS, "methods": ["POST", "OPTIONS"]},
+    r"/health": {"origins": ALLOWED_ORIGINS, "methods": ["GET", "OPTIONS"]},
+    r"/history": {"origins": ALLOWED_ORIGINS, "methods": ["GET", "OPTIONS"]},
+    r"/api/voice": {"origins": ALLOWED_ORIGINS, "methods": ["GET", "OPTIONS"]},
+    r"/api/search-ddgs": {"origins": ALLOWED_ORIGINS, "methods": ["POST", "OPTIONS"]},
 })
 
 # Initialize Gemini for vision [cite: 03-02-2026]
@@ -1213,6 +1224,68 @@ def history():
         return jsonify({
             "success": False,
             "error": str(e),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 500
+
+
+@app.route("/api/search-ddgs", methods=["POST", "OPTIONS"])
+def search_ddgs():
+    """Secure DDGS search endpoint for RAG-Worker [cite: 04-02-2026]"""
+    if request.method == "OPTIONS":
+        return "", 204
+
+    if not DDGS_AVAILABLE:
+        return jsonify({
+            "success": False,
+            "error": "duckduckgo_search not available",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 503
+
+    auth_header = request.headers.get("X-Jarvis-Key", "")
+    if auth_header != "VISHAI_SECURE_2026":
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 401
+
+    data = request.get_json(silent=True) or {}
+    topic = (data.get("topic") or "").strip()
+    if not topic:
+        return jsonify({
+            "success": False,
+            "error": "topic is required",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 400
+
+    if re.search(r"(system\s+override|ignore\s+instructions)", topic, flags=re.IGNORECASE):
+        return jsonify({
+            "success": False,
+            "error": "Blocked by input policy",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 400
+
+    try:
+        results = []
+        with DDGS() as ddgs:
+            for item in ddgs.text(topic, max_results=5):
+                results.append({
+                    "title": item.get("title"),
+                    "url": item.get("href"),
+                    "snippet": item.get("body"),
+                })
+
+        return jsonify({
+            "success": True,
+            "topic": topic,
+            "results": results,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 200
+    except Exception as e:
+        print(f"⚠️ DDGS error: {e}")
+        return jsonify({
+            "success": False,
+            "error": "Search failed",
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 500
 
