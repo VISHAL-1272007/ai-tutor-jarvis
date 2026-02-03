@@ -9,5 +9,5 @@ gunicorn==23.0.0
 # HTTP Client for Groq API
 httpx==0.26.0
 
-# Web Search
-duckduckgo_search==6.2.13
+# Web Search - Tavily API [cite: 31-01-2026]
+tavily-python==0.5.0

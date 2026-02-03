@@ -30,10 +30,10 @@ except Exception:
     GROQ_AVAILABLE = False
 
 try:
-    from duckduckgo_search import DDGS
-    DDGS_AVAILABLE = True
+    from tavily import TavilyClient
+    TAVILY_AVAILABLE = True
 except Exception:
-    DDGS_AVAILABLE = False
+    TAVILY_AVAILABLE = False
 
 
 # =============================
@@ -41,6 +41,7 @@ except Exception:
 # =============================
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 PORT = int(os.environ.get("PORT", 10000))
 
 TODAY_DATE_STR = "February 3, 2026"
@@ -87,6 +88,7 @@ def is_identity_question(text: str) -> bool:
 
 
 def is_time_sensitive_query(text: str) -> bool:
+    """Detect queries needing live search [cite: 31-01-2026]"""
     text = text.strip().lower()
     keywords = [
         "today",
@@ -100,7 +102,14 @@ def is_time_sensitive_query(text: str) -> bool:
         "this morning",
         "this evening",
     ]
-    return any(k in text for k in keywords)
+    # Also trigger on who/what questions [cite: 31-01-2026]
+    question_patterns = [
+        r"^who is",
+        r"^what is",
+        r"^who are",
+        r"^what are",
+    ]
+    return any(k in text for k in keywords) or any(re.match(p, text) for p in question_patterns)
 
 
 def rewrite_time_sensitive_query(text: str) -> str:
@@ -113,45 +122,53 @@ def rewrite_time_sensitive_query(text: str) -> str:
     return text
 
 
-def ddg_search(query: str, max_results: int = 6) -> List[Dict]:
-    """Direct search integration [cite: 31-01-2026]"""
-    if not DDGS_AVAILABLE:
-        print("⚠️ DDGS not available")
+def tavily_search(query: str, max_results: int = 3) -> List[Dict]:
+    """Tavily advanced search integration [cite: 31-01-2026]"""
+    if not TAVILY_AVAILABLE or not TAVILY_API_KEY:
+        print("⚠️ Tavily not available")
         return []
     try:
         rewritten = rewrite_time_sensitive_query(query)
-        print(f"🔍 Searching: {rewritten}")
-        with DDGS() as ddgs:
-            results = ddgs.text(rewritten, max_results=max_results)
-            found = list(results)
-            print(f"✅ Found {len(found)} results")
-            return found
+        print(f"🔍 Tavily Advanced Search: {rewritten}")
+        
+        tavily = TavilyClient(api_key=TAVILY_API_KEY)
+        response = tavily.search(
+            query=rewritten,
+            search_depth="advanced",
+            max_results=max_results
+        )
+        
+        results = response.get("results", [])
+        print(f"✅ Found {len(results)} results")
+        return results
     except Exception as e:
-        print(f"⚠️ DDGS error: {e}")
+        print(f"⚠️ Tavily error: {e}")
         return []
 
 
 def format_search_context(results: List[Dict]) -> str:
-    """Context injection with Feb 3 2026 header [cite: 03-02-2026]"""
+    """Format Tavily results with content and URLs [cite: 03-02-2026]"""
     if not results:
         return ""
-    lines = [f"Current Context ({TODAY_DATE_STR}):"]
+    lines = [f"Current Web Context ({TODAY_DATE_STR}):"]
     for idx, item in enumerate(results, start=1):
         title = item.get("title") or "Untitled"
-        snippet = item.get("body") or ""
-        href = item.get("href") or ""
-        lines.append(f"\n{idx}. {title}\n{snippet}\nSource: {href}")
+        content = item.get("content") or ""
+        url = item.get("url") or ""
+        lines.append(f"\n{idx}. {title}\nContent: {content}\nURL: {url}")
     return "\n".join(lines)
 
 
 def ensure_jarvis_response(answer: str, has_search: bool) -> str:
-    """Remove 'Based on this...' and add JARVIS prefix [cite: 31-01-2026]"""
+    """JARVIS research-style response with citations [cite: 03-02-2026]"""
     cleaned = re.sub(r"^(Based on (this|the).*?:|According to.*?:)\s*", "", answer, flags=re.IGNORECASE).strip()
     
     if has_search:
-        prefix = f"Sir, I have retrieved the latest updates for you as of {TODAY_DATE_STR}:"
+        # Check if JARVIS prefix already exists
         if cleaned.lower().startswith("sir,"):
             return cleaned
+        # Add comprehensive research prefix [cite: 03-02-2026]
+        prefix = f"Sir, after scanning the latest live data as of {TODAY_DATE_STR}:"
         return f"{prefix}\n\n{cleaned}"
     return cleaned
 
@@ -171,11 +188,18 @@ def call_groq(user_query: str, model: str = "jarvis60", search_context: str = ""
     groq_model = GROQ_MODELS.get(model, "llama3-8b-8192")
     
     try:
-        # Direct context injection [cite: 03-02-2026]
-        system_content = "You are J.A.R.V.I.S, Tony Stark's AI assistant. Be concise, accurate, and never say 'Based on this' or 'According to'."
+        # JARVIS research persona system prompt [cite: 03-02-2026]
+        system_content = (
+            "You are J.A.R.V.I.S, Tony Stark's AI assistant. "
+            "When web context is provided, you MUST:"
+            "\n1. Provide a comprehensive, in-depth answer using ONLY the provided context"
+            "\n2. Never say 'Based on this' or 'According to' - speak naturally"
+            "\n3. At the end, list sources as: 'Sources:\n- [Title]'"
+            "\n4. Be thorough and detailed like Gemini or Perplexity"
+        )
         
         if search_context:
-            system_content += f"\n\n{search_context}\n\nUse these facts to answer the user's question."
+            system_content += f"\n\n{search_context}\n\nAnswer the user's question comprehensively using these facts."
         
         client = httpx.Client()
         response = client.post(
@@ -234,18 +258,21 @@ def handle_query(user_query: str, model: str = "jarvis60") -> Dict:
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
 
-    # Direct search integration for time-sensitive queries [cite: 31-01-2026]
+    # Tavily search integration with fallback [cite: 03-02-2026]
     search_context = ""
     time_sensitive = is_time_sensitive_query(user_query)
     
     if time_sensitive:
         print(f"🔍 Time-sensitive query detected: {user_query}")
-        web_results = ddg_search(user_query, max_results=6)
-        if web_results:
-            search_context = format_search_context(web_results)
-            print(f"✅ Context prepared with {len(web_results)} results")
-        else:
-            print("⚠️ No search results found")
+        try:
+            web_results = tavily_search(user_query, max_results=3)
+            if web_results:
+                search_context = format_search_context(web_results)
+                print(f"✅ Context prepared with {len(web_results)} results")
+            else:
+                print("⚠️ No search results found, using internal knowledge")
+        except Exception as e:
+            print(f"⚠️ Search failed: {e}, falling back to internal knowledge")
 
     # Call Groq with injected context [cite: 03-02-2026]
     answer = call_groq(user_query, model, search_context=search_context)
