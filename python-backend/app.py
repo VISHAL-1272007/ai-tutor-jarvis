@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from urllib.parse import quote
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -147,28 +148,27 @@ def tavily_search(query: str, max_results: int = 3) -> List[Dict]:
 
 
 def format_search_context(results: List[Dict]) -> str:
-    """Format Tavily results with content and URLs [cite: 03-02-2026]"""
+    """Format Tavily results with content and Google search URLs [cite: 03-02-2026]"""
     if not results:
         return ""
-    lines = [f"Current Web Context ({TODAY_DATE_STR}):"]
+    lines = ["Current Web Context:"]
     for idx, item in enumerate(results, start=1):
         title = item.get("title") or "Untitled"
         content = item.get("content") or ""
         url = item.get("url") or ""
-        lines.append(f"\n{idx}. {title}\nContent: {content}\nURL: {url}")
+        google_link = f"https://www.google.com/search?q={quote(url)}" if url else ""
+        lines.append(f"\n{idx}. {title}\nContent: {content}\nURL: {google_link}")
     return "\n".join(lines)
 
 
 def ensure_jarvis_response(answer: str, has_search: bool) -> str:
     """JARVIS research-style response with citations [cite: 03-02-2026]"""
     cleaned = re.sub(r"^(Based on (this|the).*?:|According to.*?:)\s*", "", answer, flags=re.IGNORECASE).strip()
-    
+
     if has_search:
-        # Check if JARVIS prefix already exists
-        if cleaned.lower().startswith("sir,"):
+        if cleaned.lower().startswith("sir, after scanning the latest live data"):
             return cleaned
-        # Add comprehensive research prefix [cite: 03-02-2026]
-        prefix = f"Sir, after scanning the latest live data as of {TODAY_DATE_STR}:"
+        prefix = "Sir, after scanning the latest live data..."
         return f"{prefix}\n\n{cleaned}"
     return cleaned
 
@@ -192,10 +192,11 @@ def call_groq(user_query: str, model: str = "jarvis60", search_context: str = ""
         system_content = (
             "You are J.A.R.V.I.S, Tony Stark's AI assistant. "
             "When web context is provided, you MUST:"
-            "\n1. Provide a comprehensive, in-depth answer using ONLY the provided context"
-            "\n2. Never say 'Based on this' or 'According to' - speak naturally"
-            "\n3. At the end, list sources as: 'Sources:\n- [Title]'"
-            "\n4. Be thorough and detailed like Gemini or Perplexity"
+            "\n1. Start with: 'Sir, after scanning the latest live data...'"
+            "\n2. Provide a comprehensive, in-depth answer using ONLY the provided context"
+            "\n3. Never say 'Based on this' or 'According to' - speak naturally"
+            "\n4. At the end, list sources as: 'Sources:\n- [Title]'"
+            "\n5. Be thorough and detailed like Gemini or Perplexity"
         )
         
         if search_context:
