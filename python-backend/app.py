@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional
 from collections import deque
@@ -74,11 +75,56 @@ CORS(app, resources={
     r"/chat": {"origins": "*", "methods": ["POST", "OPTIONS"]},
     r"/vision": {"origins": "*", "methods": ["POST", "OPTIONS"]},
     r"/health": {"origins": "*", "methods": ["GET", "OPTIONS"]},
+    r"/history": {"origins": "*", "methods": ["GET", "OPTIONS"]},
 })
 
 # Initialize Gemini for vision [cite: 03-02-2026]
 if GEMINI_API_KEY and GEMINI_AVAILABLE:
     genai.configure(api_key=GEMINI_API_KEY)
+
+
+# =============================
+# DATABASE SETUP [cite: 03-02-2026]
+# =============================
+
+DB_PATH = "jarvis_chat_history.db"
+
+
+def init_database():
+    """Initialize SQLite database with chat_history table [cite: 03-02-2026]"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+    print("✅ Database initialized: chat_history table ready")
+
+
+def save_message(role: str, content: str):
+    """Modular helper to save messages to database [cite: 03-02-2026]"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO chat_history (role, content) VALUES (?, ?)",
+            (role, content)
+        )
+        conn.commit()
+        conn.close()
+        print(f"💾 Saved {role} message to database")
+    except Exception as e:
+        print(f"⚠️ Database save error: {e}")
+
+
+# Initialize database on startup
+init_database()
 
 
 # =============================
@@ -438,7 +484,7 @@ def ask():
 
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    """Chat endpoint with memory management [cite: 03-02-2026]"""
+    """Chat endpoint with memory management and persistent storage [cite: 03-02-2026]"""
     if request.method == "OPTIONS":
         return "", 204
     
@@ -461,8 +507,59 @@ def chat():
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 400
     
+    # Save user message to database [cite: 03-02-2026]
+    save_message("user", user_query)
+    
+    # Get AI response
     result = handle_query_with_moe(user_query, user_id)
+    
+    # Save assistant message to database [cite: 03-02-2026]
+    if result.get("success") and result.get("answer"):
+        save_message("assistant", result["answer"])
+    
     return jsonify(result), 200
+
+
+@app.route("/history", methods=["GET", "OPTIONS"])
+def history():
+    """Retrieve last 20 messages from chat history [cite: 03-02-2026]"""
+    if request.method == "OPTIONS":
+        return "", 204
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+        cursor = conn.cursor()
+        
+        # Get last 20 messages ordered by timestamp DESC
+        cursor.execute("""
+            SELECT id, role, content, timestamp
+            FROM chat_history
+            ORDER BY id DESC
+            LIMIT 20
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Convert Row objects to dictionaries
+        messages = [dict(row) for row in rows]
+        messages.reverse()  # Oldest first for chronological order
+        
+        return jsonify({
+            "success": True,
+            "messages": messages,
+            "count": len(messages),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 200
+    
+    except Exception as e:
+        print(f"⚠️ History retrieval error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 500
 
 
 @app.route("/vision", methods=["POST", "OPTIONS"])
