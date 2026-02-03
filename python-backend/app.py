@@ -53,6 +53,8 @@ except Exception:
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# Render kudukkura PORT-ah use pannaṇum, illai-nā default-aa 10000
 PORT = int(os.environ.get("PORT", 10000))
 
 TODAY_DATE_STR = "February 3, 2026"
@@ -626,11 +628,13 @@ if __name__ == "__main__":
     print("=" * 80)
     print("🤖 J.A.R.V.I.S 2026 Backend - Gemini-Like Architecture")
     print("=" * 80)
-    print(f"🚀 Server starting on port {PORT}...")
-    print(f"📦 MoE Router: Active")
+    print(f"� MoE Router: Active")
     print(f"🔍 Tavily Grounding: {'Active' if TAVILY_AVAILABLE else 'Inactive'}")
     print(f"💾 Memory Management: Active (10 exchanges per user)")
+    print(f"💾 SQLite Database: jarvis_chat_history.db")
     print(f"👁️  Vision Module: {'Active' if GEMINI_AVAILABLE else 'Inactive'}")
     print(f"✅ Groq Models: Available" if GROQ_AVAILABLE else "❌ Groq: Unavailable")
+    print("=" * 80)
+    print(f"🚀 J.A.R.V.I.S is live on port {PORT}")
     print("=" * 80)
     app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
