@@ -1,152 +1,194 @@
 """
-FREE AI API using Hugging Face Inference API
-Completely free hosting on Hugging Face Spaces
-No model download needed - uses HF's free inference!
+JARVIS AI API - Powered by Autonomous Reasoning Gateway
+Hosted on Hugging Face Spaces with zero-failure resilience
+Supports identity, logic, and factual reasoning with web search fallback
 """
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
+import sys
 import os
+import json
 
 app = Flask(__name__)
 CORS(app)
 
-# Use Hugging Face FREE Inference API - no model download needed!
-print("🚀 Using Hugging Face FREE Inference API...")
-# Using Microsoft's DialoGPT - works WITHOUT token!
-# Updated to new router URL (api-inference.huggingface.co is deprecated)
-HF_API_URL = "https://router.huggingface.co/models/microsoft/DialoGPT-medium"
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
+# Import JARVIS standalone agent
+try:
+    sys.path.insert(0, '/tmp/jarvis')
+    from jarvis_standalone import JARVISResilientAgent, KnowledgeSource
+    print("🤖 JARVIS Resilient Agent loaded successfully")
+    agent = JARVISResilientAgent()
+    JARVIS_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️ JARVIS not available: {e}")
+    JARVIS_AVAILABLE = False
+    agent = None
 
-model_name = "microsoft/DialoGPT-medium"
-print(f"✅ Using model: {model_name}")
-print(f"🆓 FREE Inference API - No token required!")
+print("✅ JARVIS API initialized on Hugging Face Spaces")
 
-def call_hf_inference(prompt, max_tokens=500):
-    """Call Hugging Face's FREE Inference API"""
-    headers = {"Content-Type": "application/json"}
-    if HF_TOKEN:
-        headers["Authorization"] = f"Bearer {HF_TOKEN}"
-    
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": max_tokens,
-            "temperature": 0.7,
-            "do_sample": True
+def process_query(query: str) -> dict:
+    """Process query through JARVIS with zero-failure logic"""
+    if not JARVIS_AVAILABLE or agent is None:
+        return {
+            'success': False,
+            'answer': 'AI service temporarily unavailable. Please try again.',
+            'source': 'error'
         }
-    }
     
-    response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=60)
-    
-    if response.status_code == 200:
-        result = response.json()
-        if isinstance(result, list) and len(result) > 0:
-            text = result[0].get("generated_text", "")
-            # Clean up response
-            if prompt in text:
-                text = text.replace(prompt, "").strip()
-            return text if text else "I'm here to help! What would you like to know?"
-        return "I'm here to help! What would you like to know?"
-    elif response.status_code == 503:
-        return "The AI model is warming up. Please try again in 20 seconds."
-    else:
-        raise Exception(f"API Error: {response.status_code} - {response.text}")
+    try:
+        response = agent.process_query(query)
+        return {
+            'success': True,
+            'answer': response.answer,
+            'source': response.source.value,
+            'used_search': response.used_search,
+            'resources': response.resources,
+            'confidence': response.confidence
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'answer': 'Error processing query. Please try again.',
+            'error': str(e),
+            'source': 'error'
+        }
 
 @app.route('/')
 def home():
     """Health check endpoint"""
     return jsonify({
         'status': 'online',
-        'service': 'AI Tutor - Free Self-Hosted API',
-        'model': model_name,
-        'type': 'Hugging Face Inference API (FREE)',
+        'service': 'JARVIS AI - Autonomous Reasoning Gateway',
+        'version': '4.0',
+        'type': 'Zero-Failure Resilient Agent',
+        'jarvis_available': JARVIS_AVAILABLE,
         'endpoints': {
-            '/chat': 'POST - Chat with AI',
-            '/ask': 'POST - OpenAI-compatible endpoint',
-            '/health': 'GET - Health check'
+            '/ask': 'POST - Process query with JARVIS',
+            '/chat': 'POST - Chat with AI (alias for /ask)',
+            '/health': 'GET - Detailed health status'
         }
     })
 
 @app.route('/health')
 def health():
     """Detailed health check"""
-    return jsonify({
-        'status': 'healthy',
-        'model_loaded': True,
-        'gpu': True,
-        'memory': 'HF Cloud',
-        'model': model_name
-    })
-
-@app.route('/chat', methods=['POST'])
-def chat():
-    """Main chat endpoint"""
     try:
-        data = request.json
-        user_message = data.get('message', '')
-        
-        if not user_message:
-            return jsonify({'error': 'No message provided'}), 400
-        
-        print(f"💬 Question: {user_message[:100]}...")
-        
-        # Simple prompt for DialoGPT
-        prompt = user_message
-        
-        response = call_hf_inference(prompt)
-        print(f"✅ Response: {len(response)} chars")
-        
-        return jsonify({
-            'success': True,
-            'response': response.strip(),
-            'model': model_name,
-            'gpu_used': True
-        })
-        
+        if JARVIS_AVAILABLE and agent:
+            stats = agent.get_statistics()
+            return jsonify({
+                'status': 'healthy',
+                'jarvis_loaded': True,
+                'version': '4.0',
+                'features': {
+                    'zero_failure': True,
+                    'reasoning_router': True,
+                    'security_shield': True,
+                    'web_search': stats.get('search_available', False)
+                },
+                'statistics': stats
+            })
+        else:
+            return jsonify({
+                'status': 'degraded',
+                'jarvis_loaded': False,
+                'message': 'JARVIS not available - using fallback'
+            }), 503
     except Exception as e:
-        print(f"❌ Error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    """OpenAI-compatible endpoint"""
+    """Main JARVIS endpoint - process query"""
     try:
-        data = request.json
-        messages = data.get('messages', [])
+        data = request.json or {}
+        query = data.get('query') or data.get('message') or ''
         
-        if not messages:
-            return jsonify({'error': 'No messages provided'}), 400
+        if not query:
+            return jsonify({
+                'success': False,
+                'answer': 'Please provide a query',
+                'source': 'error'
+            }), 400
         
-        user_message = ""
-        for msg in reversed(messages):
-            if msg.get('role') == 'user':
-                user_message = msg.get('content', '')
-                break
+        print(f"💬 Query: {query[:100]}...")
         
-        if not user_message:
-            return jsonify({'error': 'No user message found'}), 400
+        result = process_query(query)
         
-        print(f"💬 Ask: {user_message[:100]}...")
+        print(f"✅ Response: {result['source']}")
         
-        # Simple prompt for DialoGPT
-        prompt = user_message
-        
-        response = call_hf_inference(prompt)
-        print(f"✅ Response: {len(response)} chars")
-        
-        return jsonify({
-            'success': True,
-            'response': response.strip(),
-            'model': model_name
-        })
+        return jsonify(result)
         
     except Exception as e:
         print(f"❌ Error: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'answer': 'Error processing query',
+            'error': str(e),
+            'source': 'error'
+        }), 500
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    """Chat endpoint (alias for /ask)"""
+    try:
+        data = request.json or {}
+        
+        # Support both OpenAI and simple formats
+        if 'messages' in data:
+            messages = data.get('messages', [])
+            if messages:
+                query = messages[-1].get('content', '')
+            else:
+                query = ''
+        else:
+            query = data.get('message') or data.get('query') or ''
+        
+        if not query:
+            return jsonify({
+                'success': False,
+                'answer': 'Please provide a message',
+                'source': 'error'
+            }), 400
+        
+        print(f"💬 Chat: {query[:100]}...")
+        
+        result = process_query(query)
+        
+        print(f"✅ Response: {result['source']}")
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return jsonify({
+            'success': False,
+            'answer': 'Error processing message',
+            'error': str(e),
+            'source': 'error'
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 7860))
-    print(f"🌐 Starting server on port {port}...")
+    print(f"\n{'='*70}")
+    print("🚀 JARVIS API - Powered by HuggingFace Spaces")
+    print(f"{'='*70}")
+    print(f"🌐 Server starting on port {port}...")
+    print(f"📍 Local: http://localhost:{port}")
+    print(f"📍 HuggingFace Space: https://huggingface.co/spaces/[username]/[space-name]")
+    print(f"\n✨ Features:")
+    print(f"   ✅ Zero-Failure Logic (never crashes)")
+    print(f"   ✅ Reasoning Router (smart query classification)")
+    print(f"   ✅ Cybersecurity Shield (hard-coded protection)")
+    print(f"   ✅ No Link Spam (clean responses)")
+    print(f"   ✅ Error Handling (all wrapped in try-except)")
+    print(f"\n📚 API Endpoints:")
+    print(f"   POST /ask  - Process query with JARVIS")
+    print(f"   POST /chat - Chat endpoint (alias)")
+    print(f"   GET  /health - Health status")
+    print(f"   GET  / - Service info")
+    print(f"{'='*70}\n")
     app.run(host='0.0.0.0', port=port, debug=False)
