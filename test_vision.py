@@ -32,8 +32,12 @@ def test_vision(image_path: str, prompt: str = "Analyze this image in detail."):
     
     try:
         with open(image_path, "rb") as img_file:
-            files = {"file": img_file}
+            files = {"file": (Path(image_path).name, img_file, "image/png")}
             data = {"prompt": prompt}
+            
+            print(f"📤 Sending to: {VISION_ENDPOINT}")
+            print(f"   File: {Path(image_path).name}")
+            print(f"   Size: {Path(image_path).stat().st_size} bytes")
             
             response = requests.post(
                 VISION_ENDPOINT,
