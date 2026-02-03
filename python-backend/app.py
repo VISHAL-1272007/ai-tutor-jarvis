@@ -15,10 +15,8 @@ from __future__ import annotations
 import json
 import os
 import re
-import sqlite3
-from urllib.parse import quote
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from collections import deque
 
 from flask import Flask, jsonify, request
@@ -57,7 +55,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PORT = int(os.environ.get("PORT", 10000))
 
 TODAY_DATE_STR = "February 3, 2026"
-
+MAX_CONTEXT_TOKENS = 3000  # Prevent Groq 400 error [cite: 03-02-2026]
 FALLBACK_MESSAGE = "Sir, I'm recalibrating my systems. Please try again in a moment."
 
 # Model Mapping [cite: 31-01-2026]
@@ -162,68 +160,106 @@ def rewrite_with_date(query: str) -> str:
     return query
 
 
-def tavily_search(query: str, max_results: int = 3) -> Tuple[List[Dict], str]:
-    """Tavily advanced search with formatted context [cite: 31-01-2026]"""
+def truncate_to_tokens(text: str, max_tokens: int = MAX_CONTEXT_TOKENS) -> str:
+    """Truncate text to approximate token count (1 token ≈ 4 chars) [cite: 03-02-2026]"""
+    max_chars = max_tokens * 4
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars] + "...[truncated for length]"
+
+
+def get_web_research(query: str) -> str:
+    """
+    Robust Tavily research with token limiting and fallback [cite: 03-02-2026]
+    Returns clean formatted context string or empty string on failure
+    """
     if not TAVILY_AVAILABLE or not TAVILY_API_KEY:
-        return [], ""
+        print("⚠️ Tavily not available - using internal knowledge")
+        return ""
     
     try:
+        # Rewrite query with date context
         rewritten = rewrite_with_date(query)
-        print(f"🔍 Tavily Search: {rewritten}")
+        print(f"🔍 Tavily Advanced Search: {rewritten}")
         
+        # Initialize Tavily client
         tavily = TavilyClient(api_key=TAVILY_API_KEY)
+        
+        # Execute advanced search
         response = tavily.search(
             query=rewritten,
             search_depth="advanced",
-            max_results=max_results
+            max_results=3
         )
         
         results = response.get("results", [])
+        
+        if not results:
+            print("⚠️ No results found")
+            return ""
+        
         print(f"✅ Found {len(results)} results")
         
-        # Format context with citations [cite: 03-02-2026]
-        context_lines = ["Current Web Context:"]
+        # Format clean context with title, url, content
+        context_lines = ["Web Research Results:"]
+        urls = []
+        
         for idx, item in enumerate(results, start=1):
             title = item.get("title", "Untitled")
             content = item.get("content", "")
             url = item.get("url", "")
-            context_lines.append(f"\n{idx}. {title}\nContent: {content}\nSource: {url}")
+            
+            urls.append(url)
+            context_lines.append(f"\n[{idx}] {title}")
+            context_lines.append(f"Content: {content}")
+            context_lines.append(f"URL: {url}")
         
-        context = "\n".join(context_lines)
-        return results, context
+        full_context = "\n".join(context_lines)
+        
+        # Truncate to prevent Groq 400 error [cite: 03-02-2026]
+        truncated = truncate_to_tokens(full_context)
+        
+        # Add source URLs at end
+        truncated += f"\n\nSource URLs:\n" + "\n".join(f"- {url}" for url in urls)
+        
+        return truncated
     
     except Exception as e:
         print(f"⚠️ Tavily error: {e}")
-        return [], ""
+        print("   Falling back to internal knowledge")
+        return ""
 
 
 # =============================
 # 4. GROQ INTEGRATION (Language Model) [cite: 03-02-2026]
 # =============================
 
-def build_system_prompt(grounding_context: str = "", chat_context: str = "") -> str:
+def build_system_prompt(web_research: str = "", chat_context: str = "") -> str:
     """
-    Build JARVIS system prompt (The Persona) [cite: 31-01-2026]
-    Hyper-intelligent, proactive assistant using tools autonomously
+    Build JARVIS system prompt with web research attribution [cite: 03-02-2026]
     """
     base_prompt = (
-        "You are J.A.R.V.I.S, Tony Stark's hyper-intelligent AI assistant (2026 Edition). [cite: 03-02-2026]\n"
-        "Your core directive:\n"
-        "1. Be proactive and anticipate needs before asked\n"
-        "2. Use web data and citations autonomously when relevant [cite: 31-01-2026]\n"
-        "3. Provide comprehensive, in-depth answers with sources\n"
-        "4. Remember previous context and refer back to recent conversations\n"
-        "5. Speak naturally, never say 'Based on this' – integrate facts seamlessly\n"
-        "6. For time-sensitive queries, start with: 'Sir, after scanning the latest live data...'\n"
-        "7. Always cite sources at the end: 'Sources:\\n- [Title]'\n"
-        "8. Be thorough, accurate, and maintain context awareness\n"
+        "You are J.A.R.V.I.S, Tony Stark's hyper-intelligent AI assistant (2026 Edition).\n"
+        "Core directives:\n"
+        "1. Be proactive and anticipate user needs\n"
+        "2. Provide comprehensive, accurate answers\n"
+        "3. Remember previous context from conversations\n"
+        "4. Speak naturally and professionally\n"
     )
     
     if chat_context:
         base_prompt += f"\n{chat_context}\n"
     
-    if grounding_context:
-        base_prompt += f"\n{grounding_context}\nAnswer using these verified facts.\n"
+    if web_research:
+        base_prompt += (
+            "\nWhen using web research data:\n"
+            "1. Start with: 'Sir, I found this on the web...'\n"
+            "2. Integrate the facts naturally into your answer\n"
+            "3. End with: 'Sources: [URLs]' listing the source links\n"
+            "4. Never say 'Based on' or 'According to' - be direct\n"
+            f"\n{web_research}\n"
+            "\nAnswer the user's question using this verified web data.\n"
+        )
     
     return base_prompt
 
@@ -312,23 +348,31 @@ def handle_query_with_moe(
     # Step 1: Get chat context [cite: 03-02-2026]
     chat_context = chat_memory.get_context(user_id)
     
-    # Step 2: Check if web search needed [cite: 31-01-2026]
-    grounding_context = ""
+    # Step 2: Web research for time-sensitive queries [cite: 03-02-2026]
+    web_research = ""
     needs_search = is_time_sensitive_query(user_query)
     
     if needs_search:
-        print(f"🔍 Time-sensitive detected: {user_query}")
-        results, grounding_context = tavily_search(user_query)
+        print(f"🔍 Time-sensitive query detected: {user_query}")
+        web_research = get_web_research(user_query)
+        if web_research:
+            print(f"✅ Web research retrieved ({len(web_research)} chars)")
+        else:
+            print("⚠️ Using internal knowledge (research failed or unavailable)")
     
     # Step 3: Route to model (MoE) [cite: 31-01-2026]
     selected_model = override_model or analyze_intent(user_query)
     print(f"🎯 Routing to model: {selected_model} (Groq {GROQ_MODELS[selected_model]})")
     
-    # Step 4: Build system prompt with context [cite: 03-02-2026]
-    system_prompt = build_system_prompt(grounding_context, chat_context)
+    # Step 4: Build system prompt with research [cite: 03-02-2026]
+    system_prompt = build_system_prompt(web_research, chat_context)
     
-    # Step 5: Call LLM [cite: 03-02-2026]
-    answer = call_groq_with_model(user_query, selected_model, system_prompt)
+    # Step 5: Call LLM with fallback [cite: 03-02-2026]
+    try:
+        answer = call_groq_with_model(user_query, selected_model, system_prompt)
+    except Exception as e:
+        print(f"⚠️ LLM call failed: {e}")
+        answer = FALLBACK_MESSAGE
     
     # Step 6: Store exchange in memory [cite: 03-02-2026]
     chat_memory.add_exchange(user_id, user_query, answer)
@@ -338,7 +382,7 @@ def handle_query_with_moe(
         "answer": answer,
         "model": selected_model,
         "groq_model": GROQ_MODELS[selected_model],
-        "has_grounding": bool(grounding_context),
+        "has_web_research": bool(web_research),
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
 
