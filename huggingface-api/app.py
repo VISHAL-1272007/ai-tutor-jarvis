@@ -15,13 +15,13 @@ CORS(app)
 
 # Import JARVIS standalone agent
 try:
-    sys.path.insert(0, '/tmp/jarvis')
     from jarvis_standalone import JARVISResilientAgent, KnowledgeSource
     print("🤖 JARVIS Resilient Agent loaded successfully")
     agent = JARVISResilientAgent()
     JARVIS_AVAILABLE = True
 except Exception as e:
     print(f"⚠️ JARVIS not available: {e}")
+    print(f"   Error details: {type(e).__name__}")
     JARVIS_AVAILABLE = False
     agent = None
 
