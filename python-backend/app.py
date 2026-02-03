@@ -17,7 +17,7 @@ import os
 import re
 import sqlite3
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from collections import deque
 
 from flask import Flask, jsonify, request
@@ -117,22 +117,31 @@ def init_database():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             role TEXT NOT NULL,
             content TEXT NOT NULL,
+            intent TEXT,
+            sentiment TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    # Ensure new columns exist for existing databases
+    cursor.execute("PRAGMA table_info(chat_history)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+    if "intent" not in existing_columns:
+        cursor.execute("ALTER TABLE chat_history ADD COLUMN intent TEXT")
+    if "sentiment" not in existing_columns:
+        cursor.execute("ALTER TABLE chat_history ADD COLUMN sentiment TEXT")
     conn.commit()
     conn.close()
     print("✅ Database initialized: chat_history table ready")
 
 
-def save_message(role: str, content: str):
+def save_message(role: str, content: str, intent: Optional[str] = None, sentiment: Optional[str] = None):
     """Modular helper to save messages to database [cite: 03-02-2026]"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO chat_history (role, content) VALUES (?, ?)",
-            (role, content)
+            "INSERT INTO chat_history (role, content, intent, sentiment) VALUES (?, ?, ?, ?)",
+            (role, content, intent, sentiment)
         )
         conn.commit()
         conn.close()
@@ -352,6 +361,87 @@ def get_pinecone_context(query: str, top_k: int = 3) -> str:
         return ""
 
 
+def analyze_user_context(user_query: str) -> Dict:
+    """Analyze intent, sentiment, and urgency using Gemini 1.5 Flash."""
+    fallback = {"intent": "SEARCH", "sentiment": "NEUTRAL", "urgency": 3}
+    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+        return fallback
+
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        prompt = (
+            "Return JSON only with keys intent, sentiment, urgency.\n"
+            "intent must be one of: CODING, SEARCH, MEMORY, SOCIAL.\n"
+            "sentiment must be one of: POSITIVE, NEGATIVE, NEUTRAL.\n"
+            "urgency must be integer 1-5.\n"
+            f"User message: {user_query}"
+        )
+        response = model.generate_content(
+            prompt,
+            generation_config={"temperature": 0.2}
+        )
+        text = response.text.strip() if hasattr(response, "text") else ""
+        json_match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not json_match:
+            return fallback
+        payload = json.loads(json_match.group(0))
+        intent = str(payload.get("intent", fallback["intent"]).upper())
+        sentiment = str(payload.get("sentiment", fallback["sentiment"]).upper())
+        urgency = int(payload.get("urgency", fallback["urgency"]))
+
+        if intent not in {"CODING", "SEARCH", "MEMORY", "SOCIAL"}:
+            intent = fallback["intent"]
+        if sentiment not in {"POSITIVE", "NEGATIVE", "NEUTRAL"}:
+            sentiment = fallback["sentiment"]
+        urgency = max(1, min(5, urgency))
+
+        return {"intent": intent, "sentiment": sentiment, "urgency": urgency}
+    except Exception as e:
+        print(f"⚠️ Context analysis error: {e}")
+        return fallback
+
+
+def apply_emotional_tone(base_prompt: str, sentiment: str) -> str:
+    """Adjust system prompt tone based on sentiment."""
+    if sentiment == "NEGATIVE":
+        tone = "Be highly empathetic, calm, and solution-oriented."
+    elif sentiment == "POSITIVE":
+        tone = "Be witty, energetic, and celebratory."
+    else:
+        tone = "Maintain a professional, helpful tone."
+    return f"{base_prompt}\n{tone}\n"
+
+
+def build_coding_prompt(sentiment: str) -> str:
+    base_prompt = (
+        "You are J.A.R.V.I.S, an expert debugging and logic assistant.\n"
+        "Focus on clear steps, root-cause analysis, and safe fixes.\n"
+        "Ask for missing details only if essential."
+    )
+    return apply_emotional_tone(base_prompt, sentiment)
+
+
+def call_gemini_social(user_query: str, sentiment: str) -> str:
+    """Use Gemini for social conversation."""
+    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+        return FALLBACK_MESSAGE
+
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        system_prompt = apply_emotional_tone(
+            "You are J.A.R.V.I.S, a friendly and engaging conversational assistant.",
+            sentiment
+        )
+        response = model.generate_content(
+            f"{system_prompt}\nUser: {user_query}\nAssistant:",
+            generation_config={"temperature": 0.7}
+        )
+        return response.text.strip()
+    except Exception as e:
+        print(f"⚠️ Gemini social error: {e}")
+        return FALLBACK_MESSAGE
+
+
 # =============================
 # 4. GROQ INTEGRATION (Language Model) [cite: 03-02-2026]
 # =============================
@@ -389,7 +479,8 @@ def build_system_prompt(web_research: str = "", chat_context: str = "") -> str:
 def build_hybrid_prompt(
     chat_context: str,
     pinecone_context: str,
-    web_context: str
+    web_context: str,
+    sentiment: str
 ) -> str:
     """Prompt for hybrid RAG (Pinecone + Tavily) [cite: 03-02-2026]"""
     base_prompt = (
@@ -398,6 +489,7 @@ def build_hybrid_prompt(
         "ALWAYS start the response with: 'Based on my historical records and today's research...'\n"
         "Be accurate, concise, and cite sources when present.\n"
     )
+    base_prompt = apply_emotional_tone(base_prompt, sentiment)
 
     if chat_context:
         base_prompt += f"\n{chat_context}\n"
@@ -535,7 +627,11 @@ def handle_query_with_moe(
     }
 
 
-def handle_chat_hybrid(user_query: str, user_id: str = "default") -> Dict:
+def handle_chat_hybrid(
+    user_query: str,
+    user_id: str = "default",
+    sentiment: str = "NEUTRAL"
+) -> Dict:
     """Hybrid RAG for /chat: Pinecone + Tavily [cite: 03-02-2026]"""
     chat_context = chat_memory.get_context(user_id)
 
@@ -547,7 +643,7 @@ def handle_chat_hybrid(user_query: str, user_id: str = "default") -> Dict:
     if pinecone_context:
         pinecone_context = truncate_to_tokens(pinecone_context, max_tokens=1500)
 
-    system_prompt = build_hybrid_prompt(chat_context, pinecone_context, web_context)
+    system_prompt = build_hybrid_prompt(chat_context, pinecone_context, web_context, sentiment)
 
     try:
         answer = call_groq_with_model(user_query, "general", system_prompt)
@@ -646,15 +742,49 @@ def chat():
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 400
     
+    # Analyze user context (intent, sentiment, urgency) [cite: 03-02-2026]
+    analysis = analyze_user_context(user_query)
+    intent = analysis.get("intent", "SEARCH")
+    sentiment = analysis.get("sentiment", "NEUTRAL")
+    urgency = analysis.get("urgency", 3)
+
     # Save user message to database [cite: 03-02-2026]
-    save_message("user", user_query)
-    
-    # Get AI response via Hybrid RAG (Pinecone + Tavily)
-    result = handle_chat_hybrid(user_query, user_id)
+    save_message("user", user_query, intent=intent, sentiment=sentiment)
+
+    # Dynamic routing based on intent [cite: 03-02-2026]
+    if intent in {"SEARCH", "MEMORY"}:
+        result = handle_chat_hybrid(user_query, user_id, sentiment)
+    elif intent == "CODING":
+        coding_prompt = build_coding_prompt(sentiment)
+        try:
+            answer = call_groq_with_model(user_query, "general", coding_prompt)
+        except Exception as e:
+            print(f"⚠️ LLM call failed: {e}")
+            answer = FALLBACK_MESSAGE
+        result = {
+            "success": True,
+            "answer": answer,
+            "model": "general",
+            "groq_model": GROQ_MODELS["general"],
+            "has_pinecone": False,
+            "has_web_research": False,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
+    else:  # SOCIAL
+        answer = call_gemini_social(user_query, sentiment)
+        result = {
+            "success": True,
+            "answer": answer,
+            "model": "gemini-1.5-flash",
+            "groq_model": None,
+            "has_pinecone": False,
+            "has_web_research": False,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }
     
     # Save assistant message to database [cite: 03-02-2026]
     if result.get("success") and result.get("answer"):
-        save_message("assistant", result["answer"])
+        save_message("assistant", result["answer"], intent=intent, sentiment=sentiment)
     
     return jsonify(result), 200
 
@@ -672,7 +802,7 @@ def history():
         
         # Get last 20 messages ordered by timestamp DESC
         cursor.execute("""
-            SELECT id, role, content, timestamp
+            SELECT id, role, content, intent, sentiment, timestamp
             FROM chat_history
             ORDER BY id DESC
             LIMIT 20
