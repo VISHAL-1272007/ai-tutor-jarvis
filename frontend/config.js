@@ -28,8 +28,8 @@ export function getBackendURL() {
         // Local development - use localhost backend
         return 'http://localhost:3000';
     } else {
-        // Production - use Render deployment
-        return 'https://ai-tutor-jarvis.onrender.com';
+        // Production - use HuggingFace Spaces deployment
+        return 'https://jarvis-core-backend-vishai.hf.space';
     }
 }
 
