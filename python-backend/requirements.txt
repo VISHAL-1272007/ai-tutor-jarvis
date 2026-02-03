@@ -8,3 +8,6 @@ gunicorn==23.0.0
 
 # HTTP Client for Groq API
 httpx==0.26.0
+
+# Web Search
+duckduckgo_search==6.2.13

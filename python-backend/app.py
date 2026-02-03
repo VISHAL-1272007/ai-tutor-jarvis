@@ -14,10 +14,11 @@ Key Requirements:
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List, Optional
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -28,6 +29,12 @@ try:
 except Exception:
     GROQ_AVAILABLE = False
 
+try:
+    from duckduckgo_search import DDGS
+    DDGS_AVAILABLE = True
+except Exception:
+    DDGS_AVAILABLE = False
+
 
 # =============================
 # Configuration
@@ -35,6 +42,8 @@ except Exception:
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 PORT = int(os.environ.get("PORT", 10000))
+
+TODAY_DATE_STR = "February 3, 2026"
 
 FALLBACK_MESSAGE = "I appreciate your question! I'm currently in internal reasoning mode to maintain stability for this important demonstration. Please try again in a moment."
 
@@ -77,22 +86,97 @@ def is_identity_question(text: str) -> bool:
     return any(re.search(p, text) for p in patterns)
 
 
+def is_time_sensitive_query(text: str) -> bool:
+    text = text.strip().lower()
+    keywords = [
+        "today",
+        "latest",
+        "current",
+        "current events",
+        "breaking",
+        "news",
+        "headline",
+        "right now",
+        "this morning",
+        "this evening",
+    ]
+    return any(k in text for k in keywords)
+
+
+def rewrite_time_sensitive_query(text: str) -> str:
+    """Hardcode Feb 3, 2026 into search queries [cite: 03-02-2026]"""
+    text_lower = text.lower()
+    if "today" in text_lower:
+        text = text.replace("today", f"today {TODAY_DATE_STR}")
+    elif "latest" in text_lower or "current" in text_lower or "news" in text_lower:
+        text = f"{text} {TODAY_DATE_STR}"
+    return text
+
+
+def ddg_search(query: str, max_results: int = 6) -> List[Dict]:
+    """Direct search integration [cite: 31-01-2026]"""
+    if not DDGS_AVAILABLE:
+        print("⚠️ DDGS not available")
+        return []
+    try:
+        rewritten = rewrite_time_sensitive_query(query)
+        print(f"🔍 Searching: {rewritten}")
+        with DDGS() as ddgs:
+            results = ddgs.text(rewritten, max_results=max_results)
+            found = list(results)
+            print(f"✅ Found {len(found)} results")
+            return found
+    except Exception as e:
+        print(f"⚠️ DDGS error: {e}")
+        return []
+
+
+def format_search_context(results: List[Dict]) -> str:
+    """Context injection with Feb 3 2026 header [cite: 03-02-2026]"""
+    if not results:
+        return ""
+    lines = [f"Current Context ({TODAY_DATE_STR}):"]
+    for idx, item in enumerate(results, start=1):
+        title = item.get("title") or "Untitled"
+        snippet = item.get("body") or ""
+        href = item.get("href") or ""
+        lines.append(f"\n{idx}. {title}\n{snippet}\nSource: {href}")
+    return "\n".join(lines)
+
+
+def ensure_jarvis_response(answer: str, has_search: bool) -> str:
+    """Remove 'Based on this...' and add JARVIS prefix [cite: 31-01-2026]"""
+    cleaned = re.sub(r"^(Based on (this|the).*?:|According to.*?:)\s*", "", answer, flags=re.IGNORECASE).strip()
+    
+    if has_search:
+        prefix = f"Sir, I have retrieved the latest updates for you as of {TODAY_DATE_STR}:"
+        if cleaned.lower().startswith("sir,"):
+            return cleaned
+        return f"{prefix}\n\n{cleaned}"
+    return cleaned
+
+
 # =============================
-# Groq Integration with Model Routing [cite: 03-02-2026]
+# Groq Integration with Direct Search [cite: 03-02-2026]
 # =============================
 
-def call_groq(user_query: str, model: str = "jarvis60") -> str:
+def call_groq(user_query: str, model: str = "jarvis60", search_context: str = "") -> str:
     """
-    Call Groq API with model selection [cite: 03-02-2026]
+    Call Groq API with direct search context injection [cite: 03-02-2026]
     Falls back to stable greeting on error [cite: 03-02-2026]
     """
     if not GROQ_API_KEY:
         return FALLBACK_MESSAGE
 
-    # Get selected model or default [cite: 03-02-2026]
     groq_model = GROQ_MODELS.get(model, "llama3-8b-8192")
     
     try:
+        # Direct context injection [cite: 03-02-2026]
+        system_content = "You are J.A.R.V.I.S, Tony Stark's AI assistant. Be concise, accurate, and never say 'Based on this' or 'According to'."
+        
+        if search_context:
+            system_content += f"\n\n{search_context}\n\nUse these facts to answer the user's question."
+        
         client = httpx.Client()
         response = client.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -103,17 +187,11 @@ def call_groq(user_query: str, model: str = "jarvis60") -> str:
             json={
                 "model": groq_model,
                 "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are J.A.R.V.I.S, a helpful AI assistant. Be concise and accurate."
-                    },
-                    {
-                        "role": "user", 
-                        "content": user_query
-                    }
+                    {"role": "system", "content": system_content},
+                    {"role": "user", "content": user_query}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 1000,
+                "max_tokens": 1200,
             },
             timeout=30.0
         )
@@ -123,6 +201,7 @@ def call_groq(user_query: str, model: str = "jarvis60") -> str:
             answer = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
             return answer if answer else FALLBACK_MESSAGE
         else:
+            print(f"⚠️ Groq API status: {response.status_code}")
             return FALLBACK_MESSAGE
             
     except Exception as e:
@@ -135,8 +214,8 @@ def call_groq(user_query: str, model: str = "jarvis60") -> str:
 # =============================
 
 def handle_query(user_query: str, model: str = "jarvis60") -> Dict:
-    """Handle query with model selection [cite: 03-02-2026]"""
-    # Fast path for greetings (no API call needed)
+    """Handle query with direct search integration [cite: 03-02-2026]"""
+    # Fast path for greetings
     if is_greeting(user_query):
         return {
             "success": True,
@@ -155,13 +234,29 @@ def handle_query(user_query: str, model: str = "jarvis60") -> Dict:
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
 
-    # Route to selected Groq model [cite: 03-02-2026]
-    answer = call_groq(user_query, model)
+    # Direct search integration for time-sensitive queries [cite: 31-01-2026]
+    search_context = ""
+    time_sensitive = is_time_sensitive_query(user_query)
+    
+    if time_sensitive:
+        print(f"🔍 Time-sensitive query detected: {user_query}")
+        web_results = ddg_search(user_query, max_results=6)
+        if web_results:
+            search_context = format_search_context(web_results)
+            print(f"✅ Context prepared with {len(web_results)} results")
+        else:
+            print("⚠️ No search results found")
+
+    # Call Groq with injected context [cite: 03-02-2026]
+    answer = call_groq(user_query, model, search_context=search_context)
+
+    # Apply JARVIS response format [cite: 31-01-2026]
+    answer = ensure_jarvis_response(answer, has_search=bool(search_context))
 
     return {
         "success": True,
         "answer": answer,
-        "engine": f"Groq {GROQ_MODELS.get(model, 'llama3-8b-8192')}",
+        "engine": f"Groq {GROQ_MODELS.get(model, 'llama3-8b-8192')}" + (" + Web Search" if search_context else ""),
         "model_used": model,
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
