@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S Chat History Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            padding: 15px 20px;
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            margin: 0;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .chat-history {
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .role {
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .role.user {
+            background: #667eea;
+            color: white;
+        }
+
+        .role.assistant {
+            background: #764ba2;
+            color: white;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .content {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            line-height: 1.6;
+            color: #212529;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            padding: 20px;
+            background: #f8d7da;
+            color: #721c24;
+            border-radius: 8px;
+            margin: 20px;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 J.A.R.V.I.S Chat History</h1>
+            <p>Persistent SQLite Database Demo</p>
+        </div>
+
+        <div class="controls">
+            <button onclick="loadHistory()">🔄 Refresh History</button>
+            <button onclick="sendTestMessage()">💬 Send Test Message</button>
+            <button onclick="clearDisplay()">🗑️ Clear Display</button>
+        </div>
+
+        <div class="stats" id="stats">
+            Ready to load chat history...
+        </div>
+
+        <div class="chat-history" id="chatHistory">
+            <div class="empty">
+                <div class="empty-icon">💬</div>
+                <p>Click "Refresh History" to load messages</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://ai-tutor-jarvis.onrender.com';
+
+        async function loadHistory() {
+            const historyDiv = document.getElementById('chatHistory');
+            const statsDiv = document.getElementById('stats');
+            
+            historyDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading chat history...</p></div>';
+            statsDiv.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/history`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load history');
+                }
+
+                const messages = data.messages || [];
+                statsDiv.textContent = `📊 Loaded ${data.count} messages from database`;
+
+                if (messages.length === 0) {
+                    historyDiv.innerHTML = `
+                        <div class="empty">
+                            <div class="empty-icon">📭</div>
+                            <p>No messages in database yet</p>
+                            <p style="font-size: 14px; margin-top: 10px; opacity: 0.7;">Send a test message to start!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                historyDiv.innerHTML = messages.map(msg => `
+                    <div class="message">
+                        <div class="message-header">
+                            <span class="role ${msg.role}">${msg.role === 'user' ? '👤 User' : '🤖 J.A.R.V.I.S'}</span>
+                            <span class="timestamp">${formatTimestamp(msg.timestamp)}</span>
+                        </div>
+                        <div class="content">${escapeHtml(msg.content)}</div>
+                    </div>
+                `).join('');
+
+                // Scroll to bottom
+                historyDiv.scrollTop = historyDiv.scrollHeight;
+
+            } catch (error) {
+                console.error('Error loading history:', error);
+                historyDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+                statsDiv.textContent = '❌ Failed to load history';
+            }
+        }
+
+        async function sendTestMessage() {
+            const statsDiv = document.getElementById('stats');
+            const testMessages = [
+                "What is Python?",
+                "Tell me about Flask",
+                "How does SQLite work?",
+                "Explain REST APIs",
+                "What is CORS?"
+            ];
+
+            const randomMessage = testMessages[Math.floor(Math.random() * testMessages.length)];
+            statsDiv.textContent = `📤 Sending: "${randomMessage}"...`;
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: randomMessage })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    statsDiv.textContent = `✅ Message sent! Response: ${data.answer.substring(0, 50)}...`;
+                    setTimeout(() => loadHistory(), 1000);
+                } else {
+                    throw new Error('Failed to send message');
+                }
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                statsDiv.textContent = `❌ Failed to send message: ${error.message}`;
+            }
+        }
+
+        function clearDisplay() {
+            const historyDiv = document.getElementById('chatHistory');
+            historyDiv.innerHTML = `
+                <div class="empty">
+                    <div class="empty-icon">🗑️</div>
+                    <p>Display cleared</p>
+                    <p style="font-size: 14px; margin-top: 10px; opacity: 0.7;">Click "Refresh History" to reload</p>
+                </div>
+            `;
+            document.getElementById('stats').textContent = 'Display cleared (database unchanged)';
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', () => {
+            loadHistory();
+        });
+    </script>
+</body>
+</html>
