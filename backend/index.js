@@ -146,7 +146,6 @@ try {
       gemini: process.env.GEMINI_API_KEY,
       groq: process.env.GROQ_API_KEY,
       openrouter: process.env.OPENROUTER_API_KEY,
-      huggingface: process.env.HUGGINGFACE_API_KEY,
       jina: process.env.JINA_API_KEY,
       wolframAppId: process.env.WOLFRAM_APP_ID,
       wolframAppIdSecondary: process.env.WOLFRAM_APP_ID_SECONDARY,
@@ -432,12 +431,6 @@ const AI_APIS = [
         priority: 3,
         enabled: !!process.env.OPENROUTER_API_KEY,
         rateLimit: 20
-    },
-    {
-        name: 'HuggingFace',
-        priority: 4,
-        enabled: !!process.env.HUGGINGFACE_API_KEY,
-        rateLimit: 10
     },
     {
         name: 'AIMLAPI',
@@ -1053,19 +1046,6 @@ console.log(`💪 Total capacity: ${enabledAPIs.reduce((sum, api) => sum + api.r
 console.log(`🔑 Groq Keys: ${GROQ_KEYS.length} | AIML Keys: ${AIML_KEYS.length} | Gemini Keys: ${GEMINI_KEYS.length}`);
 console.log(`📈 Scaled capacity: ${GROQ_KEYS.length * 30 + AIML_KEYS.length * 50 + GEMINI_KEYS.length * 15} requests/minute`);
 
-// FREE Self-Hosted API endpoint (Hugging Face Spaces)
-const FREE_API_URL = process.env.FREE_API_URL || null;
-if (FREE_API_URL) {
-    console.log(`🆓 FREE Self-Hosted API: ${FREE_API_URL} (UNLIMITED capacity!)`);
-}
-
-// CUSTOM JARVIS AI - Your Own Trained Model!
-const CUSTOM_JARVIS_MODEL = "aijarvis2025/jarvis-edu-ai";
-const CUSTOM_JARVIS_TOKEN = process.env.HF_CUSTOM_TOKEN;
-if (CUSTOM_JARVIS_TOKEN) {
-    console.log(`🎓 Custom JARVIS AI: ${CUSTOM_JARVIS_MODEL} (Educational Specialist)`);
-}
-
 // Helper function to call Groq API with key rotation - JARVIS 5.2 Enhanced
 async function callGroqAPI(messages) {
     const apiKey = getNextGroqKey();
@@ -1157,89 +1137,6 @@ async function callOpenRouterAPI(messages) {
     return response.data?.choices?.[0]?.message?.content;
 }
 
-// Helper function to call YOUR Custom JARVIS AI
-async function callCustomJarvisAPI(question) {
-    if (!CUSTOM_JARVIS_TOKEN) throw new Error('Custom JARVIS token not configured');
-    
-    const prompt = `### Instruction:\n${question}\n\n### Response:\n`;
-    
-    const response = await axios.post(
-        `https://api-inference.huggingface.co/models/${CUSTOM_JARVIS_MODEL}`,
-        {
-            inputs: prompt,
-            parameters: {
-                max_new_tokens: 512,
-                temperature: 0.7,
-                top_p: 0.9,
-                do_sample: true
-            }
-        },
-        {
-            headers: {
-                'Authorization': `Bearer ${CUSTOM_JARVIS_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            timeout: 60000
-        }
-    );
-    
-    let text = '';
-    if (Array.isArray(response.data)) {
-        text = response.data[0]?.generated_text || '';
-    } else if (response.data?.generated_text) {
-        text = response.data.generated_text;
-    }
-    
-    if (text.includes('### Response:')) {
-        text = text.split('### Response:')[1].trim();
-    }
-    
-    return text || 'Model is warming up. Please try again in a few seconds.';
-}
-
-// Helper function to call FREE Self-Hosted API (Hugging Face Spaces)
-async function callFreeAPI(messages) {
-    if (!FREE_API_URL) throw new Error('FREE_API_URL not configured');
-
-    const response = await axios.post(
-        `${FREE_API_URL}/ask`,
-        { messages },
-        {
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 30000
-        }
-    );
-
-    if (response.data?.success) {
-        return response.data.response;
-    } else {
-        throw new Error(response.data?.error || 'Free API failed');
-    }
-}
-
-// Helper function to call Hugging Face API
-async function callHuggingFaceAPI(systemPrompt, history, question) {
-    let prompt = systemPrompt + '\n\n';
-    if (history && Array.isArray(history)) {
-        history.forEach(msg => {
-            prompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
-        });
-    }
-    prompt += `User: ${question}\nAssistant:`;
-
-    const response = await axios.post(
-        'https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct',
-        { inputs: prompt, parameters: { max_new_tokens: 2000, temperature: 0.7 } },
-        {
-            headers: {
-                'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            timeout: 30000
-        }
-    );
-    return response.data?.[0]?.generated_text?.replace(prompt, '').trim();
-}
 
 // Only log in development
 if (process.env.NODE_ENV !== 'production') {
@@ -1772,24 +1669,9 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
                 call: async () => await callGeminiAPI(finalSystemPrompt, history, question)
             },
             {
-                name: 'Custom JARVIS AI',
-                enabled: !!(CUSTOM_JARVIS_TOKEN && ['coding', 'math', 'science', 'general'].includes(queryType)),
-                call: async () => await callCustomJarvisAPI(question)
-            },
-            {
-                name: 'FREE Self-Hosted',
-                enabled: !!FREE_API_URL,
-                call: async () => await callFreeAPI(messages)
-            },
-            {
                 name: 'OpenRouter',
                 enabled: !!process.env.OPENROUTER_API_KEY,
                 call: async () => await callOpenRouterAPI(messages)
-            },
-            {
-                name: 'HuggingFace',
-                enabled: !!process.env.HUGGINGFACE_API_KEY,
-                call: async () => await callHuggingFaceAPI(finalSystemPrompt, history, question)
             }
         ];
 
@@ -2185,38 +2067,7 @@ app.post('/image', async (req, res) => {
             });
         } catch (pollinationsError) {
             console.error('❌ Pollinations.AI error:', pollinationsError.message);
-
-            // Fallback to Hugging Face Stable Diffusion
-            try {
-                const response = await axios.post(
-                    'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1',
-                    { inputs: prompt },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        responseType: 'arraybuffer',
-                        timeout: 60000
-                    }
-                );
-
-                // Convert image buffer to base64
-                const base64Image = Buffer.from(response.data, 'binary').toString('base64');
-                const imageUrl = `data:image/png;base64,${base64Image}`;
-
-                console.log('✅ Image generated successfully via Hugging Face');
-                return res.json({
-                    imageUrl: imageUrl,
-                    prompt: prompt,
-                    provider: 'Hugging Face Stable Diffusion',
-                    message: 'Image generated successfully'
-                });
-
-            } catch (hfError) {
-                console.error('❌ Hugging Face error:', hfError.message);
-                throw new Error('All image generation services failed');
-            }
+            throw new Error('All image generation services failed');
         }
 
     } catch (error) {
@@ -3207,11 +3058,6 @@ app.post('/api/chat', apiLimiter, async (req, res) => {
                 name: 'AIMLAPI',
                 enabled: !!process.env.AIML_API_KEY,
                 call: async () => await callAimlApi(messages)
-            },
-            {
-                name: 'HuggingFace',
-                enabled: !!process.env.HUGGINGFACE_API_KEY,
-                call: async () => await callHuggingFaceAPI(finalSystemPrompt, history, message)
             }
         ];
 
@@ -3380,37 +3226,7 @@ app.post('/generate-simple-image', apiLimiter, async (req, res) => {
             console.log('Pollinations AI failed, trying alternative...');
         }
 
-        // Method 2: Try Hugging Face Inference API (free tier)
-        if (process.env.HUGGINGFACE_API_KEY) {
-            try {
-                const hfResponse = await axios.post(
-                    'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-                    { inputs: prompt },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        responseType: 'arraybuffer',
-                        timeout: 30000
-                    }
-                );
-
-                const imageBase64 = Buffer.from(hfResponse.data).toString('base64');
-                const imageUrl = `data:image/png;base64,${imageBase64}`;
-
-                return res.json({
-                    success: true,
-                    imageUrl: imageUrl,
-                    provider: 'Hugging Face (Stable Diffusion XL)',
-                    prompt: prompt
-                });
-            } catch (hfError) {
-                console.log('Hugging Face failed:', hfError.message);
-            }
-        }
-
-        // Method 3: Fallback to DallE-Mini style service
+        // Method 2: Fallback to DallE-Mini style service
         const fallbackUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}`;
 
         return res.json({
@@ -3933,7 +3749,7 @@ function scoreConfidence(response, model) {
 }
 
 // Helper: Try API with fallback
-async function tryAPISequentially(question, context, domain, models = ['groq', 'claude', 'openrouter', 'huggingface']) {
+async function tryAPISequentially(question, context, domain, models = ['groq', 'claude', 'openrouter']) {
   const results = [];
   
   for (const model of models) {
@@ -3985,17 +3801,6 @@ async function tryAPISequentially(question, context, domain, models = ['groq', '
           }
           break;
           
-        case 'huggingface':
-          if (process.env.HUGGINGFACE_API_KEY) {
-            response = await axios.post(
-              'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1',
-              { inputs: question },
-              { headers: { Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` }, timeout: 3000 }
-            );
-            response = response.data?.[0]?.generated_text || response.data;
-            confidence = scoreConfidence(response, 'huggingface');
-          }
-          break;
       }
       
       if (response && confidence > 0) {
