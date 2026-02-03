@@ -51,6 +51,12 @@ try:
 except Exception:
     PINECONE_AVAILABLE = False
 
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except Exception:
+    PSUTIL_AVAILABLE = False
+
 
 # =============================
 # Configuration [cite: 03-02-2026]
@@ -68,6 +74,52 @@ PORT = int(os.environ.get("PORT", 3000))
 TODAY_DATE_STR = "February 3, 2026"
 MAX_CONTEXT_TOKENS = 3000  # Prevent Groq 400 error [cite: 03-02-2026]
 FALLBACK_MESSAGE = "Sir, I'm recalibrating my systems. Please try again in a moment."
+
+# Security: Allowed directories for list_files tool
+_allowed_dirs_env = os.environ.get("ALLOWED_LIST_DIRS", "").strip()
+if _allowed_dirs_env:
+    ALLOWED_LIST_DIRS = [os.path.abspath(p) for p in _allowed_dirs_env.split(";") if p.strip()]
+else:
+    _base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    ALLOWED_LIST_DIRS = [
+        _base_dir,
+        os.path.join(_base_dir, "python-backend")
+    ]
+
+# Gemini function-calling tool declarations
+GEMINI_TOOL_DECLARATIONS = [
+    {
+        "name": "list_files",
+        "description": "List files in a specific allowed directory.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "directory": {"type": "string", "description": "Absolute or relative directory path"}
+            },
+            "required": ["directory"]
+        }
+    },
+    {
+        "name": "get_system_status",
+        "description": "Return CPU and RAM usage of the local machine.",
+        "parameters": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "web_search",
+        "description": "Search the web using Tavily for current information.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"}
+            },
+            "required": ["query"]
+        }
+    }
+]
+
+GEMINI_TOOLS = [
+    {"function_declarations": GEMINI_TOOL_DECLARATIONS}
+]
 
 # Pinecone (Vector DB) [cite: 03-02-2026]
 pc = None
@@ -359,6 +411,117 @@ def get_pinecone_context(query: str, top_k: int = 3) -> str:
     except Exception as e:
         print(f"⚠️ Pinecone error: {e}")
         return ""
+
+
+def _is_path_allowed(directory: str) -> Tuple[bool, str]:
+    """Validate directory access for list_files tool."""
+    if not directory:
+        return False, "Directory path is required."
+    abs_dir = os.path.abspath(directory)
+    for allowed in ALLOWED_LIST_DIRS:
+        if abs_dir.startswith(allowed):
+            return True, abs_dir
+    return False, "Access denied: directory not allowed."
+
+
+def list_files(directory: str) -> Dict:
+    """Tool: list files in an allowed directory."""
+    ok, result = _is_path_allowed(directory)
+    if not ok:
+        return {"error": result}
+    abs_dir = result
+    if not os.path.isdir(abs_dir):
+        return {"error": "Directory does not exist."}
+
+    items = []
+    for name in os.listdir(abs_dir):
+        path = os.path.join(abs_dir, name)
+        items.append({
+            "name": name,
+            "type": "dir" if os.path.isdir(path) else "file"
+        })
+    return {"directory": abs_dir, "items": items}
+
+
+def get_system_status() -> Dict:
+    """Tool: return CPU/RAM usage."""
+    if not PSUTIL_AVAILABLE:
+        return {"error": "psutil not available"}
+    return {
+        "cpu_percent": psutil.cpu_percent(interval=0.2),
+        "ram_percent": psutil.virtual_memory().percent,
+        "ram_total_gb": round(psutil.virtual_memory().total / (1024 ** 3), 2),
+        "ram_used_gb": round(psutil.virtual_memory().used / (1024 ** 3), 2)
+    }
+
+
+def web_search(query: str) -> Dict:
+    """Tool: Tavily web search wrapper."""
+    if not query:
+        return {"error": "Query is required"}
+    context = get_web_research(query)
+    if not context:
+        return {"results": [], "message": "No results or Tavily unavailable"}
+    return {"results": context}
+
+
+def _execute_tool(name: str, args: Dict) -> Dict:
+    if name == "list_files":
+        return list_files(args.get("directory", ""))
+    if name == "get_system_status":
+        return get_system_status()
+    if name == "web_search":
+        return web_search(args.get("query", ""))
+    return {"error": f"Unknown tool: {name}"}
+
+
+def run_gemini_with_tools(user_query: str, sentiment: str) -> str:
+    """Run Gemini with function calling and auto tool execution."""
+    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+        return FALLBACK_MESSAGE
+
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash", tools=GEMINI_TOOLS)
+        system_prompt = apply_emotional_tone(
+            "You are J.A.R.V.I.S. Use tools when needed to answer accurately.",
+            sentiment
+        )
+
+        response = model.generate_content(
+            [system_prompt, user_query],
+            tool_config={"function_calling_config": {"mode": "AUTO"}},
+            generation_config={"temperature": 0.7}
+        )
+
+        for _ in range(3):
+            candidates = getattr(response, "candidates", []) or []
+            parts = candidates[0].content.parts if candidates else []
+            function_calls = [p.function_call for p in parts if hasattr(p, "function_call") and p.function_call]
+
+            if not function_calls:
+                return response.text.strip() if hasattr(response, "text") else FALLBACK_MESSAGE
+
+            tool_results = []
+            for call in function_calls:
+                name = getattr(call, "name", "")
+                args = dict(getattr(call, "args", {}) or {})
+                result = _execute_tool(name, args)
+                tool_results.append({
+                    "function_response": {
+                        "name": name,
+                        "response": result
+                    }
+                })
+
+            response = model.generate_content(
+                [system_prompt, user_query, *tool_results],
+                generation_config={"temperature": 0.7}
+            )
+
+        return response.text.strip() if hasattr(response, "text") else FALLBACK_MESSAGE
+    except Exception as e:
+        print(f"⚠️ Gemini tool-calling error: {e}")
+        return FALLBACK_MESSAGE
 
 
 def analyze_user_context(user_query: str) -> Dict:
@@ -771,7 +934,7 @@ def chat():
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
     else:  # SOCIAL
-        answer = call_gemini_social(user_query, sentiment)
+        answer = run_gemini_with_tools(user_query, sentiment)
         result = {
             "success": True,
             "answer": answer,
