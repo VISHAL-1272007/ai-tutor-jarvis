@@ -108,53 +108,105 @@ class JarvisAutonomousRAG {
     }
 
     /**
-     * DDGS-backed search using local Node endpoint /api/search-ddgs
-     * Falls back gracefully if endpoint is unavailable
+     * DDGS-backed search using Flask backend endpoint /api/search-ddgs
+     * With security headers, retry mechanism, and detailed error logging
      */
-    async searchWithDDGS(query, limit = 5) {
-        try {
-            const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
-            const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
-            const endpoint = `${baseUrl}/api/search-ddgs`;
-            console.log(`[DDGS] Attempting: ${endpoint}`);
-            const res = await axios.post(endpoint, { query, region: 'in-en' }, { timeout: 30000 });
-            if (!res.data || res.data.success !== true) {
-                console.error(`[DDGS] Invalid response: ${JSON.stringify(res.data)}`);
-                throw new Error(res.data?.error || 'DDGS search failed');
+    async searchWithDDGS(query, limit = 5, retries = 2) {
+        const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
+        const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
+        const endpoint = `${baseUrl}/api/search-ddgs`;
+        const securityKey = process.env.JARVIS_SECURE_KEY || 'VISHAI_SECURE_2026';
+        
+        const requestPayload = {
+            topic: String(query || '').trim(),
+            region: 'in-en'
+        };
+        
+        const axiosConfig = {
+            timeout: 30000,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Jarvis-Key': securityKey,
+                'User-Agent': 'JARVIS-RAG-Worker/1.0'
             }
-            const answer = res.data.answer || '';
-            const context = res.data.context || '';
-            const sources = Array.isArray(res.data.sources) ? res.data.sources : [];
-            // Build docs: prefer context for content; include top sources
-            const docs = sources.slice(0, limit).map((s, i) => ({
-                title: s.title || `Source ${i + 1}`,
-                url: s.url || s.link || 'unknown',
-                snippet: s.snippet || '',
-                content: (context || answer || s.snippet || '').toString().substring(0, 8000),
-                index: i + 1,
-                status: 'ddgs'
-            }));
-            // If no sources, still create a single doc from synthesized answer/context
-            if (docs.length === 0 && (context || answer)) {
-                docs.push({
-                    title: 'DDGS Synthesized Context',
-                    url: 'ddgs.local',
-                    snippet: (answer || '').toString().substring(0, 200),
-                    content: (context || answer).toString().substring(0, 8000),
-                    index: 1,
-                    status: 'ddgs_context'
-                });
+        };
+
+        console.log(`🔍 [DDGS] Searching: "${query}" | Endpoint: ${endpoint}`);
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const res = await axios.post(endpoint, requestPayload, axiosConfig);
+                
+                if (!res.data || res.data.success !== true) {
+                    console.error(`[DDGS] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
+                    throw new Error(res.data?.error || 'DDGS search failed');
+                }
+
+                const answer = res.data.answer || '';
+                const context = res.data.context || '';
+                const sources = Array.isArray(res.data.sources) ? res.data.sources : [];
+                
+                // Build docs: prefer context for content; include top sources
+                const docs = sources.slice(0, limit).map((s, i) => ({
+                    title: s.title || `Source ${i + 1}`,
+                    url: s.url || s.link || 'unknown',
+                    snippet: s.snippet || '',
+                    content: (context || answer || s.snippet || '').toString().substring(0, 8000),
+                    index: i + 1,
+                    status: 'ddgs'
+                }));
+                
+                // If no sources, still create a single doc from synthesized answer/context
+                if (docs.length === 0 && (context || answer)) {
+                    docs.push({
+                        title: 'DDGS Synthesized Context',
+                        url: 'ddgs.local',
+                        snippet: (answer || '').toString().substring(0, 200),
+                        content: (context || answer).toString().substring(0, 8000),
+                        index: 1,
+                        status: 'ddgs_context'
+                    });
+                }
+                
+                console.log(`✅ [DDGS] Success: Retrieved ${docs.length} document(s)`);
+                return docs;
+                
+            } catch (e) {
+                const status = e.response?.status || e.code || 'unknown';
+                const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
+                const isSecurityError = status === 401 || status === 403;
+                const isNotFoundError = status === 404;
+                
+                console.warn(
+                    `⚠️ [JARVIS-RAG] Security/Connection Error (Attempt ${attempt + 1}/${retries + 1})\n` +
+                    `   Status: ${status}\n` +
+                    `   Error: ${errorMsg}\n` +
+                    `   Endpoint: ${endpoint}\n` +
+                    `   Security Header: X-Jarvis-Key=${securityKey.substring(0, 5)}***\n` +
+                    `   Payload: ${JSON.stringify(requestPayload)}`
+                );
+                
+                // Retry logic: only retry on 404 or 401
+                if ((isSecurityError || isNotFoundError) && attempt < retries) {
+                    const delayMs = (attempt + 1) * 1000; // Exponential backoff
+                    console.log(`   ⏳ Retrying in ${delayMs}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    continue;
+                }
+                
+                // After all retries exhausted, return empty but log full error
+                if (attempt === retries) {
+                    console.error(
+                        `❌ [JARVIS-RAG] DDGS Endpoint Failed After ${retries + 1} Attempts\n` +
+                        `   Final Status: ${status}\n` +
+                        `   Final Error: ${errorMsg}\n` +
+                        `   Check Flask backend: ${baseUrl}`
+                    );
+                }
             }
-            return docs;
-        } catch (e) {
-            const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
-            const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
-            const status = e.response?.status || e.code || 'unknown';
-            const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
-            console.warn(`⚠️ [JARVIS-RAG] DDGS failed (${status}): ${errorMsg}`);
-            console.warn(`   Endpoint: ${baseUrl}/api/search-ddgs`);
-            return [];
         }
+        
+        return [];
     }
     
     /**
