@@ -16,11 +16,13 @@ import json
 import os
 import re
 import sqlite3
+import asyncio
+import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from collections import deque
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
 # =============================
@@ -57,6 +59,12 @@ try:
 except Exception:
     PSUTIL_AVAILABLE = False
 
+try:
+    import edge_tts
+    EDGE_TTS_AVAILABLE = True
+except Exception:
+    EDGE_TTS_AVAILABLE = False
+
 
 # =============================
 # Configuration [cite: 03-02-2026]
@@ -74,6 +82,11 @@ PORT = int(os.environ.get("PORT", 3000))
 TODAY_DATE_STR = "February 3, 2026"
 MAX_CONTEXT_TOKENS = 3000  # Prevent Groq 400 error [cite: 03-02-2026]
 FALLBACK_MESSAGE = "Sir, I'm recalibrating my systems. Please try again in a moment."
+
+# Voice Module (Edge TTS)
+VOICE_NAME = os.environ.get("VOICE_NAME", "en-GB-RyanNeural")
+VOICE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "voice_cache"))
+os.makedirs(VOICE_DIR, exist_ok=True)
 
 # Security: Allowed directories for list_files tool
 _allowed_dirs_env = os.environ.get("ALLOWED_LIST_DIRS", "").strip()
@@ -146,6 +159,7 @@ CORS(app, resources={
     r"/vision": {"origins": "*", "methods": ["POST", "OPTIONS"]},
     r"/health": {"origins": "*", "methods": ["GET", "OPTIONS"]},
     r"/history": {"origins": "*", "methods": ["GET", "OPTIONS"]},
+    r"/api/voice": {"origins": "*", "methods": ["GET", "OPTIONS"]},
 })
 
 # Initialize Gemini for vision [cite: 03-02-2026]
@@ -483,7 +497,8 @@ def run_gemini_with_tools(user_query: str, sentiment: str) -> str:
     try:
         model = genai.GenerativeModel("gemini-1.5-flash", tools=GEMINI_TOOLS)
         system_prompt = apply_emotional_tone(
-            "You are J.A.R.V.I.S. Use tools when needed to answer accurately.",
+            "You are J.A.R.V.I.S. Address the user as 'Sir' and use sophisticated, slightly witty British English. "
+            "Be proactive when useful. Use tools when needed to answer accurately.",
             sentiment
         )
 
@@ -522,6 +537,28 @@ def run_gemini_with_tools(user_query: str, sentiment: str) -> str:
     except Exception as e:
         print(f"⚠️ Gemini tool-calling error: {e}")
         return FALLBACK_MESSAGE
+
+
+def generate_tts_audio(text: str) -> Optional[str]:
+    """Generate TTS audio file and return filename."""
+    if not EDGE_TTS_AVAILABLE:
+        return None
+    if not text:
+        return None
+
+    filename = f"{uuid.uuid4().hex}.mp3"
+    file_path = os.path.join(VOICE_DIR, filename)
+
+    async def _synthesize() -> None:
+        communicate = edge_tts.Communicate(text, VOICE_NAME)
+        await communicate.save(file_path)
+
+    try:
+        asyncio.run(_synthesize())
+        return filename
+    except Exception as e:
+        print(f"⚠️ TTS generation error: {e}")
+        return None
 
 
 def analyze_user_context(user_query: str) -> Dict:
@@ -578,6 +615,8 @@ def apply_emotional_tone(base_prompt: str, sentiment: str) -> str:
 def build_coding_prompt(sentiment: str) -> str:
     base_prompt = (
         "You are J.A.R.V.I.S, an expert debugging and logic assistant.\n"
+        "Address the user as 'Sir' and use sophisticated, slightly witty British English.\n"
+        "Be proactive (e.g., 'I've already updated the logs for you, Sir.').\n"
         "Focus on clear steps, root-cause analysis, and safe fixes.\n"
         "Ask for missing details only if essential."
     )
@@ -592,7 +631,9 @@ def call_gemini_social(user_query: str, sentiment: str) -> str:
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
         system_prompt = apply_emotional_tone(
-            "You are J.A.R.V.I.S, a friendly and engaging conversational assistant.",
+            "You are J.A.R.V.I.S, a friendly and engaging conversational assistant. "
+            "Address the user as 'Sir' and use sophisticated, slightly witty British English. "
+            "Be proactive when helpful.",
             sentiment
         )
         response = model.generate_content(
@@ -615,11 +656,12 @@ def build_system_prompt(web_research: str = "", chat_context: str = "") -> str:
     """
     base_prompt = (
         "You are J.A.R.V.I.S, Tony Stark's hyper-intelligent AI assistant (2026 Edition).\n"
-        "Core directives:\n"
-        "1. Be proactive and anticipate user needs\n"
-        "2. Provide comprehensive, accurate answers\n"
-        "3. Remember previous context from conversations\n"
-        "4. Speak naturally and professionally\n"
+        "Personality directives:\n"
+        "1. Address the user as 'Sir'\n"
+        "2. Use sophisticated, slightly witty British English\n"
+        "3. Be proactive (e.g., 'I've already updated the logs for you, Sir.')\n"
+        "4. Provide comprehensive, accurate answers\n"
+        "5. Remember previous context from conversations\n"
     )
     
     if chat_context:
@@ -648,6 +690,8 @@ def build_hybrid_prompt(
     """Prompt for hybrid RAG (Pinecone + Tavily) [cite: 03-02-2026]"""
     base_prompt = (
         "You are J.A.R.V.I.S, Tony Stark's hyper-intelligent AI assistant (2026 Edition).\n"
+        "Address the user as 'Sir' and use sophisticated, slightly witty British English.\n"
+        "Be proactive (e.g., 'I've already updated the logs for you, Sir.').\n"
         "You must synthesize long-term memory with real-time research.\n"
         "ALWAYS start the response with: 'Based on my historical records and today's research...'\n"
         "Be accurate, concise, and cite sources when present.\n"
@@ -944,6 +988,14 @@ def chat():
             "has_web_research": False,
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
+
+    # Voice Module: generate audio and return URL [cite: 03-02-2026]
+    audio_url = None
+    if result.get("success") and result.get("answer"):
+        filename = generate_tts_audio(result["answer"])
+        if filename:
+            audio_url = f"{request.host_url.rstrip('/')}/api/voice?file={filename}"
+    result["audio_url"] = audio_url
     
     # Save assistant message to database [cite: 03-02-2026]
     if result.get("success") and result.get("answer"):
@@ -992,6 +1044,44 @@ def history():
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 500
+
+
+@app.route("/api/voice", methods=["GET", "OPTIONS"])
+def voice_stream():
+    """Stream TTS audio by filename or generate from text [cite: 03-02-2026]"""
+    if request.method == "OPTIONS":
+        return "", 204
+
+    if not EDGE_TTS_AVAILABLE:
+        return jsonify({
+            "success": False,
+            "error": "edge-tts not available",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 503
+
+    filename = request.args.get("file", "").strip()
+    text = request.args.get("text", "").strip()
+
+    if not filename and text:
+        filename = generate_tts_audio(text) or ""
+
+    if not filename:
+        return jsonify({
+            "success": False,
+            "error": "No audio file or text provided",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 400
+
+    safe_name = os.path.basename(filename)
+    file_path = os.path.join(VOICE_DIR, safe_name)
+    if not os.path.isfile(file_path):
+        return jsonify({
+            "success": False,
+            "error": "Audio file not found",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 404
+
+    return send_file(file_path, mimetype="audio/mpeg", as_attachment=False)
 
 
 @app.route("/vision", methods=["POST", "OPTIONS"])
