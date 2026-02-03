@@ -4499,7 +4499,51 @@ app.post('/full-power/fast-groq', async (req, res) => {
 });
 
 // =========================================================
-// 🚀 THE BRIDGE: PYTHON JARVIS CONNECT
+// 🚀 JARVIS RESILIENT AGENT ENDPOINT (Zero-Failure)
+// =========================================================
+const { getJARVISInstance } = require('./jarvis-resilient-wrapper');
+
+app.post('/api/ask', async (req, res) => {
+    try {
+        const { query, message } = req.body;
+        const userQuery = query || message;
+        
+        if (!userQuery) {
+            return res.status(400).json({
+                success: false,
+                answer: 'Please provide a query or message',
+                source: 'error'
+            });
+        }
+
+        console.log(`💬 JARVIS Query: ${userQuery.substring(0, 100)}...`);
+
+        const jarvis = getJARVISInstance();
+        const result = await jarvis.processQuery(userQuery);
+
+        console.log(`✅ JARVIS Response: ${result.source}`);
+
+        return res.json(result);
+
+    } catch (error) {
+        console.error('❌ JARVIS Endpoint Error:', error.message);
+        
+        // Zero-failure fallback
+        return res.json({
+            success: false,
+            answer: "I'm experiencing technical difficulties. Please try again in a moment.",
+            source: 'error',
+            used_search: false,
+            confidence: 0,
+            resources: []
+        });
+    }
+});
+
+console.log('✅ JARVIS Resilient Agent endpoint loaded at /api/ask');
+
+// =========================================================
+// 🚀 THE BRIDGE: PYTHON JARVIS CONNECT (Legacy)
 // =========================================================
 app.post('/api/chat', async (req, res) => {
     const { message } = req.body;
