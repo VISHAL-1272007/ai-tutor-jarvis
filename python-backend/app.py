@@ -45,6 +45,12 @@ try:
 except Exception:
     GEMINI_AVAILABLE = False
 
+try:
+    from pinecone import Pinecone
+    PINECONE_AVAILABLE = True
+except Exception:
+    PINECONE_AVAILABLE = False
+
 
 # =============================
 # Configuration [cite: 03-02-2026]
@@ -53,6 +59,7 @@ except Exception:
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY", "")
 
 # process.env.PORT Render-aala assign sĕiyappadum.
 # Illai-naal (local-la) 3000 use pannum.
@@ -61,6 +68,14 @@ PORT = int(os.environ.get("PORT", 3000))
 TODAY_DATE_STR = "February 3, 2026"
 MAX_CONTEXT_TOKENS = 3000  # Prevent Groq 400 error [cite: 03-02-2026]
 FALLBACK_MESSAGE = "Sir, I'm recalibrating my systems. Please try again in a moment."
+
+# Pinecone (Vector DB) [cite: 03-02-2026]
+pc = None
+index = None
+if PINECONE_AVAILABLE and PINECONE_API_KEY:
+    # Render Environment-la PINECONE_API_KEY sĕt panna marakkādheenga
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    index = pc.Index(host="https://jarvis-knowledge-bu4y96z.svc.aped-4627-b74a.pinecone.io")
 
 # Model Mapping [cite: 31-01-2026]
 GROQ_MODELS = {
@@ -279,6 +294,64 @@ def get_web_research(query: str) -> str:
         return ""
 
 
+def _extract_embedding_vector(embed_response) -> Optional[List[float]]:
+    """Extract embedding vector from google.generativeai response."""
+    if embed_response is None:
+        return None
+    if isinstance(embed_response, dict):
+        return embed_response.get("embedding")
+    if hasattr(embed_response, "embedding"):
+        return embed_response.embedding
+    return None
+
+
+def get_pinecone_context(query: str, top_k: int = 3) -> str:
+    """Query Pinecone for long-term memory context [cite: 03-02-2026]"""
+    if not PINECONE_AVAILABLE or not PINECONE_API_KEY or index is None:
+        return ""
+    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+        return ""
+
+    try:
+        embed_response = genai.embed_content(
+            model="text-embedding-004",
+            content=query
+        )
+        vector = _extract_embedding_vector(embed_response)
+        if not vector:
+            return ""
+
+        results = index.query(
+            vector=vector,
+            top_k=top_k,
+            include_metadata=True
+        )
+
+        matches = results.get("matches", []) if isinstance(results, dict) else []
+        if not matches:
+            return ""
+
+        lines = ["Historical Memory Context:"]
+        for match in matches:
+            meta = match.get("metadata", {})
+            title = meta.get("title", "Unknown")
+            source = meta.get("source", "Unknown")
+            date = meta.get("date", "")
+            text = meta.get("text") or meta.get("chunk") or meta.get("content", "")
+            score = match.get("score", 0.0)
+
+            header = f"- {title} | {source} | score {score:.2f}"
+            if date:
+                header += f" | {date}"
+            snippet = text[:500].strip()
+            lines.append(f"{header}\n  {snippet}")
+
+        return truncate_to_tokens("\n".join(lines), max_tokens=1500)
+    except Exception as e:
+        print(f"⚠️ Pinecone error: {e}")
+        return ""
+
+
 # =============================
 # 4. GROQ INTEGRATION (Language Model) [cite: 03-02-2026]
 # =============================
@@ -310,6 +383,32 @@ def build_system_prompt(web_research: str = "", chat_context: str = "") -> str:
             "\nAnswer the user's question using this verified web data.\n"
         )
     
+    return base_prompt
+
+
+def build_hybrid_prompt(
+    chat_context: str,
+    pinecone_context: str,
+    web_context: str
+) -> str:
+    """Prompt for hybrid RAG (Pinecone + Tavily) [cite: 03-02-2026]"""
+    base_prompt = (
+        "You are J.A.R.V.I.S, Tony Stark's hyper-intelligent AI assistant (2026 Edition).\n"
+        "You must synthesize long-term memory with real-time research.\n"
+        "ALWAYS start the response with: 'Based on my historical records and today's research...'\n"
+        "Be accurate, concise, and cite sources when present.\n"
+    )
+
+    if chat_context:
+        base_prompt += f"\n{chat_context}\n"
+
+    if pinecone_context:
+        base_prompt += f"\n{pinecone_context}\n"
+
+    if web_context:
+        base_prompt += f"\n{web_context}\n"
+
+    base_prompt += "\nAnswer the user's question using both contexts.\n"
     return base_prompt
 
 
@@ -436,6 +535,43 @@ def handle_query_with_moe(
     }
 
 
+def handle_chat_hybrid(user_query: str, user_id: str = "default") -> Dict:
+    """Hybrid RAG for /chat: Pinecone + Tavily [cite: 03-02-2026]"""
+    chat_context = chat_memory.get_context(user_id)
+
+    pinecone_context = get_pinecone_context(user_query)
+    web_context = get_web_research(user_query)
+
+    if web_context:
+        web_context = truncate_to_tokens(web_context, max_tokens=1500)
+    if pinecone_context:
+        pinecone_context = truncate_to_tokens(pinecone_context, max_tokens=1500)
+
+    system_prompt = build_hybrid_prompt(chat_context, pinecone_context, web_context)
+
+    try:
+        answer = call_groq_with_model(user_query, "general", system_prompt)
+    except Exception as e:
+        print(f"⚠️ LLM call failed: {e}")
+        answer = FALLBACK_MESSAGE
+
+    prefix = "Based on my historical records and today's research..."
+    if answer and not answer.startswith(prefix):
+        answer = f"{prefix} {answer.lstrip()}"
+
+    chat_memory.add_exchange(user_id, user_query, answer)
+
+    return {
+        "success": True,
+        "answer": answer,
+        "model": "general",
+        "groq_model": GROQ_MODELS["general"],
+        "has_pinecone": bool(pinecone_context),
+        "has_web_research": bool(web_context),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
 # =============================
 # API ENDPOINTS
 # =============================
@@ -513,8 +649,8 @@ def chat():
     # Save user message to database [cite: 03-02-2026]
     save_message("user", user_query)
     
-    # Get AI response
-    result = handle_query_with_moe(user_query, user_id)
+    # Get AI response via Hybrid RAG (Pinecone + Tavily)
+    result = handle_chat_hybrid(user_query, user_id)
     
     # Save assistant message to database [cite: 03-02-2026]
     if result.get("success") and result.get("answer"):
