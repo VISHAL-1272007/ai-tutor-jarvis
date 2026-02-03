@@ -29,7 +29,7 @@ export function getBackendURL() {
         return 'http://localhost:3000';
     } else {
         // Production - use HuggingFace Spaces deployment
-        return 'https://jarvis-core-backend-vishai.hf.space';
+        return 'https://aijarvis2025-vishai.hf.space';
     }
 }
 
