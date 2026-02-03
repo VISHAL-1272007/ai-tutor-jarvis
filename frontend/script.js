@@ -20,6 +20,7 @@ console.log('✅ [CONFIG] API_URL set to:', API_URL);
 const MAX_CHARS = 2000;
 let isBackendReady = false;
 let backendWakeupAttempts = 0;
+let selectedModel = 'jarvis60'; // Track selected model [cite: 03-02-2026]
 
 // ===== Timeout Management =====
 let spinnerTimeout; // FIX: Declare spinnerTimeout to prevent ReferenceError
@@ -984,6 +985,56 @@ function setupEventListeners() {
         });
     }
 
+    // ===== Model Selector [cite: 03-02-2026] =====
+    const modelOptions = document.querySelectorAll('.model-option');
+    const modelDropdownBtn = document.querySelector('.model-dropdown-btn');
+    const modelDropdownMenu = document.getElementById('modelDropdownMenu');
+
+    if (modelOptions.length > 0) {
+        modelOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                // Update selected model
+                selectedModel = option.dataset.model;
+                const modelName = option.querySelector('.option-name').textContent;
+                
+                // Update UI
+                modelOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                
+                // Update button display
+                const icon = option.dataset.icon;
+                if (modelDropdownBtn) {
+                    modelDropdownBtn.querySelector('.model-icon').textContent = icon;
+                    modelDropdownBtn.querySelector('.model-name').textContent = modelName;
+                }
+                
+                // Close dropdown
+                if (modelDropdownMenu) {
+                    modelDropdownMenu.style.display = 'none';
+                }
+                
+                console.log('🔄 Model switched to:', selectedModel, '(' + modelName + ')');
+            });
+        });
+    }
+
+    // Toggle dropdown menu
+    if (modelDropdownBtn) {
+        modelDropdownBtn.addEventListener('click', () => {
+            if (modelDropdownMenu) {
+                const isOpen = modelDropdownMenu.style.display === 'block';
+                modelDropdownMenu.style.display = isOpen ? 'none' : 'block';
+            }
+        });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (modelDropdownMenu && !e.target.closest('.model-dropdown') && modelDropdownMenu.style.display === 'block') {
+            modelDropdownMenu.style.display = 'none';
+        }
+    });
+
     // Mobile menu
     if (elements.mobileMenuBtn) {
         elements.mobileMenuBtn.addEventListener('click', toggleSidebar);
@@ -1315,7 +1366,10 @@ async function sendMessage() {
             headers: { 
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ question: question }), // Backend expects 'question' field
+            body: JSON.stringify({ 
+                question: question,
+                model: selectedModel // Send selected model to backend [cite: 03-02-2026]
+            }),
             signal: controller.signal
         });
 

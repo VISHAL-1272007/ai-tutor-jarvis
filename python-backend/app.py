@@ -1,13 +1,15 @@
 """
 J.A.R.V.I.S Backend - Render (Free Tier)
-Ultra-stable Flask API with Gemini 1.5 Flash
+Ultra-stable Flask API with Groq Model Routing
 
 Key Requirements:
-- High-Speed Intent Routing for greetings/identity (no external API call) [cite: 03-02-2026]
-- Gemini 1.5 Flash only (fast inference) [cite: 31-01-2026]
-- Zero-Failure Fallback on any tool error
+- Model Selector: Route to different Groq models [cite: 03-02-2026]
+- Coding Model: mixtral-8x7b-32768 [cite: 31-01-2026]
+- General Model: llama3-70b-8192 [cite: 31-01-2026]
+- Gemma Model: gemma-7b-it [cite: 31-01-2026]
+- Default: llama3-8b-8192 (fallback) [cite: 03-02-2026]
+- Zero-Failure Fallback with greeting on error
 - Render-specific port: os.environ.get('PORT', 10000) and debug=False [cite: 31-01-2026]
-- No-Link Protocol unless explicitly requested [cite: 31-01-2026]
 """
 
 from __future__ import annotations
@@ -21,20 +23,28 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 try:
-    import google.generativeai as genai
-    GENAI_AVAILABLE = True
+    import httpx
+    GROQ_AVAILABLE = True
 except Exception:
-    GENAI_AVAILABLE = False
+    GROQ_AVAILABLE = False
 
 
 # =============================
 # Configuration
 # =============================
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 PORT = int(os.environ.get("PORT", 10000))
 
-FALLBACK_MESSAGE = "I am currently operating in internal reasoning mode to ensure stability."
+FALLBACK_MESSAGE = "I appreciate your question! I'm currently in internal reasoning mode to maintain stability for this important demonstration. Please try again in a moment."
+
+# Model Mapping [cite: 03-02-2026]
+GROQ_MODELS = {
+    "coding": "mixtral-8x7b-32768",      # Coding Model [cite: 31-01-2026]
+    "general": "llama3-70b-8192",         # General Model [cite: 31-01-2026]
+    "gemma": "gemma-7b-it",               # Gemma Model [cite: 31-01-2026]
+    "jarvis60": "llama3-8b-8192",        # Default JARVIS 6.0
+}
 
 # Initialize Flask
 app = Flask(__name__)
@@ -67,86 +77,92 @@ def is_identity_question(text: str) -> bool:
     return any(re.search(p, text) for p in patterns)
 
 
-def wants_links(text: str) -> bool:
-    text = text.lower()
-    keywords = ["link", "links", "url", "urls", "sources", "citations", "reference", "references", "research", "evidence"]
-    return any(k in text for k in keywords)
-
-
-def strip_links(text: str) -> str:
-    text = re.sub(r"https?://\S+", "", text)
-    text = re.sub(r"www\.\S+", "", text)
-    return re.sub(r"\s{2,}", " ", text).strip()
-
-
 # =============================
-# Gemini Integration
+# Groq Integration with Model Routing [cite: 03-02-2026]
 # =============================
 
-def build_system_prompt(user_query: str) -> str:
-    return (
-        "You are J.A.R.V.I.S, a concise and reliable assistant. "
-        "Follow the No-Link Protocol: do not include URLs unless the user explicitly asks for sources, links, or research. "
-        "If you are uncertain, say so briefly and avoid speculation. "
-        "Keep responses short and focused for live demos."
-    )
-
-
-def call_gemini(user_query: str) -> str:
-    if not GENAI_AVAILABLE or not GEMINI_API_KEY:
+def call_groq(user_query: str, model: str = "jarvis60") -> str:
+    """
+    Call Groq API with model selection [cite: 03-02-2026]
+    Falls back to stable greeting on error [cite: 03-02-2026]
+    """
+    if not GROQ_API_KEY:
         return FALLBACK_MESSAGE
 
+    # Get selected model or default [cite: 03-02-2026]
+    groq_model = GROQ_MODELS.get(model, "llama3-8b-8192")
+    
     try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-
-        prompt = f"{build_system_prompt(user_query)}\n\nUser: {user_query}\nAssistant:"
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.6,
-                "max_output_tokens": 800,
-                "top_p": 0.9,
+        client = httpx.Client()
+        response = client.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
             },
+            json={
+                "model": groq_model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are J.A.R.V.I.S, a helpful AI assistant. Be concise and accurate."
+                    },
+                    {
+                        "role": "user", 
+                        "content": user_query
+                    }
+                ],
+                "temperature": 0.7,
+                "max_tokens": 1000,
+            },
+            timeout=30.0
         )
-        text = (response.text or "").strip()
-        if not text:
+        
+        if response.status_code == 200:
+            data = response.json()
+            answer = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            return answer if answer else FALLBACK_MESSAGE
+        else:
             return FALLBACK_MESSAGE
-        return text
-    except Exception:
+            
+    except Exception as e:
+        print(f"⚠️ Groq API error: {str(e)}")
         return FALLBACK_MESSAGE
 
 
 # =============================
-# Response Handler
+# Response Handler with Model Routing [cite: 03-02-2026]
 # =============================
 
-def handle_query(user_query: str) -> Dict:
+def handle_query(user_query: str, model: str = "jarvis60") -> Dict:
+    """Handle query with model selection [cite: 03-02-2026]"""
+    # Fast path for greetings (no API call needed)
     if is_greeting(user_query):
         return {
             "success": True,
-            "answer": "Hello! I’m J.A.R.V.I.S. How can I help you today?",
+            "answer": "Hello! I'm J.A.R.V.I.S. How can I help you today?",
             "engine": "fast-path",
+            "model_used": model,
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
 
     if is_identity_question(user_query):
         return {
             "success": True,
-            "answer": "I’m J.A.R.V.I.S, your AI assistant. I was built to be fast, stable, and helpful for demos.",
+            "answer": "I'm J.A.R.V.I.S, your AI assistant. I was built to be fast, stable, and helpful for demonstrations.",
             "engine": "fast-path",
+            "model_used": model,
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
 
-    answer = call_gemini(user_query)
-
-    if answer != FALLBACK_MESSAGE and not wants_links(user_query):
-        answer = strip_links(answer)
+    # Route to selected Groq model [cite: 03-02-2026]
+    answer = call_groq(user_query, model)
 
     return {
         "success": True,
         "answer": answer,
-        "engine": "gemini-1.5-flash",
+        "engine": f"Groq {GROQ_MODELS.get(model, 'llama3-8b-8192')}",
+        "model_used": model,
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
 
@@ -161,9 +177,15 @@ def home():
         "status": "online",
         "message": "J.A.R.V.I.S backend is running",
         "version": "6.0-render",
+        "models": {
+            "coding": "mixtral-8x7b-32768",
+            "general": "llama3-70b-8192",
+            "gemma": "gemma-7b-it",
+            "jarvis60": "llama3-8b-8192 (default)"
+        },
         "endpoints": {
             "/": "GET - status",
-            "/ask": "POST - main endpoint",
+            "/ask": "POST - main endpoint with model selection",
             "/chat": "POST - alias for /ask",
             "/health": "GET - health check",
         },
@@ -177,7 +199,8 @@ def ask():
         return "", 204
 
     data = request.get_json(silent=True) or {}
-    user_query = (data.get("query") or data.get("message") or "").strip()
+    user_query = (data.get("question") or data.get("query") or data.get("message") or "").strip()
+    model = data.get("model", "jarvis60")  # Get selected model [cite: 03-02-2026]
 
     if not user_query:
         return jsonify({
@@ -187,7 +210,7 @@ def ask():
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 400
 
-    result = handle_query(user_query)
+    result = handle_query(user_query, model)
     return jsonify(result), 200
 
 
@@ -205,6 +228,7 @@ def chat():
         user_query = data.get("message") or data.get("query") or ""
 
     user_query = user_query.strip()
+    model = data.get("model", "jarvis60")  # Get selected model [cite: 03-02-2026]
 
     if not user_query:
         return jsonify({
@@ -214,7 +238,7 @@ def chat():
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 400
 
-    result = handle_query(user_query)
+    result = handle_query(user_query, model)
     return jsonify(result), 200
 
 
@@ -225,11 +249,21 @@ def health():
 
     return jsonify({
         "status": "healthy",
-        "gemini_available": GENAI_AVAILABLE,
-        "api_key_set": bool(GEMINI_API_KEY),
+        "groq_available": GROQ_AVAILABLE,
+        "api_key_set": bool(GROQ_API_KEY),
+        "models_supported": list(GROQ_MODELS.keys()),
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }), 200
 
 
 if __name__ == "__main__":
+    print("=" * 70)
+    print("🤖 J.A.R.V.I.S 6.0 Backend - Render Deployment")
+    print("=" * 70)
+    print(f"🚀 Server starting on port {PORT}...")
+    print(f"✅ Groq API: {'Available' if GROQ_API_KEY else 'NOT configured'}")
+    print(f"📦 Models:")
+    for name, model in GROQ_MODELS.items():
+        print(f"   - {name}: {model}")
+    print("=" * 70)
     app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
