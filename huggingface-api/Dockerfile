@@ -1,21 +1,20 @@
-# Hugging Face Space - FREE AI API
-# Uses HF Inference API - no model download needed!
+# JARVIS AI - HuggingFace Space Deployment
+# Zero-Failure Resilient Agent with Web Search Fallback
 
 FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install minimal dependencies (no torch/transformers!)
-RUN pip install --no-cache-dir \
-    flask==3.0.0 \
-    flask-cors==4.0.0 \
-    requests==2.31.0
+# Install dependencies including ddgs for web search
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
+# Copy application files
 COPY app.py .
+COPY jarvis_standalone.py .
 
 # Expose port (HuggingFace uses 7860)
 EXPOSE 7860
 
-# Run the API
+# Run the JARVIS API
 CMD ["python", "app.py"]
