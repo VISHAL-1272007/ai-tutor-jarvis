@@ -1388,6 +1388,121 @@ def health():
     }), 200
 
 
+# =============================
+# SearXNG Live Search Integration [cite: 04-02-2026]
+# =============================
+
+@app.route("/api/search-live", methods=["POST", "OPTIONS"])
+def search_live():
+    """
+    Live search using SearXNG (Meta-Search Engine)
+    with fallback to DuckDuckGo if SearXNG unavailable
+    Security: X-Jarvis-Key header authentication [cite: 31-01-2026]
+    """
+    if request.method == "OPTIONS":
+        return "", 204
+
+    # Security Handshake [cite: 31-01-2026]
+    auth_header = request.headers.get("X-Jarvis-Key", "")
+    if auth_header != "VISHAI_SECURE_2026":
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized Access",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 401
+
+    data = request.get_json(silent=True) or {}
+    query = (data.get("query") or "").strip()
+    
+    if not query:
+        return jsonify({
+            "success": False,
+            "error": "query is required",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 400
+
+    # Block injection attempts [cite: 04-02-2026]
+    if re.search(r"(system\s+override|ignore\s+instructions)", query, flags=re.IGNORECASE):
+        return jsonify({
+            "success": False,
+            "error": "Blocked by input policy",
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }), 400
+
+    import requests
+    
+    try:
+        # 1. Try SearXNG Public Instance (Stable) [cite: 04-02-2026]
+        import requests
+        searx_url = "https://searx.be/search"
+        params = {
+            'q': query,
+            'format': 'json',
+            'categories': 'general',
+            'time_range': 'day'
+        }
+        
+        response = requests.get(searx_url, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            results = response.json().get('results', [])
+            formatted_results = [
+                {
+                    "title": r.get("title", ""),
+                    "url": r.get("url", ""),
+                    "snippet": r.get("content", ""),
+                }
+                for r in results[:5]
+            ]
+            
+            return jsonify({
+                "success": True,
+                "source": "SearXNG",
+                "query": query,
+                "results": formatted_results,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }), 200
+        
+        raise Exception(f"SearXNG returned {response.status_code}")
+
+    except Exception as e:
+        print(f"⚠️ SearXNG unavailable, switching to DuckDuckGo fallback: {e}")
+        
+        # 2. Fallback: DuckDuckGo (Never go blind!) [cite: 04-02-2026]
+        try:
+            if DDGS_AVAILABLE:
+                results = []
+                with DDGS() as ddgs:
+                    for item in ddgs.text(query, max_results=5):
+                        results.append({
+                            "title": item.get("title", ""),
+                            "url": item.get("href", ""),
+                            "snippet": item.get("body", ""),
+                        })
+                
+                return jsonify({
+                    "success": True,
+                    "source": "DuckDuckGo",
+                    "query": query,
+                    "results": results,
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                }), 200
+            
+            return jsonify({
+                "success": False,
+                "error": "All search backends unavailable",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }), 503
+            
+        except Exception as ddgs_error:
+            print(f"❌ Both SearXNG and DuckDuckGo failed: {ddgs_error}")
+            return jsonify({
+                "success": False,
+                "error": "Search service unavailable",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }), 503
+
+
 if __name__ == "__main__":
     print("=" * 80)
     print("🤖 J.A.R.V.I.S 2026 Backend - Gemini-Like Architecture")
