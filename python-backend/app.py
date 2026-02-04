@@ -186,7 +186,29 @@ CORS(app, resources={
     r"/history": {"origins": ALLOWED_ORIGINS, "methods": ["GET", "OPTIONS"]},
     r"/api/voice": {"origins": ALLOWED_ORIGINS, "methods": ["GET", "OPTIONS"]},
     r"/api/search-ddgs": {"origins": ALLOWED_ORIGINS, "methods": ["POST", "OPTIONS"]},
+    r"/api/search-live": {"origins": ALLOWED_ORIGINS, "methods": ["POST", "OPTIONS"]},
 })
+
+# ===== TAVILY AI MULTI-KEY LOAD BALANCING [cite: 04-02-2026] =====
+import random
+TAVILY_API_KEYS = [
+    os.environ.get("TAVILY_API_KEY"),
+    os.environ.get("TAVILY_API_KEY2"),
+    os.environ.get("TAVILY_API_KEY3"),
+]
+TAVILY_API_KEYS = [key for key in TAVILY_API_KEYS if key]  # Filter None values
+
+if not TAVILY_API_KEYS:
+    print("⚠️ WARNING: No Tavily API keys found in environment")
+else:
+    print(f"✅ Tavily AI initialized with {len(TAVILY_API_KEYS)} API key(s) for load balancing")
+
+def get_tavily_client():
+    """Get a random Tavily client for load balancing [cite: 04-02-2026]"""
+    if not TAVILY_API_KEYS:
+        raise ValueError("No Tavily API keys available")
+    api_key = random.choice(TAVILY_API_KEYS)
+    return TavilyClient(api_key=api_key)
 
 # Initialize Gemini for vision [cite: 03-02-2026]
 if GEMINI_API_KEY and GEMINI_AVAILABLE:
@@ -1230,64 +1252,112 @@ def history():
 
 @app.route("/api/search-ddgs", methods=["POST", "OPTIONS"])
 def search_ddgs():
-    """Secure DDGS search endpoint for RAG-Worker [cite: 04-02-2026]"""
+    """
+    Tavily AI Advanced Research (Aliased for backward compatibility) [cite: 04-02-2026]
+    Returns: structured JSON with answer, context, and sources
+    Security: X-Jarvis-Key header authentication [cite: 31-01-2026]
+    """
     if request.method == "OPTIONS":
         return "", 204
 
-    if not DDGS_AVAILABLE:
+    # Security handshake [cite: 31-01-2026]
+    security_key = request.headers.get("X-Jarvis-Key", "")
+    if security_key != "VISHAI_SECURE_2026":
         return jsonify({
             "success": False,
-            "error": "duckduckgo_search not available",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }), 503
-
-    auth_header = request.headers.get("X-Jarvis-Key", "")
-    if auth_header != "VISHAI_SECURE_2026":
-        return jsonify({
-            "success": False,
-            "error": "Unauthorized",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "error": "Unauthorized. Security key mismatch.",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }), 401
 
     data = request.get_json(silent=True) or {}
-    topic = (data.get("topic") or "").strip()
-    if not topic:
+    # Accept both 'query' and 'topic' for backward compatibility
+    query = (data.get("query") or data.get("topic") or "").strip()
+    
+    if not query:
         return jsonify({
             "success": False,
-            "error": "topic is required",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "error": "'query' or 'topic' is required",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }), 400
 
-    if re.search(r"(system\s+override|ignore\s+instructions)", topic, flags=re.IGNORECASE):
+    # Block injection attempts
+    if re.search(r"(system\s+override|ignore\s+instructions)", query, flags=re.IGNORECASE):
         return jsonify({
             "success": False,
             "error": "Blocked by input policy",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }), 400
 
-    try:
-        results = []
-        with DDGS() as ddgs:
-            for item in ddgs.text(topic, max_results=5):
+    # Tavily AI with multi-key retry [cite: 04-02-2026]
+    last_error = None
+    used_keys = set()
+    
+    for attempt in range(len(TAVILY_API_KEYS) if TAVILY_API_KEYS else 1):
+        try:
+            available_keys = [k for k in TAVILY_API_KEYS if k not in used_keys]
+            if not available_keys:
+                break
+            
+            api_key = random.choice(available_keys)
+            used_keys.add(api_key)
+            tavily_client = TavilyClient(api_key=api_key)
+            
+            print(f"🔍 [Tavily DDGS] Searching with key #{attempt + 1}: {query[:50]}...")
+            
+            response = tavily_client.search(
+                query=query,
+                search_depth="advanced",
+                max_results=5,
+                include_raw_content=False
+            )
+            
+            results = []
+            for item in response.get("results", []):
+                url = item.get("url", "")
+                domain = ""
+                if url:
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(url)
+                        domain = parsed.netloc
+                    except:
+                        pass
+                
                 results.append({
-                    "title": item.get("title"),
-                    "url": item.get("href"),
-                    "snippet": item.get("body"),
+                    "title": item.get("title", "Untitled"),
+                    "url": url,
+                    "link": url,
+                    "snippet": item.get("content", "")[:500],
+                    "favicon": f"https://www.google.com/s2/favicons?domain={domain}&sz=64" if domain else ""
                 })
-
-        return jsonify({
-            "success": True,
-            "topic": topic,
-            "results": results,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }), 200
-    except Exception as e:
-        print(f"⚠️ DDGS error: {e}")
-        return jsonify({
-            "success": False,
-            "error": "Search failed",
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }), 500
+            
+            # Build context from results
+            context = "\n\n".join([f"{r['title']}\n{r['snippet']}" for r in results])
+            answer = response.get("answer", context[:500] if context else "No results found")
+            
+            print(f"✅ [Tavily DDGS] Success: Retrieved {len(results)} result(s)")
+            
+            return jsonify({
+                "success": True,
+                "query": query,
+                "answer": answer,
+                "context": context,
+                "sources": results,
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            }), 200
+            
+        except Exception as e:
+            last_error = str(e)
+            print(f"⚠️ [Tavily DDGS] Attempt {attempt + 1} failed: {last_error}")
+            continue
+    
+    # All attempts failed
+    print(f"❌ [Tavily DDGS] All API keys exhausted. Last error: {last_error}")
+    return jsonify({
+        "success": False,
+        "error": f"Search failed: {last_error}",
+        "timestamp": datetime.utcnow().isoformat() + "Z"
+    }), 500
 
 
 @app.route("/api/voice", methods=["GET", "OPTIONS"])
@@ -1395,8 +1465,8 @@ def health():
 @app.route("/api/search-live", methods=["POST", "OPTIONS"])
 def search_live():
     """
-    Live search using SearXNG (Meta-Search Engine)
-    with fallback to DuckDuckGo if SearXNG unavailable
+    Tavily AI Advanced Research Engine [cite: 04-02-2026]
+    Multi-key load balancing with automatic retry on failure
     Security: X-Jarvis-Key header authentication [cite: 31-01-2026]
     """
     if request.method == "OPTIONS":
@@ -1429,78 +1499,77 @@ def search_live():
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 400
 
-    import requests
+    # Tavily AI with multi-key retry logic [cite: 04-02-2026]
+    last_error = None
+    used_keys = set()
     
-    try:
-        # 1. Try SearXNG Public Instance (Stable) [cite: 04-02-2026]
-        import requests
-        searx_url = "https://searx.be/search"
-        params = {
-            'q': query,
-            'format': 'json',
-            'categories': 'general',
-            'time_range': 'day'
-        }
-        
-        response = requests.get(searx_url, params=params, timeout=10)
-        
-        if response.status_code == 200:
-            results = response.json().get('results', [])
-            formatted_results = [
-                {
-                    "title": r.get("title", ""),
-                    "url": r.get("url", ""),
-                    "snippet": r.get("content", ""),
-                }
-                for r in results[:5]
-            ]
+    for attempt in range(len(TAVILY_API_KEYS) if TAVILY_API_KEYS else 1):
+        try:
+            # Get a client with a random unused key
+            available_keys = [k for k in TAVILY_API_KEYS if k not in used_keys]
+            if not available_keys:
+                break
+            
+            api_key = random.choice(available_keys)
+            used_keys.add(api_key)
+            tavily_client = TavilyClient(api_key=api_key)
+            
+            print(f"🔍 [Tavily] Searching with key #{attempt + 1}: {query[:50]}...")
+            
+            # Advanced search with detailed results [cite: 04-02-2026]
+            response = tavily_client.search(
+                query=query,
+                search_depth="advanced",
+                max_results=5,
+                include_raw_content=False,
+                include_images=False
+            )
+            
+            results = []
+            for item in response.get("results", []):
+                # Extract domain for favicon [cite: 04-02-2026]
+                url = item.get("url", "")
+                domain = ""
+                if url:
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(url)
+                        domain = parsed.netloc
+                    except:
+                        domain = url.split("/")[2] if len(url.split("/")) > 2 else ""
+                
+                results.append({
+                    "title": item.get("title", "Untitled"),
+                    "url": url,
+                    "content": item.get("content", ""),
+                    "snippet": item.get("content", "")[:300],  # First 300 chars
+                    "favicon": f"https://www.google.com/s2/favicons?domain={domain}&sz=64" if domain else "",
+                    "score": item.get("score", 0)
+                })
+            
+            print(f"✅ [Tavily] Success: Retrieved {len(results)} result(s)")
             
             return jsonify({
                 "success": True,
-                "source": "SearXNG",
+                "source": "Tavily AI",
                 "query": query,
-                "results": formatted_results,
+                "results": results,
+                "answer": response.get("answer", ""),
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             }), 200
-        
-        raise Exception(f"SearXNG returned {response.status_code}")
-
-    except Exception as e:
-        print(f"⚠️ SearXNG unavailable, switching to DuckDuckGo fallback: {e}")
-        
-        # 2. Fallback: DuckDuckGo (Never go blind!) [cite: 04-02-2026]
-        try:
-            if DDGS_AVAILABLE:
-                results = []
-                with DDGS() as ddgs:
-                    for item in ddgs.text(query, max_results=5):
-                        results.append({
-                            "title": item.get("title", ""),
-                            "url": item.get("href", ""),
-                            "snippet": item.get("body", ""),
-                        })
-                
-                return jsonify({
-                    "success": True,
-                    "source": "DuckDuckGo",
-                    "query": query,
-                    "results": results,
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
-                }), 200
             
-            return jsonify({
-                "success": False,
-                "error": "All search backends unavailable",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-            }), 503
-            
-        except Exception as ddgs_error:
-            print(f"❌ Both SearXNG and DuckDuckGo failed: {ddgs_error}")
-            return jsonify({
-                "success": False,
-                "error": "Search service unavailable",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-            }), 503
+        except Exception as e:
+            last_error = str(e)
+            print(f"⚠️ [Tavily] Attempt {attempt + 1} failed: {last_error}")
+            continue
+    
+    # All Tavily keys failed, return error [cite: 04-02-2026]
+    print(f"❌ [Tavily] All API keys exhausted. Last error: {last_error}")
+    return jsonify({
+        "success": False,
+        "error": f"Tavily search failed: {last_error}",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }), 503
 
 
 if __name__ == "__main__":

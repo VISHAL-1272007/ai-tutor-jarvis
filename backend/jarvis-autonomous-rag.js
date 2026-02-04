@@ -112,7 +112,7 @@ class JarvisAutonomousRAG {
      * Replaces DDGS for real-time news and better accuracy
      * With security headers, retry mechanism, and detailed error logging
      */
-    async searchWithSearXNG(query, limit = 5, retries = 2) {
+    async searchWithTavily(query, limit = 5, retries = 2) {
         const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
         const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
         const endpoint = `${baseUrl}/api/search-live`;
@@ -131,31 +131,33 @@ class JarvisAutonomousRAG {
             }
         };
 
-        console.log(`🔍 [SearXNG] Searching: "${query}" | Endpoint: ${endpoint}`);
+        console.log(`🔍 [Tavily AI] Searching: "${query}" | Endpoint: ${endpoint}`);
 
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
                 const res = await axios.post(endpoint, requestPayload, axiosConfig);
                 
                 if (!res.data || res.data.success !== true) {
-                    console.error(`[SearXNG] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
+                    console.error(`[Tavily] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
                     throw new Error(res.data?.error || 'Search failed');
                 }
 
                 const results = Array.isArray(res.data.results) ? res.data.results : [];
-                const source = res.data.source || 'Unknown';
+                const source = res.data.source || 'Tavily AI';
                 
-                // Build docs from search results
+                // Build docs from Tavily results with favicon support [cite: 04-02-2026]
                 const docs = results.slice(0, limit).map((r, i) => ({
                     title: r.title || `Result ${i + 1}`,
-                    url: r.url || r.link || 'unknown',
-                    snippet: r.snippet || r.body || '',
-                    content: (r.snippet || r.body || '').substring(0, 8000),
+                    url: r.url || 'unknown',
+                    snippet: r.snippet || r.content || '',
+                    content: r.content || r.snippet || '',
+                    favicon: r.favicon || '',  // Google Favicon API URL [cite: 04-02-2026]
+                    score: r.score || 0,
                     index: i + 1,
-                    status: source.toLowerCase()
+                    status: 'tavily'
                 }));
                 
-                console.log(`✅ [${source}] Success: Retrieved ${docs.length} document(s)`);
+                console.log(`✅ [Tavily AI] Success: Retrieved ${docs.length} document(s) from ${source}`);
                 return docs;
                 
             } catch (e) {
@@ -163,7 +165,7 @@ class JarvisAutonomousRAG {
                 const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
                 
                 console.warn(
-                    `⚠️ [JARVIS-RAG] Search Error (Attempt ${attempt + 1}/${retries + 1})\n` +
+                    `⚠️ [JARVIS-RAG] Tavily Search Error (Attempt ${attempt + 1}/${retries + 1})\n` +
                     `   Status: ${status}\n` +
                     `   Error: ${errorMsg}\n` +
                     `   Endpoint: ${endpoint}\n` +
@@ -179,9 +181,9 @@ class JarvisAutonomousRAG {
                 }
                 
                 if (attempt === retries) {
-                    console.error(`❌ [SearXNG] Failed After ${retries + 1} Attempts\n   Final Status: ${status}\n   Final Error: ${errorMsg}`);
-                    // Throw error to trigger DDGS fallback [cite: 04-02-2026]
-                    throw new Error(`SearXNG unavailable (${status}): ${errorMsg}`);
+                    console.error(`❌ [Tavily AI] Failed After ${retries + 1} Attempts\n   Final Status: ${status}\n   Final Error: ${errorMsg}`);
+                    // Throw error to trigger fallback [cite: 04-02-2026]
+                    throw new Error(`Tavily AI unavailable (${status}): ${errorMsg}`);
                 }
             }
         }
@@ -217,44 +219,46 @@ class JarvisAutonomousRAG {
             }
         };
 
-        console.log(`🔍 [DDGS] Searching: "${query}" | Endpoint: ${endpoint}`);
+        console.log(`🔍 [Tavily Backup] Searching: "${query}" | Endpoint: ${endpoint}`);
 
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
                 const res = await axios.post(endpoint, requestPayload, axiosConfig);
                 
                 if (!res.data || res.data.success !== true) {
-                    console.error(`[DDGS] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
-                    throw new Error(res.data?.error || 'DDGS search failed');
+                    console.error(`[Tavily Backup] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
+                    throw new Error(res.data?.error || 'Tavily backup search failed');
                 }
 
                 const answer = res.data.answer || '';
                 const context = res.data.context || '';
                 const sources = Array.isArray(res.data.sources) ? res.data.sources : [];
                 
-                // Build docs: prefer context for content; include top sources
+                // Build docs with favicon support [cite: 04-02-2026]
                 const docs = sources.slice(0, limit).map((s, i) => ({
                     title: s.title || `Source ${i + 1}`,
                     url: s.url || s.link || 'unknown',
                     snippet: s.snippet || '',
-                    content: (context || answer || s.snippet || '').toString().substring(0, 8000),
+                    content: s.content || s.snippet || (context || answer).toString().substring(0, 8000),
+                    favicon: s.favicon || '',  // Favicon from Tavily [cite: 04-02-2026]
                     index: i + 1,
-                    status: 'ddgs'
+                    status: 'tavily'
                 }));
                 
-                // If no sources, still create a single doc from synthesized answer/context
+                // If no sources, create a doc from synthesized answer/context
                 if (docs.length === 0 && (context || answer)) {
                     docs.push({
-                        title: 'DDGS Synthesized Context',
-                        url: 'ddgs.local',
+                        title: 'Tavily AI Synthesized Answer',
+                        url: 'tavily.local',
                         snippet: (answer || '').toString().substring(0, 200),
                         content: (context || answer).toString().substring(0, 8000),
+                        favicon: '',
                         index: 1,
-                        status: 'ddgs_context'
+                        status: 'tavily_synthesized'
                     });
                 }
                 
-                console.log(`✅ [DDGS] Success: Retrieved ${docs.length} document(s)`);
+                console.log(`✅ [Tavily Backup] Success: Retrieved ${docs.length} document(s)`);
                 return docs;
                 
             } catch (e) {
@@ -868,18 +872,18 @@ ${context}`;
             try {
                 console.log(`📰 [RAG-WORKER] Processing topic: ${topic}`);
                 
-                // Phase 1: Try SearXNG for live news [cite: 04-02-2026]
+                // Phase 1: Try Tavily AI for live news [cite: 04-02-2026]
                 let docs = [];
                 try {
-                    docs = await this.searchWithSearXNG(`${topic} latest 2026`, 3);
-                } catch (searxngError) {
-                    // Phase 2: Fallback to DuckDuckGo [cite: 04-02-2026]
-                    console.warn(`⚠️ [RAG-WORKER] SearXNG failed for "${topic}", trying DuckDuckGo fallback...`);
+                    docs = await this.searchWithTavily(`${topic} latest 2026`, 3);
+                } catch (tavilyError) {
+                    // Phase 2: Fallback to Tavily Backup endpoint [cite: 04-02-2026]
+                    console.warn(`⚠️ [RAG-WORKER] Tavily primary failed for "${topic}", trying backup endpoint...`);
                     try {
                         docs = await this.searchWithDDGS(`${topic} latest 2026`, 3);
-                        console.log(`✅ [RAG-WORKER] DuckDuckGo fallback successful for "${topic}"`);
-                    } catch (ddgsError) {
-                        console.warn(`⚠️ [RAG-WORKER] Both SearXNG and DDGS failed for "${topic}": ${ddgsError.message}`);
+                        console.log(`✅ [RAG-WORKER] Tavily backup endpoint successful for "${topic}"`);
+                    } catch (backupError) {
+                        console.warn(`⚠️ [RAG-WORKER] All Tavily endpoints failed for "${topic}": ${backupError.message}`);
                         // Continue to next topic
                         continue;
                     }
@@ -924,16 +928,16 @@ ${context}`;
                 console.warn(`⚠️ [JARVIS-RAG] Local memory search failed: ${e.message}`);
             }
 
-            // Phase 2: SearXNG pipeline with fallback to DDGS [cite: 04-02-2026]
+            // Phase 2: Tavily AI pipeline with backup endpoint [cite: 04-02-2026]
             let liveNewsDocs = [];
             try {
-                liveNewsDocs = await this.searchWithSearXNG(`${query} (latest, high quality sources)`, 5);
+                liveNewsDocs = await this.searchWithTavily(`${query} (latest, high quality sources)`, 5);
             } catch (e) {
-                console.warn(`⚠️ [JARVIS-RAG] SearXNG search failed, falling back to DDGS: ${e.message}`);
+                console.warn(`⚠️ [JARVIS-RAG] Tavily primary search failed, trying backup: ${e.message}`);
                 try {
                     liveNewsDocs = await this.searchWithDDGS(`${query} (latest, high quality sources)`, 5);
-                } catch (ddgsError) {
-                    console.warn(`⚠️ [JARVIS-RAG] DDGS fallback also failed: ${ddgsError.message}`);
+                } catch (backupError) {
+                    console.warn(`⚠️ [JARVIS-RAG] Tavily backup also failed: ${backupError.message}`);
                 }
             }
 
