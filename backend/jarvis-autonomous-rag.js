@@ -108,6 +108,90 @@ class JarvisAutonomousRAG {
     }
 
     /**
+     * SearXNG Live Search with DuckDuckGo Fallback [cite: 04-02-2026]
+     * Replaces DDGS for real-time news and better accuracy
+     * With security headers, retry mechanism, and detailed error logging
+     */
+    async searchWithSearXNG(query, limit = 5, retries = 2) {
+        const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
+        const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
+        const endpoint = `${baseUrl}/api/search-live`;
+        const securityKey = process.env.JARVIS_SECURE_KEY || 'VISHAI_SECURE_2026';
+        
+        const requestPayload = {
+            query: String(query || '').trim()
+        };
+        
+        const axiosConfig = {
+            timeout: 30000,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Jarvis-Key': securityKey,
+                'User-Agent': 'JARVIS-RAG-Worker/1.0'
+            }
+        };
+
+        console.log(`🔍 [SearXNG] Searching: "${query}" | Endpoint: ${endpoint}`);
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const res = await axios.post(endpoint, requestPayload, axiosConfig);
+                
+                if (!res.data || res.data.success !== true) {
+                    console.error(`[SearXNG] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
+                    throw new Error(res.data?.error || 'Search failed');
+                }
+
+                const results = Array.isArray(res.data.results) ? res.data.results : [];
+                const source = res.data.source || 'Unknown';
+                
+                // Build docs from search results
+                const docs = results.slice(0, limit).map((r, i) => ({
+                    title: r.title || `Result ${i + 1}`,
+                    url: r.url || r.link || 'unknown',
+                    snippet: r.snippet || r.body || '',
+                    content: (r.snippet || r.body || '').substring(0, 8000),
+                    index: i + 1,
+                    status: source.toLowerCase()
+                }));
+                
+                console.log(`✅ [${source}] Success: Retrieved ${docs.length} document(s)`);
+                return docs;
+                
+            } catch (e) {
+                const status = e.response?.status || e.code || 'unknown';
+                const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
+                
+                console.warn(
+                    `⚠️ [JARVIS-RAG] Search Error (Attempt ${attempt + 1}/${retries + 1})\n` +
+                    `   Status: ${status}\n` +
+                    `   Error: ${errorMsg}\n` +
+                    `   Endpoint: ${endpoint}\n` +
+                    `   Security Header: X-Jarvis-Key=${securityKey.substring(0, 5)}***\n` +
+                    `   Payload: ${JSON.stringify(requestPayload)}`
+                );
+                
+                if (attempt < retries) {
+                    const delayMs = (attempt + 1) * 1000; // Exponential backoff
+                    console.log(`   ⏳ Retrying in ${delayMs}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    continue;
+                }
+                
+                if (attempt === retries) {
+                    console.error(`❌ [SearXNG] Failed After ${retries + 1} Attempts\n   Final Status: ${status}\n   Final Error: ${errorMsg}`);
+                    // Throw error to trigger DDGS fallback [cite: 04-02-2026]
+                    throw new Error(`SearXNG unavailable (${status}): ${errorMsg}`);
+                }
+            }
+        }
+        
+        // Should never reach here due to throw above
+        console.warn(`⚠️ [RAG-WORKER] Unexpected path - returning empty results`);
+        return [];
+    }
+
+    /**
      * DDGS-backed search using Flask backend endpoint /api/search-ddgs
      * With security headers, retry mechanism, and detailed error logging
      */
@@ -783,12 +867,29 @@ ${context}`;
         for (const topic of allTopics) {
             try {
                 console.log(`📰 [RAG-WORKER] Processing topic: ${topic}`);
-                const docs = await this.searchWithDDGS(`${topic} latest 2026`, 3);
+                
+                // Phase 1: Try SearXNG for live news [cite: 04-02-2026]
+                let docs = [];
+                try {
+                    docs = await this.searchWithSearXNG(`${topic} latest 2026`, 3);
+                } catch (searxngError) {
+                    // Phase 2: Fallback to DuckDuckGo [cite: 04-02-2026]
+                    console.warn(`⚠️ [RAG-WORKER] SearXNG failed for "${topic}", trying DuckDuckGo fallback...`);
+                    try {
+                        docs = await this.searchWithDDGS(`${topic} latest 2026`, 3);
+                        console.log(`✅ [RAG-WORKER] DuckDuckGo fallback successful for "${topic}"`);
+                    } catch (ddgsError) {
+                        console.warn(`⚠️ [RAG-WORKER] Both SearXNG and DDGS failed for "${topic}": ${ddgsError.message}`);
+                        // Continue to next topic
+                        continue;
+                    }
+                }
+                
                 if (docs.length > 0 && this.pinecone) {
                     const facts = docs.map(d => ({
                         id: `rag-${Date.now()}-${Math.random()}`,
                         text: d.content.substring(0, this.chunkSize),
-                        metadata: { topic, source: d.url, type: 'ddgs' }
+                        metadata: { topic, source: d.url, type: docs[0].status || 'search' }
                     }));
                     await this.pinecone.upsertKnowledge(facts);
                     topicsProcessed++;
@@ -823,16 +924,21 @@ ${context}`;
                 console.warn(`⚠️ [JARVIS-RAG] Local memory search failed: ${e.message}`);
             }
 
-            // Phase 2: DDGS pipeline (replaces Serper + Jina)
-            let ddgsDocs = [];
+            // Phase 2: SearXNG pipeline with fallback to DDGS [cite: 04-02-2026]
+            let liveNewsDocs = [];
             try {
-                ddgsDocs = await this.searchWithDDGS(`${query} (latest, high quality sources)`, 5);
+                liveNewsDocs = await this.searchWithSearXNG(`${query} (latest, high quality sources)`, 5);
             } catch (e) {
-                console.warn(`⚠️ [JARVIS-RAG] DDGS search failed: ${e.message}`);
+                console.warn(`⚠️ [JARVIS-RAG] SearXNG search failed, falling back to DDGS: ${e.message}`);
+                try {
+                    liveNewsDocs = await this.searchWithDDGS(`${query} (latest, high quality sources)`, 5);
+                } catch (ddgsError) {
+                    console.warn(`⚠️ [JARVIS-RAG] DDGS fallback also failed: ${ddgsError.message}`);
+                }
             }
 
             // If no docs, fallback to local memory only
-            if (ddgsDocs.length === 0 && localMemory.length === 0) {
+            if (liveNewsDocs.length === 0 && localMemory.length === 0) {
                 return {
                     answer: 'No relevant sources found. Please try a different query.',
                     sources: [],
@@ -842,8 +948,8 @@ ${context}`;
                 };
             }
 
-            // Build combined docs (DDGS preferred)
-            const docsForRag = ddgsDocs.length ? ddgsDocs : localMemory.map((m, idx) => ({
+            // Build combined docs (SearXNG/DDGS preferred) [cite: 04-02-2026]
+            const docsForRag = liveNewsDocs.length ? liveNewsDocs : localMemory.map((m, idx) => ({
                 title: m.metadata?.title || `Memory ${idx + 1}`,
                 url: m.metadata?.source || 'memory',
                 snippet: m.text?.substring(0, 160) || '',
