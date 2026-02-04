@@ -16,7 +16,7 @@ Successfully fixed **404 errors** in RAG-Worker's connection to Flask `/api/sear
 
 ### Original Issue
 ```
-HTTP POST to https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs
+HTTP POST to https://ai-tutor-jarvis.onrender.com/api/search-ddgs
 Response: 404 Not Found
 ```
 
@@ -199,7 +199,7 @@ await rag.searchWithDDGS("AI news today", 5);
 
 **Expected Log Output:**
 ```
-🔍 [DDGS] Searching: "AI news today" | Endpoint: https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs
+🔍 [DDGS] Searching: "AI news today" | Endpoint: https://ai-tutor-jarvis.onrender.com/api/search-ddgs
 ✅ [DDGS] Success: Retrieved 5 document(s)
 ```
 
@@ -228,7 +228,7 @@ await rag.searchWithDDGS("AI news today", 5);
 ⚠️ [JARVIS-RAG] Security/Connection Error (Attempt 1/3)
    Status: 404
    Error: Not Found
-   Endpoint: https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs
+   Endpoint: https://ai-tutor-jarvis.onrender.com/api/search-ddgs
    Security Header: X-Jarvis-Key=VISAI***
    Payload: {"topic":"test","region":"in-en"}
    ⏳ Retrying in 1000ms...
@@ -433,7 +433,7 @@ grep -n "topic" backend/jarvis-autonomous-rag.js
 # Should show: topic: String(query || '').trim()
 
 # 2. Test with curl
-curl -X POST https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs \
+curl -X POST https://ai-tutor-jarvis.onrender.com/api/search-ddgs \
   -H "X-Jarvis-Key: VISHAI_SECURE_2026" \
   -H "Content-Type: application/json" \
   -d '{"topic":"test","region":"in-en"}'
@@ -453,7 +453,7 @@ echo "Node BACKEND_URL: $BACKEND_URL"
 echo "Flask endpoint: python-backend/app.py line 1231"
 
 # 2. Test endpoint directly
-curl https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs \
+curl https://ai-tutor-jarvis.onrender.com/api/search-ddgs \
   -H "X-Jarvis-Key: VISHAI_SECURE_2026" \
   -H "Content-Type: application/json" \
   -d '{"topic":"test","region":"in-en"}'
@@ -463,7 +463,7 @@ ps aux | grep node    # Node.js running?
 ps aux | grep python  # Flask running?
 
 # 4. If issue persists, check firewall/network
-curl -v https://ai-tutor-jaqeufrvis.onrender.com/  # Can reach Flask?
+curl -v https://ai-tutor-jarvis.onrender.com/  # Can reach Flask?
 ```
 
 ---

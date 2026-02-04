@@ -44,7 +44,7 @@ git pull origin main-clean
 ### Step 2: Configure
 ```bash
 # Add to .env:
-BACKEND_URL=https://ai-tutor-jaqeufrvis.onrender.com
+BACKEND_URL=https://ai-tutor-jarvis.onrender.com
 JARVIS_SECURE_KEY=VISHAI_SECURE_2026
 NODE_PORT=5000
 ```

@@ -53,7 +53,7 @@ async searchWithDDGS(query, limit = 5, retries = 2) {
 
 Add to `.env`:
 ```bash
-BACKEND_URL=https://ai-tutor-jaqeufrvis.onrender.com
+BACKEND_URL=https://ai-tutor-jarvis.onrender.com
 JARVIS_SECURE_KEY=VISHAI_SECURE_2026
 NODE_PORT=5000
 ```
@@ -79,13 +79,13 @@ npm start
 
 ### Check logs for this:
 ```
-🔍 [DDGS] Searching: "test" | Endpoint: https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs
+🔍 [DDGS] Searching: "test" | Endpoint: https://ai-tutor-jarvis.onrender.com/api/search-ddgs
 ✅ [DDGS] Success: Retrieved 5 document(s)
 ```
 
 ### Or test with curl:
 ```bash
-curl -X POST https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs \
+curl -X POST https://ai-tutor-jarvis.onrender.com/api/search-ddgs \
   -H "X-Jarvis-Key: VISHAI_SECURE_2026" \
   -H "Content-Type: application/json" \
   -d '{"topic":"test query","region":"in-en"}'
@@ -106,7 +106,7 @@ curl -X POST https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs \
 
 **Step 1:** Check Flask backend is running
 ```bash
-curl https://ai-tutor-jaqeufrvis.onrender.com/health
+curl https://ai-tutor-jarvis.onrender.com/health
 ```
 
 **Step 2:** Verify Flask has `/api/search-ddgs` endpoint

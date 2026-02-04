@@ -26,7 +26,7 @@
 │  └───────────────────────────────────────────────────────────────────┘ │
 │                                                                         │
 │  Environment Variables:                                                │
-│  • BACKEND_URL = https://ai-tutor-jaqeufrvis.onrender.com             │
+│  • BACKEND_URL = https://ai-tutor-jarvis.onrender.com             │
 │  • JARVIS_SECURE_KEY = VISHAI_SECURE_2026                             │
 │  • NODE_PORT = 5000                                                   │
 └────────────────────────────┬────────────────────────────────────────────┘

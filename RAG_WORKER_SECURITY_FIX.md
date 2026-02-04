@@ -1,7 +1,7 @@
 # RAG-Worker Security Fix - Flask Backend Integration
 
 ## Problem
-The RAG-Worker was receiving **404 errors** when hitting the Flask backend `/api/search-ddgs` endpoint at `https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs`.
+The RAG-Worker was receiving **404 errors** when hitting the Flask backend `/api/search-ddgs` endpoint at `https://ai-tutor-jarvis.onrender.com/api/search-ddgs`.
 
 **Root Causes:**
 1. Missing `X-Jarvis-Key` security header (endpoint requires auth)
@@ -102,7 +102,7 @@ console.warn(
 JARVIS_SECURE_KEY=YOUR_CUSTOM_SECURE_KEY
 
 # Flask backend URL (auto-detected or set explicitly)
-BACKEND_URL=https://ai-tutor-jaqeufrvis.onrender.com
+BACKEND_URL=https://ai-tutor-jarvis.onrender.com
 ```
 
 ### Code Call

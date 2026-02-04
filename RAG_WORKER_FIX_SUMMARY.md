@@ -57,7 +57,7 @@ for (let attempt = 0; attempt <= retries; attempt++) {
 ⚠️ [JARVIS-RAG] Security/Connection Error (Attempt 1/3)
    Status: 401
    Error: Unauthorized
-   Endpoint: https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs
+   Endpoint: https://ai-tutor-jarvis.onrender.com/api/search-ddgs
    Security Header: X-Jarvis-Key=VISAI***
    Payload: {"topic":"test query","region":"in-en"}
 ```
@@ -90,7 +90,7 @@ Copy updated `searchWithDDGS()` method from `backend/RAG_WORKER_SEARCHWITHDGGS.j
 ### Environment Setup
 ```bash
 # Add to .env:
-BACKEND_URL=https://ai-tutor-jaqeufrvis.onrender.com
+BACKEND_URL=https://ai-tutor-jarvis.onrender.com
 JARVIS_SECURE_KEY=VISHAI_SECURE_2026
 NODE_PORT=5000
 ```
@@ -175,7 +175,7 @@ Body:
 ### "❌ DDGS Endpoint Failed After 3 Attempts"
 **Cause:** Flask backend is down or not responding  
 **Fix:**
-1. Check Flask backend status: `curl https://ai-tutor-jaqeufrvis.onrender.com/health`
+1. Check Flask backend status: `curl https://ai-tutor-jarvis.onrender.com/health`
 2. Check Render logs for Python backend errors
 3. Verify `/api/search-ddgs` endpoint is implemented in `python-backend/app.py`
 
@@ -193,7 +193,7 @@ Body:
 2. Check Flask validation logic in `/api/search-ddgs` endpoint
 3. Test with curl:
 ```bash
-curl -X POST https://ai-tutor-jaqeufrvis.onrender.com/api/search-ddgs \
+curl -X POST https://ai-tutor-jarvis.onrender.com/api/search-ddgs \
   -H "X-Jarvis-Key: VISHAI_SECURE_2026" \
   -H "Content-Type: application/json" \
   -d '{"topic":"test","region":"in-en"}'

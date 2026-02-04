@@ -210,7 +210,7 @@ const results = await rag.searchWithDDGS("test");
 ## Deployment Checklist
 
 - [ ] Node.js backend rebuilt with updated `jarvis-autonomous-rag.js`
-- [ ] `.env` file contains `BACKEND_URL=https://ai-tutor-jaqeufrvis.onrender.com`
+- [ ] `.env` file contains `BACKEND_URL=https://ai-tutor-jarvis.onrender.com`
 - [ ] Flask backend `/api/search-ddgs` endpoint is live and responding
 - [ ] Flask validates `X-Jarvis-Key: VISHAI_SECURE_2026` header
 - [ ] Test RAG-Worker search: `await rag.searchWithDDGS("test query")`

@@ -121,7 +121,7 @@ async function searchWithDDGS(query, limit = 5, retries = 2) {
  * .env file should include:
  * 
  * # Flask backend URL (auto-detected if not set)
- * BACKEND_URL=https://ai-tutor-jaqeufrvis.onrender.com
+ * BACKEND_URL=https://ai-tutor-jarvis.onrender.com
  * 
  * # Security key (defaults to 'VISHAI_SECURE_2026' if not set)
  * JARVIS_SECURE_KEY=VISHAI_SECURE_2026
