@@ -11,7 +11,7 @@
  * ✅ Detailed error logging without crashes
  */
 
-async searchWithDDGS(query, limit = 5, retries = 2) {
+async function searchWithDDGS(query, limit = 5, retries = 2) {
     const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
     const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
     const endpoint = `${baseUrl}/api/search-ddgs`;
