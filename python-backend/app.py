@@ -78,6 +78,12 @@ try:
 except Exception:
     DDGS_AVAILABLE = False
 
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except Exception:
+    REDIS_AVAILABLE = False
+
 
 # =============================
 # Configuration [cite: 03-02-2026]
@@ -103,6 +109,18 @@ _request_log: Dict[str, List[float]] = {}
 
 RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 RERANKER_TOP_K = int(os.environ.get("RERANKER_TOP_K", 3))
+
+# ===== REDIS MEMORY [cite: 04-02-2026] =====
+REDIS_URL = os.environ.get("REDIS_URL", "redis://red-d5rlmrogjchc739qtulg:6379")
+redis_memory = None
+if REDIS_AVAILABLE:
+    try:
+        redis_memory = redis.from_url(REDIS_URL, decode_responses=True)
+        redis_memory.ping()  # Test connection
+        print("✅ [JARVIS-MEMORY] Redis Connected Successfully")
+    except Exception as e:
+        print(f"⚠️ [JARVIS-MEMORY] Redis connection failed: {e}")
+        redis_memory = None
 
 # Voice Module (Edge TTS)
 VOICE_NAME = os.environ.get("VOICE_NAME", "en-GB-RyanNeural")
@@ -1054,6 +1072,53 @@ def handle_chat_hybrid(
 
 
 # =============================
+# HELPER FUNCTIONS
+# =============================
+
+def verify_jarvis_security(request):
+    """Verify X-Jarvis-Key header for Node.js backend requests [cite: 31-01-2026]"""
+    auth_key = request.headers.get("X-Jarvis-Key")
+    if auth_key != "VISHAI_SECURE_2026":
+        return False
+    return True
+
+def get_user_memory(user_id):
+    """Retrieve chat history from Redis [cite: 04-02-2026]"""
+    if not redis_memory:
+        return ""
+    try:
+        history = redis_memory.get(f"history:{user_id}")
+        return history or ""
+    except Exception as e:
+        print(f"⚠️ [JARVIS-MEMORY] Failed to retrieve history: {e}")
+        return ""
+
+def set_user_memory(user_id, content, expire_seconds=86400):
+    """Store chat history in Redis with 24-hour expiration [cite: 04-02-2026]"""
+    if not redis_memory:
+        return False
+    try:
+        redis_memory.set(f"history:{user_id}", content, ex=expire_seconds)
+        return True
+    except Exception as e:
+        print(f"⚠️ [JARVIS-MEMORY] Failed to store history: {e}")
+        return False
+
+def append_user_memory(user_id, content):
+    """Append to existing chat history [cite: 04-02-2026]"""
+    if not redis_memory:
+        return False
+    try:
+        current = redis_memory.get(f"history:{user_id}") or ""
+        updated = f"{current}\n{content}" if current else content
+        redis_memory.set(f"history:{user_id}", updated, ex=86400)
+        return True
+    except Exception as e:
+        print(f"⚠️ [JARVIS-MEMORY] Failed to append history: {e}")
+        return False
+
+
+# =============================
 # API ENDPOINTS
 # =============================
 
@@ -1153,6 +1218,9 @@ def chat():
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 400
 
+    # ===== REDIS MEMORY RETRIEVAL [cite: 04-02-2026] =====
+    chat_history = get_user_memory(user_id)
+    
     # Analyze user context (intent, sentiment, urgency) [cite: 03-02-2026]
     analysis = analyze_user_context(user_query)
     intent = analysis.get("intent", "SEARCH")
@@ -1161,6 +1229,9 @@ def chat():
 
     # Save user message to database [cite: 03-02-2026]
     save_message("user", user_query, intent=intent, sentiment=sentiment)
+    
+    # ===== APPEND TO REDIS MEMORY [cite: 04-02-2026] =====
+    append_user_memory(user_id, f"User: {user_query}")
 
     # Dynamic routing based on intent [cite: 03-02-2026]
     if intent in {"SEARCH", "MEMORY"}:
@@ -1204,6 +1275,10 @@ def chat():
     # Save assistant message to database [cite: 03-02-2026]
     if result.get("success") and result.get("answer"):
         save_message("assistant", result["answer"], intent=intent, sentiment=sentiment)
+        
+        # ===== APPEND ASSISTANT RESPONSE TO REDIS [cite: 04-02-2026] =====
+        append_user_memory(user_id, f"Assistant: {result['answer']}")
+        print(f"✅ [JARVIS-MEMORY] Stored context for user '{user_id}'")
     
     return jsonify(result), 200
 

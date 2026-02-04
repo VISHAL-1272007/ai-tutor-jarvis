@@ -22,6 +22,9 @@ const { jarvisAutonomousVerifiedSearch } = require('./jarvis-autonomous-rag-veri
 
 // Initialize Upstash Redis for production (replaces node-localstorage)
 let redisClient = null;
+let directRedisClient = null;
+
+// Try Upstash Redis first
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     try {
         const { Redis } = require('@upstash/redis');
@@ -29,14 +32,62 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
             url: process.env.UPSTASH_REDIS_REST_URL,
             token: process.env.UPSTASH_REDIS_REST_TOKEN
         });
-        console.log('✅ Upstash Redis initialized for Knowledge Base & Expert Mode');
+        console.log('✅ [JARVIS-MEMORY] Upstash Redis initialized');
     } catch (err) {
         console.warn('⚠️ Upstash Redis initialization failed:', err.message);
-        console.warn('   Expert Persona and Knowledge Base will use file storage fallback.');
     }
 } else {
-    console.warn('⚠️ UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set');
-    console.warn('   Get free Redis at: https://upstash.com/');
+    console.warn('⚠️ UPSTASH_REDIS_REST_URL not set');
+}
+
+// Try direct Redis connection [cite: 04-02-2026]
+if (process.env.REDIS_URL) {
+    try {
+        const redis = require('redis');
+        directRedisClient = redis.createClient({
+            url: process.env.REDIS_URL
+        });
+        directRedisClient.on('connect', () => {
+            console.log('✅ [JARVIS-MEMORY] Direct Redis Connected Successfully');
+        });
+        directRedisClient.on('error', (err) => {
+            console.warn('⚠️ [JARVIS-MEMORY] Redis connection error:', err.message);
+        });
+        directRedisClient.connect().catch(() => {});
+    } catch (err) {
+        console.warn('⚠️ Direct Redis not available:', err.message);
+    }
+}
+
+// Get memory from Redis [cite: 04-02-2026]
+async function getUserMemory(userId) {
+    try {
+        if (directRedisClient) {
+            return await directRedisClient.get(`history:${userId}`) || "";
+        } else if (redisClient) {
+            return await redisClient.get(`history:${userId}`) || "";
+        }
+    } catch (err) {
+        console.warn(`⚠️ [JARVIS-MEMORY] Failed to retrieve for ${userId}:`, err.message);
+    }
+    return "";
+}
+
+// Store memory in Redis [cite: 04-02-2026]
+async function setUserMemory(userId, content) {
+    try {
+        const expireSeconds = 86400; // 24 hours
+        if (directRedisClient) {
+            await directRedisClient.setex(`history:${userId}`, expireSeconds, content);
+            return true;
+        } else if (redisClient) {
+            await redisClient.set(`history:${userId}`, content, { ex: expireSeconds });
+            return true;
+        }
+    } catch (err) {
+        console.warn(`⚠️ [JARVIS-MEMORY] Failed to store for ${userId}:`, err.message);
+    }
+    return false;
 }
 
 // Initialize advanced systems with Redis client
@@ -4459,6 +4510,132 @@ try {
 } catch (err) {
     console.error('⚠️ Daily news system error (non-blocking):', err.message);
 }
+
+// =========================================================
+// 🔍 DEEP RESEARCH ENDPOINT (Perplexity-Style UI)
+// =========================================================
+app.post('/api/research', async (req, res) => {
+    try {
+        // Security check [cite: 31-01-2026]
+        const securityKey = req.headers['x-jarvis-key'];
+        if (securityKey !== 'VISHAI_SECURE_2026') {
+            return res.status(401).json({
+                success: false,
+                error: 'Unauthorized - Invalid security key'
+            });
+        }
+
+        const { query, maxSources = 5, userId = 'default' } = req.body;
+
+        if (!query) {
+            return res.status(400).json({
+                success: false,
+                error: 'Query parameter is required'
+            });
+        }
+
+        console.log(`🔍 [DEEP-RESEARCH] Query: "${query}"`);
+        console.log(`   📡 Requesting ${maxSources} sources from Tavily AI...`);
+
+        // Use the autonomous RAG pipeline with Tavily
+        const JARVISAutonomousRAG = require('./jarvis-autonomous-rag');
+        const ragPipeline = new JARVISAutonomousRAG();
+
+        // Fetch research results using Tavily (primary) or backup endpoint
+        let results = [];
+        let answer = '';
+        
+        try {
+            // Try primary Tavily endpoint first
+            results = await ragPipeline.searchWithTavily(query, maxSources);
+            console.log(`✅ [DEEP-RESEARCH] Retrieved ${results.length} sources from Tavily`);
+        } catch (primaryError) {
+            console.warn(`⚠️ [DEEP-RESEARCH] Primary Tavily failed, trying backup...`);
+            
+            try {
+                // Fallback to backup endpoint
+                results = await ragPipeline.searchWithDDGS(query, maxSources);
+                console.log(`✅ [DEEP-RESEARCH] Retrieved ${results.length} sources from backup`);
+            } catch (backupError) {
+                console.error(`❌ [DEEP-RESEARCH] All endpoints failed:`, backupError.message);
+                return res.status(503).json({
+                    success: false,
+                    error: 'Research pipeline temporarily unavailable',
+                    details: backupError.message
+                });
+            }
+        }
+
+        // Generate synthesized answer using AI
+        if (results.length > 0) {
+            const context = results.map((r, i) => `[${i + 1}] ${r.title}: ${r.content || r.snippet || ''}`).join('\n\n');
+            
+            try {
+                // Use Gemini to synthesize the answer
+                const { GoogleGenerativeAI } = require('@google/generative-ai');
+                const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY);
+                const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+                const synthesisPrompt = `You are JARVIS, an advanced AI research assistant. Based on the following ${results.length} sources, provide a comprehensive answer to the query: "${query}"
+
+SOURCES:
+${context}
+
+INSTRUCTIONS:
+1. Synthesize information from all sources into a coherent, well-structured answer
+2. Use citation numbers [1], [2], etc. to reference specific sources
+3. Provide specific facts, data, and examples from the sources
+4. Structure your response with clear paragraphs
+5. If sources conflict, acknowledge different perspectives
+6. Be professional, accurate, and insightful
+
+Answer:`;
+
+                const result = await model.generateContent(synthesisPrompt);
+                answer = result.response.text();
+                console.log(`✅ [DEEP-RESEARCH] Generated synthesized answer (${answer.length} chars)`);
+                
+            } catch (aiError) {
+                console.warn(`⚠️ [DEEP-RESEARCH] AI synthesis failed:`, aiError.message);
+                answer = `Based on ${results.length} sources, here's what I found about "${query}":\n\n${results.map((r, i) => `[${i + 1}] ${r.title}: ${r.snippet || r.content?.substring(0, 200) || ''}`).join('\n\n')}`;
+            }
+        } else {
+            answer = `No relevant sources found for "${query}". Please try rephrasing your query or check if the research pipeline is operational.`;
+        }
+
+        // Format response for Perplexity-style UI
+        const response = {
+            success: true,
+            query: query,
+            answer: answer,
+            results: results.map((r, idx) => ({
+                title: r.title || 'Untitled Source',
+                url: r.url || '#',
+                content: r.content || r.snippet || '',
+                snippet: (r.content || r.snippet || '').substring(0, 200) + '...',
+                favicon: r.favicon || `https://www.google.com/s2/favicons?domain=${new URL(r.url || 'https://example.com').hostname}&sz=64`,
+                score: r.score || 0.8,
+                timestamp: new Date().toISOString()
+            })),
+            sourceCount: results.length,
+            timestamp: new Date().toISOString(),
+            source: 'Tavily AI Deep Research'
+        };
+
+        console.log(`🚀 [DEEP-RESEARCH] Response ready: ${results.length} sources, ${answer.length} chars`);
+        return res.json(response);
+
+    } catch (error) {
+        console.error('❌ [DEEP-RESEARCH] Endpoint error:', error.message);
+        return res.status(500).json({
+            success: false,
+            error: 'Deep research failed',
+            details: error.message
+        });
+    }
+});
+
+console.log('✅ Deep Research endpoint loaded at /api/research');
 
 // Telegram Bot removed
 

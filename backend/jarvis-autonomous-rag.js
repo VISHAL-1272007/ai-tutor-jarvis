@@ -112,102 +112,143 @@ class JarvisAutonomousRAG {
      * Replaces DDGS for real-time news and better accuracy
      * With security headers, retry mechanism, and detailed error logging
      */
-    async searchWithTavily(query, limit = 5, retries = 2) {
+    /**
+     * Tavily AI Research Engine via Python Backend [cite: 04-02-2026]
+     * Optimized for Perplexity-style UI with clickable source cards
+     */
+    async searchWithTavily(query, limit = 5, retries = 3) {
         const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
-        const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
+        const baseUrl = process.env.PYTHON_BACKEND_URL || process.env.BACKEND_URL || `http://localhost:${nodePort}`;
         const endpoint = `${baseUrl}/api/search-live`;
         const securityKey = process.env.JARVIS_SECURE_KEY || 'VISHAI_SECURE_2026';
         
+        // Clean payload - Python backend expects 'query' field
         const requestPayload = {
             query: String(query || '').trim()
         };
         
+        // Axios configuration with security headers [cite: 04-02-2026]
         const axiosConfig = {
-            timeout: 30000,
+            timeout: 30000,  // 30 second timeout
             headers: {
                 'Content-Type': 'application/json',
-                'X-Jarvis-Key': securityKey,
-                'User-Agent': 'JARVIS-RAG-Worker/1.0'
-            }
+                'X-Jarvis-Key': securityKey,  // Security handshake
+                'User-Agent': 'JARVIS-RAG-Worker/2.0'
+            },
+            validateStatus: (status) => status < 500  // Don't throw on 4xx
         };
 
-        console.log(`🔍 [Tavily AI] Searching: "${query}" | Endpoint: ${endpoint}`);
+        console.log(`🚀 [JARVIS-RESEARCH] Initiating Tavily search: "${query.substring(0, 60)}..."`);
+        console.log(`   📡 Endpoint: ${endpoint}`);
 
+        // Retry loop with exponential backoff
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
+                const startTime = Date.now();
                 const res = await axios.post(endpoint, requestPayload, axiosConfig);
+                const latency = Date.now() - startTime;
                 
+                // Handle HTTP errors (404, 401, etc.)
+                if (res.status === 404) {
+                    throw new Error(`Endpoint not found (404) - Tavily API may not be deployed yet`);
+                }
+                
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error(`Authentication failed (${res.status}) - Check X-Jarvis-Key header`);
+                }
+                
+                if (res.status >= 400) {
+                    throw new Error(`HTTP ${res.status}: ${res.data?.error || 'Unknown error'}`);
+                }
+                
+                // Validate response structure
                 if (!res.data || res.data.success !== true) {
-                    console.error(`[Tavily] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
-                    throw new Error(res.data?.error || 'Search failed');
+                    throw new Error(res.data?.error || 'Invalid response structure from Tavily API');
                 }
 
                 const results = Array.isArray(res.data.results) ? res.data.results : [];
+                const tavilyAnswer = res.data.answer || '';
                 const source = res.data.source || 'Tavily AI';
                 
-                // Build docs from Tavily results with favicon support [cite: 04-02-2026]
+                if (results.length === 0) {
+                    console.warn(`⚠️ [JARVIS-RESEARCH] No results returned for query: "${query}"`);
+                    return [];
+                }
+                
+                // Map Tavily results to UI-ready format [cite: 04-02-2026]
+                // Separate: content for LLM context, url+favicon for frontend source cards
                 const docs = results.slice(0, limit).map((r, i) => ({
-                    title: r.title || `Result ${i + 1}`,
-                    url: r.url || 'unknown',
-                    snippet: r.snippet || r.content || '',
-                    content: r.content || r.snippet || '',
-                    favicon: r.favicon || '',  // Google Favicon API URL [cite: 04-02-2026]
+                    // For LLM Context
+                    title: r.title || `Source ${i + 1}`,
+                    content: r.content || r.snippet || '',  // Full content for LLM reasoning
+                    snippet: (r.snippet || r.content || '').substring(0, 200),  // Short preview
+                    
+                    // For Frontend Source Cards (Perplexity-style)
+                    url: r.url || '#',
+                    favicon: r.favicon || `https://www.google.com/s2/favicons?domain=${new URL(r.url || 'https://example.com').hostname}&sz=64`,
+                    
+                    // Metadata
                     score: r.score || 0,
                     index: i + 1,
-                    status: 'tavily'
+                    status: 'tavily',
+                    timestamp: new Date().toISOString()
                 }));
                 
-                console.log(`✅ [Tavily AI] Success: Retrieved ${docs.length} document(s) from ${source}`);
+                console.log(`🚀 [JARVIS-RESEARCH] Tavily Research Successful`);
+                console.log(`   ✅ Retrieved: ${docs.length} high-quality sources`);
+                console.log(`   ⚡ Latency: ${latency}ms`);
+                console.log(`   🔍 Source: ${source}`);
+                if (tavilyAnswer) {
+                    console.log(`   💡 AI Answer: ${tavilyAnswer.substring(0, 100)}...`);
+                }
+                
                 return docs;
                 
             } catch (e) {
-                const status = e.response?.status || e.code || 'unknown';
+                const status = e.response?.status || e.code || 'NETWORK_ERROR';
                 const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
+                const isRetryable = status === 404 || status === 500 || status === 503 || status === 'ECONNREFUSED' || status === 'ETIMEDOUT';
                 
-                console.warn(
-                    `⚠️ [JARVIS-RAG] Tavily Search Error (Attempt ${attempt + 1}/${retries + 1})\n` +
-                    `   Status: ${status}\n` +
-                    `   Error: ${errorMsg}\n` +
-                    `   Endpoint: ${endpoint}\n` +
-                    `   Security Header: X-Jarvis-Key=${securityKey.substring(0, 5)}***\n` +
-                    `   Payload: ${JSON.stringify(requestPayload)}`
-                );
+                // Only log on final attempt to reduce noise
+                if (attempt === retries) {
+                    console.warn(
+                        `⚠️ [JARVIS-SEARCH] Primary endpoint unavailable (${status}) - Switching to backup...`
+                    );
+                }
                 
-                if (attempt < retries) {
-                    const delayMs = (attempt + 1) * 1000; // Exponential backoff
-                    console.log(`   ⏳ Retrying in ${delayMs}ms...`);
+                // Retry logic
+                if (isRetryable && attempt < retries) {
+                    const delayMs = Math.min(1000 * Math.pow(2, attempt), 5000);  // Exponential backoff (1s, 2s, 4s)
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     continue;
                 }
                 
+                // Final failure
                 if (attempt === retries) {
-                    console.error(`❌ [Tavily AI] Failed After ${retries + 1} Attempts\n   Final Status: ${status}\n   Final Error: ${errorMsg}`);
-                    // Throw error to trigger fallback [cite: 04-02-2026]
-                    throw new Error(`Tavily AI unavailable (${status}): ${errorMsg}`);
+                    throw new Error(`Primary endpoint unavailable - Switching to backup`);
                 }
             }
         }
         
-        // Should never reach here due to throw above
-        console.warn(`⚠️ [RAG-WORKER] Unexpected path - returning empty results`);
+        // Fallback return (should never reach here)
+        console.error(`❌ [JARVIS-ERROR] Search Pipeline Offline - Unexpected execution path`);
         return [];
     }
 
     /**
-     * DDGS-backed search using Flask backend endpoint /api/search-ddgs
-     * With security headers, retry mechanism, and detailed error logging
+     * Tavily Backup Endpoint via /api/search-ddgs [cite: 04-02-2026]
+     * Provides RAG context with synthesized answers when primary fails
      */
-    async searchWithDDGS(query, limit = 5, retries = 2) {
+    async searchWithDDGS(query, limit = 5, retries = 3) {
         const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
-        const baseUrl = process.env.BACKEND_URL || `http://localhost:${nodePort}`;
+        const baseUrl = process.env.PYTHON_BACKEND_URL || process.env.BACKEND_URL || `http://localhost:${nodePort}`;
         const endpoint = `${baseUrl}/api/search-ddgs`;
         const securityKey = process.env.JARVIS_SECURE_KEY || 'VISHAI_SECURE_2026';
         
-        // Send both 'topic' and 'query' for compatibility with different Flask versions
+        // Send both 'topic' and 'query' for backward compatibility
         const requestPayload = {
-            query: String(query || '').trim(),  // For deployed Flask backend
-            topic: String(query || '').trim(),  // For local/updated Flask backend
-            region: 'in-en'
+            query: String(query || '').trim(),
+            topic: String(query || '').trim()
         };
         
         const axiosConfig = {
@@ -215,90 +256,119 @@ class JarvisAutonomousRAG {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Jarvis-Key': securityKey,
-                'User-Agent': 'JARVIS-RAG-Worker/1.0'
-            }
+                'User-Agent': 'JARVIS-RAG-Worker/2.0'
+            },
+            validateStatus: (status) => status < 500
         };
 
-        console.log(`🔍 [Tavily Backup] Searching: "${query}" | Endpoint: ${endpoint}`);
+        console.log(`🚀 [JARVIS-RESEARCH] Initiating Tavily backup search: "${query.substring(0, 60)}..."`);
+        console.log(`   📡 Backup Endpoint: ${endpoint}`);
 
         for (let attempt = 0; attempt <= retries; attempt++) {
             try {
+                const startTime = Date.now();
                 const res = await axios.post(endpoint, requestPayload, axiosConfig);
+                const latency = Date.now() - startTime;
+                
+                // Handle HTTP errors
+                if (res.status === 404) {
+                    throw new Error(`Backup endpoint not found (404)`);
+                }
+                
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error(`Authentication failed (${res.status})`);
+                }
+                
+                if (res.status >= 400) {
+                    throw new Error(`HTTP ${res.status}: ${res.data?.error || 'Unknown error'}`);
+                }
                 
                 if (!res.data || res.data.success !== true) {
-                    console.error(`[Tavily Backup] Invalid response (Attempt ${attempt + 1}): ${JSON.stringify(res.data)}`);
-                    throw new Error(res.data?.error || 'Tavily backup search failed');
+                    throw new Error(res.data?.error || 'Invalid response from backup endpoint');
                 }
 
                 const answer = res.data.answer || '';
                 const context = res.data.context || '';
                 const sources = Array.isArray(res.data.sources) ? res.data.sources : [];
                 
-                // Build docs with favicon support [cite: 04-02-2026]
-                const docs = sources.slice(0, limit).map((s, i) => ({
-                    title: s.title || `Source ${i + 1}`,
-                    url: s.url || s.link || 'unknown',
-                    snippet: s.snippet || '',
-                    content: s.content || s.snippet || (context || answer).toString().substring(0, 8000),
-                    favicon: s.favicon || '',  // Favicon from Tavily [cite: 04-02-2026]
-                    index: i + 1,
-                    status: 'tavily'
-                }));
+                // Build docs with UI-ready format [cite: 04-02-2026]
+                const docs = sources.slice(0, limit).map((s, i) => {
+                    let faviconUrl = s.favicon || '';
+                    if (!faviconUrl && s.url) {
+                        try {
+                            const domain = new URL(s.url).hostname;
+                            faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+                        } catch (e) {
+                            faviconUrl = '';
+                        }
+                    }
+                    
+                    return {
+                        // For LLM Context
+                        title: s.title || `Source ${i + 1}`,
+                        content: s.content || s.snippet || context || answer || '',
+                        snippet: (s.snippet || s.content || '').substring(0, 200),
+                        
+                        // For Frontend Source Cards
+                        url: s.url || s.link || '#',
+                        favicon: faviconUrl,
+                        
+                        // Metadata
+                        index: i + 1,
+                        status: 'tavily',
+                        timestamp: new Date().toISOString()
+                    };
+                });
                 
-                // If no sources, create a doc from synthesized answer/context
+                // If no sources but we have answer/context, create synthetic doc
                 if (docs.length === 0 && (context || answer)) {
                     docs.push({
                         title: 'Tavily AI Synthesized Answer',
-                        url: 'tavily.local',
-                        snippet: (answer || '').toString().substring(0, 200),
-                        content: (context || answer).toString().substring(0, 8000),
+                        content: context || answer,
+                        snippet: (answer || context).substring(0, 200),
+                        url: 'tavily://synthesized',
                         favicon: '',
                         index: 1,
-                        status: 'tavily_synthesized'
+                        status: 'tavily_synthesized',
+                        timestamp: new Date().toISOString()
                     });
                 }
                 
-                console.log(`✅ [Tavily Backup] Success: Retrieved ${docs.length} document(s)`);
+                console.log(`🚀 [JARVIS-RESEARCH] Tavily Research Successful (Backup)`);
+                console.log(`   ✅ Retrieved: ${docs.length} sources`);
+                console.log(`   ⚡ Latency: ${latency}ms`);
+                if (answer) {
+                    console.log(`   💡 Synthesized Answer: ${answer.substring(0, 80)}...`);
+                }
+                
                 return docs;
                 
             } catch (e) {
-                const status = e.response?.status || e.code || 'unknown';
+                const status = e.response?.status || e.code || 'NETWORK_ERROR';
                 const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
-                const isSecurityError = status === 401 || status === 403;
-                const isNotFoundError = status === 404;
+                const isRetryable = status === 404 || status === 500 || status === 503 || status === 'ECONNREFUSED' || status === 'ETIMEDOUT';
                 
-                console.warn(
-                    `⚠️ [JARVIS-RAG] Security/Connection Error (Attempt ${attempt + 1}/${retries + 1})\n` +
-                    `   Status: ${status}\n` +
-                    `   Error: ${errorMsg}\n` +
-                    `   Endpoint: ${endpoint}\n` +
-                    `   Security Header: X-Jarvis-Key=${securityKey.substring(0, 5)}***\n` +
-                    `   Payload: ${JSON.stringify(requestPayload)}`
-                );
+                // Only log on final attempt
+                if (attempt === retries) {
+                    console.warn(`⚠️ [JARVIS-SEARCH] Backup endpoint also unavailable (${status})`);
+                }
                 
-                // Retry logic: only retry on 404 or 401
-                if ((isSecurityError || isNotFoundError) && attempt < retries) {
-                    const delayMs = (attempt + 1) * 1000; // Exponential backoff
-                    console.log(`   ⏳ Retrying in ${delayMs}ms...`);
+                if (isRetryable && attempt < retries) {
+                    const delayMs = Math.min(1000 * Math.pow(2, attempt), 5000);
                     await new Promise(resolve => setTimeout(resolve, delayMs));
                     continue;
                 }
                 
-                // After all retries exhausted, return empty but log full error
                 if (attempt === retries) {
-                    console.error(
-                        `❌ [JARVIS-RAG] DDGS Endpoint Failed After ${retries + 1} Attempts\n` +
-                        `   Final Status: ${status}\n` +
-                        `   Final Error: ${errorMsg}\n` +
-                        `   Check Flask backend: ${baseUrl}`
-                    );
+                    throw new Error(`All endpoints unavailable: ${errorMsg}`);
                 }
             }
         }
         
+        console.error(`❌ [JARVIS-ERROR] Search Pipeline Offline - Unexpected path in backup`);
         return [];
     }
-    
+
     /**
      * CHECK IF URL IS BLOCKED OR PROBLEMATIC
      */
@@ -878,12 +948,12 @@ ${context}`;
                     docs = await this.searchWithTavily(`${topic} latest 2026`, 3);
                 } catch (tavilyError) {
                     // Phase 2: Fallback to Tavily Backup endpoint [cite: 04-02-2026]
-                    console.warn(`⚠️ [RAG-WORKER] Tavily primary failed for "${topic}", trying backup endpoint...`);
+                    console.log(`🔄 [RAG-WORKER] Using backup endpoint for "${topic}"...`);
                     try {
                         docs = await this.searchWithDDGS(`${topic} latest 2026`, 3);
-                        console.log(`✅ [RAG-WORKER] Tavily backup endpoint successful for "${topic}"`);
+                        console.log(`✅ [RAG-WORKER] Retrieved ${docs.length} sources for "${topic}"`);
                     } catch (backupError) {
-                        console.warn(`⚠️ [RAG-WORKER] All Tavily endpoints failed for "${topic}": ${backupError.message}`);
+                        console.warn(`⚠️ [RAG-WORKER] Unable to fetch "${topic}" - Skipping...`);
                         // Continue to next topic
                         continue;
                     }
