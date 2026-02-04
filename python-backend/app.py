@@ -1537,6 +1537,92 @@ def health():
 # SearXNG Live Search Integration [cite: 04-02-2026]
 # =============================
 
+# =============================
+# PLAYWRIGHT BROWSER SCANNING [cite: 04-02-2026]
+# =============================
+
+def jarvis_browser_scan(url: str) -> str:
+    """
+    Scan website using Playwright browser automation [cite: 04-02-2026]
+    Extracts clean text content for RAG processing
+    """
+    if not PLAYWRIGHT_AVAILABLE:
+        return "Error: Playwright not available. Install with: pip install playwright && playwright install chromium"
+    
+    try:
+        from playwright.sync_api import sync_playwright
+        
+        with sync_playwright() as p:
+            # Headless=True means browser runs in background
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            print(f"🚀 [JARVIS-BROWSER] Navigating to: {url}")
+            page.goto(url, wait_until="networkidle", timeout=30000)  # Wait for page to fully load
+            
+            # Extract main text content from body
+            page_content = page.inner_text("body")
+            
+            # Get page title
+            title = page.title()
+            
+            browser.close()
+            
+            # Return formatted content with title
+            return f"Title: {title}\n\nContent:\n{page_content[:5000]}"  # Limit to 5000 chars
+    
+    except Exception as e:
+        print(f"⚠️ [JARVIS-BROWSER] Scan failed: {e}")
+        return f"Error browsing site: {str(e)}"
+
+
+@app.route('/api/browser-action', methods=['POST', 'OPTIONS'])
+def browser_action():
+    """
+    Browser automation endpoint for website scanning [cite: 04-02-2026]
+    Uses Playwright to extract content from any URL
+    """
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+    
+    # Security Handshake [cite: 31-01-2026]
+    if not verify_jarvis_security(request):
+        return jsonify({"error": "Unauthorized - Invalid security key"}), 401
+    
+    try:
+        target_url = request.json.get('url')
+        
+        if not target_url:
+            return jsonify({
+                "success": False,
+                "error": "URL parameter is required"
+            }), 400
+        
+        # Validate URL format
+        if not target_url.startswith(('http://', 'https://')):
+            target_url = f"https://{target_url}"
+        
+        print(f"🔍 [JARVIS-BROWSER] Scanning URL: {target_url}")
+        
+        # Scan the website
+        raw_data = jarvis_browser_scan(target_url)
+        
+        return jsonify({
+            "success": True,
+            "url": target_url,
+            "raw_data": raw_data,
+            "message": "Sir, I have scanned the website and retrieved the information.",
+            "timestamp": datetime.utcnow().isoformat() + "Z"
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ [JARVIS-BROWSER] Error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route("/api/search-live", methods=["POST", "OPTIONS"])
 def search_live():
     """

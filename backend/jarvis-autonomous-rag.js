@@ -113,6 +113,111 @@ class JarvisAutonomousRAG {
      * With security headers, retry mechanism, and detailed error logging
      */
     /**
+     * Detect if query contains a URL that needs browser scanning [cite: 04-02-2026]
+     */
+    detectUrlInQuery(query) {
+        const urlPattern = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.[a-z]{2,})/gi;
+        const matches = query.match(urlPattern);
+        return matches ? matches[0] : null;
+    }
+
+    /**
+     * Scan website using Playwright browser automation [cite: 04-02-2026]
+     * Calls Python Flask /api/browser-action endpoint
+     */
+    async scanWebsiteWithBrowser(url, retries = 2) {
+        const nodePort = process.env.NODE_PORT || process.env.PORT || 5000;
+        const baseUrl = process.env.PYTHON_BACKEND_URL || process.env.BACKEND_URL || `http://localhost:${nodePort}`;
+        const endpoint = `${baseUrl}/api/browser-action`;
+        const securityKey = process.env.JARVIS_SECURE_KEY || 'VISHAI_SECURE_2026';
+        
+        const requestPayload = {
+            url: String(url || '').trim()
+        };
+        
+        const axiosConfig = {
+            timeout: 60000,  // 60 seconds for browser operations
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Jarvis-Key': securityKey,
+                'User-Agent': 'JARVIS-RAG-Worker/2.0'
+            },
+            validateStatus: (status) => status < 500
+        };
+
+        console.log(`🌐 [JARVIS-BROWSER] Scanning website: "${url}"`);
+        console.log(`   📡 Browser Endpoint: ${endpoint}`);
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const startTime = Date.now();
+                const res = await axios.post(endpoint, requestPayload, axiosConfig);
+                const latency = Date.now() - startTime;
+                
+                if (res.status === 404) {
+                    throw new Error(`Browser endpoint not found (404)`);
+                }
+                
+                if (res.status === 401 || res.status === 403) {
+                    throw new Error(`Authentication failed (${res.status})`);
+                }
+                
+                if (res.status >= 400) {
+                    throw new Error(`HTTP ${res.status}: ${res.data?.error || 'Unknown error'}`);
+                }
+                
+                if (!res.data || res.data.success !== true) {
+                    throw new Error(res.data?.error || 'Invalid response from browser endpoint');
+                }
+
+                const rawData = res.data.raw_data || '';
+                
+                if (!rawData || rawData.length < 50) {
+                    console.warn(`⚠️ [JARVIS-BROWSER] No content extracted from URL`);
+                    return null;
+                }
+                
+                console.log(`🚀 [JARVIS-BROWSER] Scan Successful`);
+                console.log(`   ✅ Extracted: ${rawData.length} characters`);
+                console.log(`   ⚡ Latency: ${latency}ms`);
+                
+                return {
+                    title: `Browser Scan: ${url}`,
+                    url: url,
+                    content: rawData,
+                    snippet: rawData.substring(0, 200),
+                    favicon: `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=64`,
+                    type: 'browser',  // Mark as browser source [cite: 04-02-2026]
+                    index: 1,
+                    status: 'browser_scan',
+                    timestamp: new Date().toISOString()
+                };
+                
+            } catch (e) {
+                const status = e.response?.status || e.code || 'NETWORK_ERROR';
+                const errorMsg = e.response?.data?.error || e.message || 'Unknown error';
+                const isRetryable = status === 500 || status === 503 || status === 'ECONNREFUSED' || status === 'ETIMEDOUT';
+                
+                if (attempt === retries) {
+                    console.warn(`⚠️ [JARVIS-BROWSER] Browser scan failed: ${errorMsg}`);
+                }
+                
+                if (isRetryable && attempt < retries) {
+                    const delayMs = Math.min(1000 * Math.pow(2, attempt), 5000);
+                    await new Promise(resolve => setTimeout(resolve, delayMs));
+                    continue;
+                }
+                
+                if (attempt === retries) {
+                    throw new Error(`Browser scan unavailable: ${errorMsg}`);
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Tavily AI Research Engine via Python Backend [cite: 04-02-2026]
      * Optimized for Perplexity-style UI with clickable source cards
      */
@@ -980,7 +1085,7 @@ ${context}`;
     /**
      * THE PERSISTENT ANSWER ENGINE (IMPROVED)
      * Answers queries by: 1. Vector Search + 2. Web Search + 3. Truth Verification
-     * Now with fallback chains, graceful degradation, and multimodal vision support
+     * Now with fallback chains, graceful degradation, multimodal vision support, and browser scanning [cite: 04-02-2026]
      */
     async answer(query, userId = null, visualContext = null) {
         const startTime = performance.now();
@@ -990,6 +1095,31 @@ ${context}`;
         const conversationHistory = userId ? await this.getRecentMessages(userId, 5) : [];
 
         try {
+            // Phase 0: Check if query contains a URL for browser scanning [cite: 04-02-2026]
+            const detectedUrl = this.detectUrlInQuery(query);
+            if (detectedUrl) {
+                console.log(`🌐 [JARVIS-RAG] URL detected: ${detectedUrl}`);
+                try {
+                    const browserResult = await this.scanWebsiteWithBrowser(detectedUrl);
+                    if (browserResult && browserResult.content) {
+                        // Use browser-scanned content as the primary source
+                        const docs = [browserResult];
+                        const ragResult = await this.smartRagAnswer(query, docs, conversationHistory, visualContext);
+                        
+                        return {
+                            answer: ragResult.answer,
+                            sources: docs.map(d => ({ url: d.url, title: d.title, type: d.type })),
+                            verified: true,
+                            fallback: false,
+                            method: 'browser_scan',
+                            latency_ms: Math.round(performance.now() - startTime)
+                        };
+                    }
+                } catch (browserError) {
+                    console.warn(`⚠️ [JARVIS-RAG] Browser scan failed, falling back to web search: ${browserError.message}`);
+                    // Continue with normal RAG pipeline
+                }
+            }
             // Phase 1: Local Vector Retrieval (kept for backward compatibility)
             let localMemory = [];
             try {

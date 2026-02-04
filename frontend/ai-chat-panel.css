@@ -336,6 +336,25 @@
     color: #f4f6f8;
 }
 
+.source-tag {
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: rgba(56, 239, 125, 0.15);
+    color: #38ef7d;
+    border: 1px solid rgba(56, 239, 125, 0.35);
+}
+
+.source-tag.browser {
+    background: rgba(79, 70, 229, 0.2);
+    color: #a5b4fc;
+    border-color: rgba(79, 70, 229, 0.45);
+}
+
 /* ============================================
    TYPING INDICATOR
    ============================================ */
