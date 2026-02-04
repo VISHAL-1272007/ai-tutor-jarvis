@@ -117,8 +117,10 @@ class JarvisAutonomousRAG {
         const endpoint = `${baseUrl}/api/search-ddgs`;
         const securityKey = process.env.JARVIS_SECURE_KEY || 'VISHAI_SECURE_2026';
         
+        // Send both 'topic' and 'query' for compatibility with different Flask versions
         const requestPayload = {
-            topic: String(query || '').trim(),
+            query: String(query || '').trim(),  // For deployed Flask backend
+            topic: String(query || '').trim(),  // For local/updated Flask backend
             region: 'in-en'
         };
         
