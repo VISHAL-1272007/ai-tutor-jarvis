@@ -18,41 +18,6 @@
 - 📝 **Markdown Support**: Code blocks, formatting, and syntax highlighting
 - 💾 **Chat History**: Save and manage conversations
 
-## 🚀 How to Run
-
-### Backend
-```bash
-cd backend
-npm install
-# Add your API key to .env file (see Configuration below)
-npm start
-```
-
-### Frontend
-Simply open `frontend/index.html` in your browser, or deploy to Firebase Hosting.
-
-## 📝 Configuration
-
-### Option 1: Perplexity API (with Web Search) 🌐
-
-Get real-time web search capabilities! See [PERPLEXITY_SETUP.md](PERPLEXITY_SETUP.md) for detailed setup.
-
-1. Get API key from https://www.perplexity.ai/api
-2. Edit `backend/.env`:
-```
-PERPLEXITY_API_KEY=pplx-your-actual-key-here
-```
-
-### Option 2: Groq API (Free & Fast) ⚡
-
-1. Get API key from https://console.groq.com/keys
-2. Edit `backend/.env`:
-```
-GROQ_API_KEY=gsk-your-actual-key-here
-```
-
-**The backend automatically uses Perplexity if available, otherwise falls back to Groq!**
-
 ## 🛠️ Tech Stack
 
 - **Backend**: Node.js + Express + Axios
@@ -69,7 +34,7 @@ ai-tutor/
 ├── backend/
 │   ├── index.js           # Express server with Perplexity/Groq API
 │   ├── package.json       # Dependencies
-│   └── .env              # API keys (PERPLEXITY_API_KEY or GROQ_API_KEY)
+│   └── .env              
 ├── frontend/
 │   ├── index.html        # Main chat interface
 │   ├── login.html        # Authentication page
@@ -77,9 +42,6 @@ ai-tutor/
 │   ├── script.js         # Chat logic & voice features
 │   ├── auth.js           # Firebase authentication
 │   └── firebase-config.js # Firebase SDK configuration
-├── PERPLEXITY_SETUP.md   # Detailed Perplexity API setup guide
-├── DEPLOYMENT.md         # Deployment instructions
-└── README.md            # This file
 ```
 
 ## 🎤 Voice Features
@@ -89,13 +51,6 @@ ai-tutor/
 - **Multi-language**: Supports English, Tamil, and Hindi
 - **Visual Feedback**: JARVIS orb pulses cyan when speaking (just like Perplexity!)
 
-## 🌐 Perplexity Integration
-
-Want AI with real-time web search? Check out [PERPLEXITY_SETUP.md](PERPLEXITY_SETUP.md) for:
-- Step-by-step API setup
-- Render deployment configuration
-- Model selection guide
-- Troubleshooting tips
 
 ## 🚀 Deployment
 
@@ -104,22 +59,8 @@ Want AI with real-time web search? Check out [PERPLEXITY_SETUP.md](PERPLEXITY_SE
 firebase deploy --only hosting
 ```
 
-### Render (Backend)
-1. Push to GitHub
-2. Connect repository to Render
-3. Add environment variables:
-   - `PERPLEXITY_API_KEY` or `GROQ_API_KEY`
-   - `GOOGLE_CLIENT_ID` (optional)
-   - `GOOGLE_CLIENT_SECRET` (optional)
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
-
-## 💡 Tips
-
-- **Perplexity** provides web search and citations (requires API key & paid plan)
-- **Groq** is completely free and very fast (no web search)
-- Voice feature works with both APIs
-- Guest mode allows usage without sign-in
+### Render backend(service)
+### Render ---> Manual Deploy
 
 ## 👨‍💻 Developer
 
@@ -131,12 +72,6 @@ MIT License - feel free to use and modify!
 
 ---
 
-For questions or issues, check:
-- [PERPLEXITY_SETUP.md](PERPLEXITY_SETUP.md) - Perplexity API integration
-- [DEPLOYMENT.md](DEPLOYMENT.md) - Deployment guide
-- [QUICKSTART.md](QUICKSTART.md) - Quick start guide
-
-## ❓ Troubleshooting
 
 **Backend won't start?**
 - Make sure you've run `npm install`
@@ -145,7 +80,3 @@ For questions or issues, check:
 **Frontend can't connect?**
 - Ensure backend is running on port 5000
 - Check browser console for errors
-
-**API errors?**
-- Verify your OpenAI API key is valid
-- Check you have API credits available
