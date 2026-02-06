@@ -22,7 +22,7 @@
 
 - **Backend**: Node.js + Express + Axios
 - **Frontend**: HTML5, CSS3, JavaScript (ES6 Modules)
-- **AI**: Perplexity API (web search) or Groq API (free)
+- **Models**: hugginG face AI model(own AI) TRAINED BY ME~!
 - **Hosting**: Firebase Hosting + Render
 - **Voice**: Web Speech API (SpeechSynthesis & SpeechRecognition)
 - **Auth**: Firebase Authentication (Google Sign-In)
