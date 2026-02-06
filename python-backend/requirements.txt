@@ -26,3 +26,11 @@ edge-tts==6.1.12
 
 # DuckDuckGo Search
 duckduckgo_search==6.3.5
+
+# Web Scraping for Enhanced Research
+beautifulsoup4==4.12.3
+requests==2.31.0
+lxml==5.1.0
+
+# HuggingFace API for LLM Fallback
+huggingface_hub==0.20.3

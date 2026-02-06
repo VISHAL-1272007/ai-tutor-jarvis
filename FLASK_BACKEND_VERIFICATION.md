@@ -8,6 +8,7 @@
 
 ### `/api/search-ddgs` - VERIFIED ✅
 
+
 **Location:** `python-backend/app.py` (lines 1231-1289)
 
 **Status:** ✅ **FULLY IMPLEMENTED**

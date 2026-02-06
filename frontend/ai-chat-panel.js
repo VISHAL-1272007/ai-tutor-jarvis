@@ -353,8 +353,7 @@ class ChatManager {
                 return {
                     title: src.title || src.heading || src.url || 'Source',
                     url,
-                    snippet: src.snippet || src.description || src.content || '',
-                    type: src.type || src.sourceType || src.tag || ''
+                    snippet: src.snippet || src.description || src.content || ''
                 };
             })
             .filter(Boolean);
@@ -398,13 +397,6 @@ class ChatManager {
 
             chip.appendChild(favicon);
             chip.appendChild(label);
-
-            if (source.type === 'browser') {
-                const tag = document.createElement('span');
-                tag.className = 'source-tag browser';
-                tag.textContent = 'Browser Source';
-                chip.appendChild(tag);
-            }
             chips.appendChild(chip);
         });
 

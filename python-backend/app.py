@@ -84,6 +84,19 @@ try:
 except Exception:
     REDIS_AVAILABLE = False
 
+try:
+    from bs4 import BeautifulSoup
+    import requests
+    SCRAPING_AVAILABLE = True
+except Exception:
+    SCRAPING_AVAILABLE = False
+
+try:
+    from huggingface_hub import InferenceClient
+    HUGGINGFACE_AVAILABLE = True
+except Exception:
+    HUGGINGFACE_AVAILABLE = False
+
 
 # =============================
 # Configuration [cite: 03-02-2026]
@@ -93,6 +106,7 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY", "")
+HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY", "")
 
 # process.env.PORT Render-aala assign sĕiyappadum.
 # Illai-naal (local-la) 3000 use pannum.
@@ -484,6 +498,300 @@ def get_web_research(query: str) -> str:
         print(f"⚠️ Tavily error: {e}")
         print("   Falling back to internal knowledge")
         return ""
+
+
+# =============================
+# ENHANCED WEB SCRAPING MODULE [cite: 06-02-2026]
+# =============================
+
+def scrape_url_content(url: str, timeout: int = 10) -> Dict[str, str]:
+    """
+    Deep web scraping for richer content extraction [cite: 06-02-2026]
+    Returns: {"title": str, "content": str, "error": str}
+    """
+    if not SCRAPING_AVAILABLE:
+        return {"error": "Web scraping not available"}
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        }
+        
+        response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'lxml')
+        
+        # Remove scripts, styles, and unwanted elements
+        for element in soup(['script', 'style', 'nav', 'footer', 'header', 'aside', 'iframe']):
+            element.decompose()
+        
+        # Extract title
+        title = soup.find('title')
+        title_text = title.get_text().strip() if title else "Untitled"
+        
+        # Extract main content (try multiple strategies)
+        content = ""
+        
+        # Strategy 1: Look for article tags
+        article = soup.find('article')
+        if article:
+            content = article.get_text(separator=' ', strip=True)
+        
+        # Strategy 2: Look for main content areas
+        if not content:
+            main = soup.find('main') or soup.find('div', class_=['content', 'article', 'post'])
+            if main:
+                content = main.get_text(separator=' ', strip=True)
+        
+        # Strategy 3: Get all paragraphs
+        if not content:
+            paragraphs = soup.find_all('p')
+            content = ' '.join([p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True)])
+        
+        # Fallback: Get body text
+        if not content:
+            body = soup.find('body')
+            content = body.get_text(separator=' ', strip=True) if body else ""
+        
+        # Clean up content
+        content = ' '.join(content.split())  # Remove extra whitespace
+        content = content[:5000]  # Limit to 5000 chars per URL
+        
+        return {
+            "title": title_text[:200],
+            "content": content,
+            "url": url,
+        }
+    
+    except requests.Timeout:
+        return {"error": f"Timeout accessing {url}", "url": url}
+    except Exception as e:
+        return {"error": f"Error scraping {url}: {str(e)}", "url": url}
+
+
+def get_enhanced_web_research(query: str, max_urls: int = 3) -> Dict:
+    """
+    Enhanced Tavily search + deep web scraping [cite: 06-02-2026]
+    Returns: {"context": str, "sources": List[Dict], "has_data": bool}
+    """
+    if not TAVILY_AVAILABLE or not TAVILY_API_KEYS:
+        print("⚠️ Tavily not available")
+        return {"context": "", "sources": [], "has_data": False}
+    
+    try:
+        # Step 1: Tavily search with key rotation
+        tavily_client = get_tavily_client()
+        rewritten_query = rewrite_with_date(query)
+        print(f"🔍 Enhanced Research: {rewritten_query}")
+        
+        response = tavily_client.search(
+            query=rewritten_query,
+            search_depth="advanced",
+            max_results=max_urls,
+            include_raw_content=False
+        )
+        
+        results = response.get("results", [])
+        if not results:
+            print("⚠️ No Tavily results")
+            return {"context": "", "sources": [], "has_data": False}
+        
+        print(f"✅ Found {len(results)} results, scraping content...")
+        
+        # Step 2: Deep scrape each URL
+        sources = []
+        context_parts = ["🌐 Web Research with Source Verification:\n"]
+        
+        for idx, item in enumerate(results, start=1):
+            title = item.get("title", "Untitled")
+            tavily_content = item.get("content", "")
+            url = item.get("url", "")
+            
+            # Try to scrape for richer content
+            scraped = scrape_url_content(url) if SCRAPING_AVAILABLE else {"error": "Scraping unavailable"}
+            
+            # Use scraped content if available, fallback to Tavily content
+            if "content" in scraped and len(scraped["content"]) > len(tavily_content):
+                final_content = scraped["content"][:2000]
+                print(f"   [{idx}] Scraped: {len(final_content)} chars from {url[:50]}")
+            else:
+                final_content = tavily_content[:2000]
+                print(f"   [{idx}] Tavily: {len(final_content)} chars from {url[:50]}")
+            
+            # Store source info
+            source_info = {
+                "number": idx,
+                "title": title,
+                "url": url,
+                "content_length": len(final_content)
+            }
+            sources.append(source_info)
+            
+            # Build context
+            context_parts.append(f"\n📄 Source [{idx}]: {title}")
+            context_parts.append(f"Content: {final_content}")
+            context_parts.append(f"URL: {url}\n")
+        
+        full_context = "\n".join(context_parts)
+        
+        # Add source summary at the end
+        full_context += "\n\n📚 Sources Used:\n"
+        for src in sources:
+            full_context += f"[{src['number']}] {src['title']} - {src['url']}\n"
+        
+        # Truncate to prevent token overflow
+        truncated_context = truncate_to_tokens(full_context, max_tokens=2500)
+        
+        return {
+            "context": truncated_context,
+            "sources": sources,
+            "has_data": True
+        }
+    
+    except Exception as e:
+        print(f"⚠️ Enhanced research error: {e}")
+        return {"context": "", "sources": [], "has_data": False}
+
+
+# =============================
+# LLM FALLBACK CHAIN: GROQ → GEMINI → HUGGINGFACE [cite: 06-02-2026]
+# =============================
+
+def call_huggingface_api(prompt: str, max_tokens: int = 1500) -> str:
+    """
+    HuggingFace Inference API as final fallback [cite: 06-02-2026]
+    Using: mistralai/Mixtral-8x7B-Instruct-v0.1
+    """
+    if not HUGGINGFACE_AVAILABLE or not HUGGINGFACE_API_KEY:
+        return ""
+    
+    try:
+        client = InferenceClient(token=HUGGINGFACE_API_KEY)
+        
+        response = client.text_generation(
+            prompt=prompt,
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+            max_new_tokens=max_tokens,
+            temperature=0.7,
+            top_p=0.95,
+        )
+        
+        return response.strip() if response else ""
+    
+    except Exception as e:
+        print(f"⚠️ HuggingFace error: {e}")
+        return ""
+
+
+def call_gemini_text(prompt: str, system_context: str = "") -> str:
+    """
+    Call Gemini for text generation (not tool-calling) [cite: 06-02-2026]
+    """
+    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+        return ""
+    
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        full_prompt = f"{system_context}\n\n{prompt}" if system_context else prompt
+        
+        response = model.generate_content(
+            full_prompt,
+            generation_config={"temperature": 0.7, "max_output_tokens": 1500}
+        )
+        
+        return response.text.strip() if hasattr(response, 'text') else ""
+    
+    except Exception as e:
+        print(f"⚠️ Gemini text error: {e}")
+        return ""
+
+
+def call_llm_with_fallback(
+    user_query: str,
+    system_prompt: str = "",
+    model_key: str = "jarvis60",
+    web_sources: List[Dict] = None
+) -> Dict:
+    """
+    Robust LLM fallback chain: Groq → Gemini → HuggingFace [cite: 06-02-2026]
+    Returns: {"answer": str, "model_used": str, "sources": List[Dict]}
+    """
+    answer = ""
+    model_used = "none"
+    
+    # Try 1: Groq (Primary)
+    if GROQ_API_KEY and GROQ_AVAILABLE:
+        try:
+            print("🔵 Attempting Groq...")
+            answer = call_groq_with_model(user_query, model_key, system_prompt)
+            if answer and answer != FALLBACK_MESSAGE:
+                model_used = f"groq-{GROQ_MODELS.get(model_key, 'unknown')}"
+                print(f"✅ Groq success: {len(answer)} chars")
+        except Exception as e:
+            print(f"⚠️ Groq failed: {e}")
+    
+    # Try 2: Gemini (Secondary)
+    if not answer and GEMINI_API_KEY and GEMINI_AVAILABLE:
+        try:
+            print("🟢 Attempting Gemini...")
+            answer = call_gemini_text(user_query, system_prompt)
+            if answer:
+                model_used = "gemini-1.5-flash"
+                print(f"✅ Gemini success: {len(answer)} chars")
+        except Exception as e:
+            print(f"⚠️ Gemini failed: {e}")
+    
+    # Try 3: HuggingFace (Final Fallback)
+    if not answer and HUGGINGFACE_API_KEY and HUGGINGFACE_AVAILABLE:
+        try:
+            print("🟡 Attempting HuggingFace...")
+            full_prompt = f"{system_prompt}\n\nUser: {user_query}\nAssistant:"
+            answer = call_huggingface_api(full_prompt)
+            if answer:
+                model_used = "huggingface-mixtral-8x7b"
+                print(f"✅ HuggingFace success: {len(answer)} chars")
+        except Exception as e:
+            print(f"⚠️ HuggingFace failed: {e}")
+    
+    # Ultimate fallback
+    if not answer:
+        answer = FALLBACK_MESSAGE
+        model_used = "fallback"
+    
+    # Format response with citations if we have sources
+    if web_sources:
+        answer = format_response_with_citations(answer, web_sources)
+    
+    return {
+        "answer": answer,
+        "model_used": model_used,
+        "sources": web_sources or []
+    }
+
+
+def format_response_with_citations(answer: str, sources: List[Dict]) -> str:
+    """
+    Add beautiful source citations to the response [cite: 06-02-2026]
+    """
+    if not sources:
+        return answer
+    
+    # Add source citations at the end
+    citation_section = "\n\n" + "─" * 50 + "\n"
+    citation_section += "📚 **Sources & References:**\n\n"
+    
+    for src in sources:
+        num = src.get("number", 0)
+        title = src.get("title", "Untitled")
+        url = src.get("url", "")
+        
+        citation_section += f"[{num}] **{title}**\n"
+        citation_section += f"    🔗 {url}\n\n"
+    
+    return answer + citation_section
 
 
 def _extract_embedding_vector(embed_response) -> Optional[List[float]]:
@@ -982,46 +1290,59 @@ def handle_query_with_moe(
     override_model: Optional[str] = None
 ) -> Dict:
     """
-    Main orchestrator: MoE router + Tavily grounding + Memory management [cite: 03-02-2026]
+    Enhanced orchestrator with Perplexity-style research [cite: 06-02-2026]
+    Now includes: Deep web scraping + Groq→Gemini→HuggingFace fallback + Source citations
     """
-    # Step 1: Get chat context [cite: 03-02-2026]
+    # Step 1: Get chat context
     chat_context = chat_memory.get_context(user_id)
     
-    # Step 2: Web research for time-sensitive queries [cite: 03-02-2026]
-    web_research = ""
+    # Step 2: Enhanced web research with scraping
+    web_sources = []
     needs_search = is_time_sensitive_query(user_query)
     
     if needs_search:
         print(f"🔍 Time-sensitive query detected: {user_query}")
-        web_research = get_web_research(user_query)
-        if web_research:
-            print(f"✅ Web research retrieved ({len(web_research)} chars)")
+        research_result = get_enhanced_web_research(user_query, max_urls=4)
+        
+        if research_result["has_data"]:
+            web_research = research_result["context"]
+            web_sources = research_result["sources"]
+            print(f"✅ Enhanced research: {len(web_research)} chars from {len(web_sources)} sources")
         else:
-            print("⚠️ Using internal knowledge (research failed or unavailable)")
+            web_research = ""
+            print("⚠️ Using internal knowledge (research failed)")
+    else:
+        web_research = ""
     
-    # Step 3: Route to model (MoE) [cite: 31-01-2026]
+    # Step 3: Route to model (MoE)
     selected_model = override_model or analyze_intent(user_query)
-    print(f"🎯 Routing to model: {selected_model} (Groq {GROQ_MODELS[selected_model]})")
+    print(f"🎯 Routing to model: {selected_model}")
     
-    # Step 4: Build system prompt with research [cite: 03-02-2026]
+    # Step 4: Build enhanced system prompt
     system_prompt = build_system_prompt(web_research, chat_context)
     
-    # Step 5: Call LLM with fallback [cite: 03-02-2026]
-    try:
-        answer = call_groq_with_model(user_query, selected_model, system_prompt)
-    except Exception as e:
-        print(f"⚠️ LLM call failed: {e}")
-        answer = FALLBACK_MESSAGE
+    # Step 5: Call LLM with Groq→Gemini→HuggingFace fallback
+    llm_result = call_llm_with_fallback(
+        user_query=user_query,
+        system_prompt=system_prompt,
+        model_key=selected_model,
+        web_sources=web_sources
+    )
     
-    # Step 6: Store exchange in memory [cite: 03-02-2026]
+    answer = llm_result["answer"]
+    model_used = llm_result["model_used"]
+    
+    # Step 6: Store exchange in memory
     chat_memory.add_exchange(user_id, user_query, answer)
     
     return {
         "success": True,
         "answer": answer,
         "model": selected_model,
-        "groq_model": GROQ_MODELS[selected_model],
+        "model_used": model_used,
+        "groq_model": GROQ_MODELS.get(selected_model),
         "has_web_research": bool(web_research),
+        "sources": web_sources,
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
 
@@ -1031,11 +1352,19 @@ def handle_chat_hybrid(
     user_id: str = "default",
     sentiment: str = "NEUTRAL"
 ) -> Dict:
-    """Hybrid RAG for /chat: Pinecone + Tavily [cite: 03-02-2026]"""
+    """
+    Enhanced Hybrid RAG: Pinecone + Enhanced Web Research [cite: 06-02-2026]
+    Now with: Deep scraping + LLM fallback + Source citations
+    """
     chat_context = chat_memory.get_context(user_id)
 
+    # Get Pinecone long-term memory
     pinecone_context = get_pinecone_context(user_query)
-    web_context = get_web_research(user_query)
+    
+    # Get enhanced web research with scraping
+    research_result = get_enhanced_web_research(user_query, max_urls=3)
+    web_context = research_result["context"] if research_result["has_data"] else ""
+    web_sources = research_result["sources"] if research_result["has_data"] else []
 
     if web_context:
         web_context = truncate_to_tokens(web_context, max_tokens=1500)
@@ -1047,15 +1376,20 @@ def handle_chat_hybrid(
     if corrections_context:
         system_prompt += f"\n{corrections_context}\nAvoid repeating these mistakes.\n"
 
-    try:
-        answer = call_groq_with_model(user_query, "general", system_prompt)
-    except Exception as e:
-        print(f"⚠️ LLM call failed: {e}")
-        answer = FALLBACK_MESSAGE
-
+    # Use enhanced LLM fallback chain
+    llm_result = call_llm_with_fallback(
+        user_query=user_query,
+        system_prompt=system_prompt,
+        model_key="general",
+        web_sources=web_sources
+    )
+    
+    answer = llm_result["answer"]
+    model_used = llm_result["model_used"]
+    
     answer = sanitize_response(answer)
     prefix = "Based on my historical records and today's research..."
-    if answer and not answer.startswith(prefix):
+    if answer and not answer.startswith(prefix) and (pinecone_context or web_context):
         answer = f"{prefix} {answer.lstrip()}"
 
     chat_memory.add_exchange(user_id, user_query, answer)
@@ -1064,9 +1398,11 @@ def handle_chat_hybrid(
         "success": True,
         "answer": answer,
         "model": "general",
+        "model_used": model_used,
         "groq_model": GROQ_MODELS["general"],
         "has_pinecone": bool(pinecone_context),
         "has_web_research": bool(web_context),
+        "sources": web_sources,
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }
 
@@ -1238,18 +1574,22 @@ def chat():
         result = handle_chat_hybrid(user_query, user_id, sentiment)
     elif intent == "CODING":
         coding_prompt = build_coding_prompt(sentiment)
-        try:
-            answer = call_groq_with_model(user_query, "general", coding_prompt)
-        except Exception as e:
-            print(f"⚠️ LLM call failed: {e}")
-            answer = FALLBACK_MESSAGE
+        # Use enhanced LLM fallback for coding queries [cite: 06-02-2026]
+        llm_result = call_llm_with_fallback(
+            user_query=user_query,
+            system_prompt=coding_prompt,
+            model_key="coding",
+            web_sources=None
+        )
         result = {
             "success": True,
-            "answer": answer,
-            "model": "general",
-            "groq_model": GROQ_MODELS["general"],
+            "answer": llm_result["answer"],
+            "model": "coding",
+            "model_used": llm_result["model_used"],
+            "groq_model": GROQ_MODELS["coding"],
             "has_pinecone": False,
             "has_web_research": False,
+            "sources": [],
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
     else:  # SOCIAL
@@ -1258,9 +1598,11 @@ def chat():
             "success": True,
             "answer": answer,
             "model": "gemini-1.5-flash",
+            "model_used": "gemini-1.5-flash",
             "groq_model": None,
             "has_pinecone": False,
             "has_web_research": False,
+            "sources": [],
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
 
@@ -1518,17 +1860,29 @@ def vision():
 
 @app.route("/health", methods=["GET", "OPTIONS"])
 def health():
-    """Health check endpoint [cite: 03-02-2026]"""
+    """Enhanced health check with new capabilities [cite: 06-02-2026]"""
     if request.method == "OPTIONS":
         return "", 204
     
     return jsonify({
         "status": "healthy",
+        "version": "JARVIS 7.0 - Perplexity Enhanced",
         "groq_available": GROQ_AVAILABLE and bool(GROQ_API_KEY),
-        "tavily_available": TAVILY_AVAILABLE and bool(TAVILY_API_KEY),
         "gemini_available": GEMINI_AVAILABLE and bool(GEMINI_API_KEY),
+        "huggingface_available": HUGGINGFACE_AVAILABLE and bool(HUGGINGFACE_API_KEY),
+        "tavily_available": TAVILY_AVAILABLE and bool(TAVILY_API_KEYS),
+        "tavily_keys": len(TAVILY_API_KEYS) if TAVILY_API_KEYS else 0,
+        "web_scraping_available": SCRAPING_AVAILABLE,
+        "llm_fallback_chain": "Groq → Gemini → HuggingFace",
         "moe_router": "active",
         "memory_size": len(chat_memory.history),
+        "features": [
+            "Deep Web Scraping",
+            "Multi-Source Research",
+            "Triple LLM Fallback",
+            "Source Citations",
+            "Tavily Key Rotation"
+        ],
         "timestamp": datetime.utcnow().isoformat() + "Z",
     }), 200
 
