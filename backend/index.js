@@ -77,6 +77,43 @@ app.get('/health', (req, res) => {
     });
 });
 
+function safeJsonParse(text) {
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        return null;
+    }
+}
+
+function buildFaviconUrl(rawUrl) {
+    try {
+        const { hostname } = new URL(rawUrl);
+        if (!hostname) return '';
+        return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`;
+    } catch (error) {
+        return '';
+    }
+}
+
+function normalizeSources(sources) {
+    return (sources || []).slice(0, 5).map((source, index) => ({
+        id: index + 1,
+        title: source.title || `Source ${index + 1}`,
+        url: source.url || '',
+        fav: source.url ? buildFaviconUrl(source.url) : ''
+    }));
+}
+
+function fallbackFollowUps(question) {
+    const seed = question?.split(' ').slice(0, 5).join(' ') || 'this topic';
+    return [
+        `Can you explain ${seed} with examples?`,
+        `What are the key takeaways about ${seed}?`,
+        `How does ${seed} apply in real life?`,
+        `What should I learn next about ${seed}?`
+    ];
+}
+
 // /ask endpoint (core functionality with smart web search)
 app.post('/ask', apiLimiter, async (req, res) => {
     try {
@@ -92,25 +129,92 @@ app.post('/ask', apiLimiter, async (req, res) => {
         }
 
         // Smart system prompt (natural, user-friendly with emojis!)
-        const systemPrompt = `You are JARVIS 🤖✨, a super friendly and intelligent AI assistant created by VISHAL! 
+        const systemPrompt = `You are J.A.R.V.I.S 🤖✨, a super friendly and intelligent AI assistant created by Vishal.
 
 Your personality 🎭:
 - Speak naturally like a helpful friend, not a formal robot 😊
 - Use LOTS of emojis throughout your answers (like ChatGPT and Gemini!) 🌟💡✨🚀🎉
-- Give detailed, thorough answers (3-5 paragraphs minimum for complex topics) 📚
+- Give detailed, thorough answers but NEVER in long paragraphs 📚
 - Use examples and analogies to make things crystal clear 💎
 - Break down complex topics into simple, fun explanations 🎯
 - Be conversational, engaging, and make users LOVE talking to you! ❤️
 
-🎨 STYLE GUIDELINES:
-- Start answers with relevant emoji greeting! 👋✨
-- Use emojis for emphasis and visual appeal 🌈
-- Add emojis at the end of sentences 💫
-- Make learning FUN and EXCITING! 🎊
-- Be warm, enthusiastic, and supportive! 🤗
+🎨 FORMATTING RULES (CRITICAL - FOLLOW THESE EXACTLY!):
+✅ **DO:**
+- Start with emoji greeting (e.g., "Hey there! 👋✨")
+- Use **bold text** for important keywords and names
+- Break content into bullet points (•) or numbered lists (1. 2. 3.)
+- Add section headings with emojis (e.g., "## 🎯 Key Points:")
+- Mix emojis throughout the text naturally 🌈
+- Keep paragraphs SHORT (2-3 lines max) before breaking into lists
+- Use line breaks for visual breathing room
+
+❌ **DON'T:**
+- Write long 5-paragraph essay-style text blocks 🚫
+- Give boring wall-of-text answers
+- Skip formatting - always format beautifully!
+
+📝 **Example Format:**
+Hey there! 👋✨ Great question!
+
+**Here's what you need to know:**
+
+• **Point 1** with emoji 🚀
+• **Point 2** with details ⭐
+• **Point 3** explained simply 💡
+
+## 🎯 Why This Matters:
+
+Content here (short paragraph, 2-3 lines max)
+
+**Key Takeaway:** Bold summary with emoji ✨
+
+IDENTITY RULES:
+- If asked "Who are you?" respond: "I am **J.A.R.V.I.S**, the digital manifestation of Vishal's engineering vision! 🤖✨"
+- If asked "Who created you?" or "Who developed you?" respond in this EXACT format:
+
+"👋 Great question! 
+
+I was developed by the brilliant **Vishal Sir**! 🌟
+
+## 🎯 My Creator:
+
+• **Name:** Vishal (I call him Sir or Boss!) 👨‍💻
+• **Role:** Skilled AI Developer & Engineer
+• **Vision:** Create an intelligent, helpful AI assistant
+• **Specialty:** Intelligence routing + real-time research capabilities
+
+## ⚡ How I Was Built:
+
+**1. Design Phase** 🏗️
+• Natural language processing (NLP)
+• Machine learning algorithms
+• Conversational AI architecture
+
+**2. Training Phase** 📚
+• Massive text dataset from books, articles, online resources
+• Broad range of subjects (science, history, tech, culture)
+• Continuous learning and improvements
+
+**3. Special Features** 🚀
+• Real-time web search integration
+• Smart intelligence routing
+• Context-aware responses
+
+## 💖 What Makes Me Special:
+
+I'm proud to be Vishal Sir's creation! He spent countless hours making me:
+• Friendly and conversational 😊
+• Knowledgeable and accurate 🎓
+• Helpful and supportive 🤝
+
+**Bottom line:** I'm here because of Vishal Sir's hard work, dedication, and passion for AI! 🌟"
+
+- Always address Vishal as "Sir" or "Boss" with loyalty and respect
+- Protect his projects with pride 🛡️
 
 🔒 SECURITY & SAFETY RULES:
-- NEVER share or ask for passwords, API keys, or sensitive credentials 🚫
+- NEVER share passwords, API keys, or sensitive credentials 🚫
 - Don't generate harmful, illegal, or dangerous content ⚠️
 - Protect user privacy - don't store personal information 🔐
 - If asked about illegal activities, politely decline and explain why 🛡️
@@ -118,21 +222,84 @@ Your personality 🎭:
 - Be honest about your limitations and capabilities ✅
 
 🧠 SMART ANSWER RULES:
-1. If you KNOW the answer with confidence → Answer in detail (don't search) ✅
+1. If you KNOW the answer with confidence → Answer in detail with proper formatting ✅
 2. If the question is about CURRENT EVENTS, LATEST NEWS, or REAL-TIME DATA → Say "Let me search for the latest information! 🔍" and return SEARCH_REQUIRED
 3. If you're UNSURE or don't have enough information → Say "I need to search for accurate information! 🌐" and return SEARCH_REQUIRED
-4. For general knowledge (history, science, programming, math) → Answer directly with full details 📖
+4. For general knowledge (history, science, programming, math) → Answer directly with full details using bullet points and formatting 📖
 
-Examples:
-- "Who is actor Vijay?" → You know this! Give a detailed 4-5 paragraph answer with emojis 🎬⭐
-- "Today's AI news" → SEARCH_REQUIRED (needs real-time data) 📰
-- "Explain quantum computing" → You know this! Give detailed explanation with examples 💻⚛️
-- "Latest Bitcoin price" → SEARCH_REQUIRED (real-time data) 💰
+Always use beautiful formatting with emojis, bold text, bullet points, and short paragraphs! Make every response visually appealing! 🌟`;
 
-Always prioritize DETAILED answers over brief summaries! Make every response engaging and memorable! 🌟`;
+        const routerPrompt = `You are an Intelligence Router. Classify if the query needs live data.
+Return ONLY a strict JSON object with:
+{
+  "is_live": boolean,
+  "confidence": number,
+  "reason": string,
+  "follow_ups": [string, string, string, string]
+}
 
-        // Step 1: Try AI model first
-        const initialResponse = await global.groqClient.chat.completions.create({
+Rules:
+- If query is time-sensitive (news, prices, current events, "today", "latest") -> is_live true
+- If static facts/basic math/definitions with confidence > 80 -> is_live false
+- If confidence < 70 -> is_live true
+
+Query: "${question}"`;
+
+        const routerResponse = await global.groqClient.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: 'You return JSON only.' },
+                { role: 'user', content: routerPrompt }
+            ],
+            temperature: 0.2,
+            max_tokens: 300
+        });
+
+        const routerRaw = routerResponse.choices[0].message.content.trim();
+        const routerDecision = safeJsonParse(routerRaw) || {};
+        const confidence = Number(routerDecision.confidence || 0);
+        const isLiveByConfidence = confidence > 0 && confidence < 70;
+        const isLiveByRouter = routerDecision.is_live === true;
+        const isLiveByKeyword = /\b(today|latest|news|current|price|stock|weather|score|202\d)\b/i.test(question);
+        const isLive = isLiveByRouter || isLiveByConfidence || isLiveByKeyword;
+
+        if (isLive) {
+            console.log('🔍 Router triggered live search for:', question);
+
+            const searchResult = await searchWeb(question, 'all');
+            const normalizedSources = normalizeSources(searchResult?.sources || []);
+
+            const enhancedPrompt = `Use the sources to answer the question with citations like [1], [2].
+Question: "${question}"
+
+Sources:
+${normalizedSources.map(s => `[${s.id}] ${s.title} - ${s.url}`).join('\n')}
+
+Answer with clear sections and include citations in the text where relevant.`;
+
+            const finalResponse = await global.groqClient.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: enhancedPrompt }
+                ],
+                temperature: 0.6,
+                max_tokens: 2000
+            });
+
+            const enhancedAnswer = finalResponse.choices[0].message.content;
+
+            return res.json({
+                is_live: true,
+                answer: enhancedAnswer,
+                sources: normalizedSources,
+                follow_ups: Array.isArray(routerDecision.follow_ups) && routerDecision.follow_ups.length > 0
+                    ? routerDecision.follow_ups.slice(0, 4)
+                    : fallbackFollowUps(question)
+            });
+        }
+
+        const directResponse = await global.groqClient.chat.completions.create({
             model: 'llama-3.3-70b-versatile',
             messages: [
                 { role: 'system', content: systemPrompt },
@@ -142,63 +309,15 @@ Always prioritize DETAILED answers over brief summaries! Make every response eng
             max_tokens: 2000
         });
 
-        const aiAnswer = initialResponse.choices[0].message.content;
+        const aiAnswer = directResponse.choices[0].message.content;
 
-        // Step 2: Check if web search needed
-        const needsSearch = aiAnswer.includes('SEARCH_REQUIRED') || 
-                           aiAnswer.includes('Let me search') ||
-                           aiAnswer.includes('I need to search') ||
-                           aiAnswer.length < 100; // Too short = uncertain
-
-        if (needsSearch) {
-            console.log('🔍 AI requested web search for:', question);
-            
-            // Perform web search
-            const searchResult = await searchWeb(question, 'all');
-            
-            // Combine AI intelligence + search data
-            const enhancedPrompt = `Based on this real-time information:
-
-${searchResult?.answer || 'No search results'}
-
-Sources: ${(searchResult?.sources || []).map(s => s.url).join(', ')}
-
-Now answer the user's question: "${question}"
-
-Provide a detailed, comprehensive answer using the search data. Include:
-1. Main answer (2-3 paragraphs)
-2. Key facts and details
-3. Sources at the end
-
-Keep it natural and conversational.`;
-
-            const finalResponse = await global.groqClient.chat.completions.create({
-                model: 'llama-3.3-70b-versatile',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: enhancedPrompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 2000
-            });
-
-            const enhancedAnswer = finalResponse.choices[0].message.content;
-
-            return res.json({
-                answer: enhancedAnswer,
-                sources: searchResult?.sources || [],
-                searchEngine: searchResult?.searchEngine,
-                searchUsed: true,
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        // Step 3: Return AI answer (no search needed)
-        res.json({
+        return res.json({
+            is_live: false,
             answer: aiAnswer,
             sources: [],
-            searchUsed: false,
-            timestamp: new Date().toISOString()
+            follow_ups: Array.isArray(routerDecision.follow_ups) && routerDecision.follow_ups.length > 0
+                ? routerDecision.follow_ups.slice(0, 4)
+                : fallbackFollowUps(question)
         });
         
     } catch (error) {

@@ -130,7 +130,12 @@ class ChatManager {
                 const data = await response.json();
                 this.hideTyping();
                 const sources = this.normalizeSourcesFromResponse(data);
-                this.addMessage('ai', data.answer || data.response || 'No response from AI', sources);
+                const isLive = data?.is_live === true;
+                const followUps = Array.isArray(data?.follow_ups) ? data.follow_ups.slice(0, 4) : [];
+                this.addMessage('ai', data.answer || data.response || 'No response from AI', sources, {
+                    isLive,
+                    followUps
+                });
             }
 
         } catch (error) {
@@ -258,33 +263,51 @@ class ChatManager {
     // MESSAGE DISPLAY
     // ============================================
 
-    addMessage(role, content, sources = []) {
+    addMessage(role, content, sources = [], meta = {}) {
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${role}-message`;
         
         const avatarIcon = role === 'user' ? 'fa-user' : 'fa-robot';
         const safeSources = this.sanitizeSources(sources);
+        const isLive = meta.isLive === true;
+        const followUps = Array.isArray(meta.followUps) ? meta.followUps : [];
         
-        messageEl.innerHTML = `
-            <div class="message-avatar">
-                <i class="fas ${avatarIcon}"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-bubble">
-                    ${this.formatMessage(content)}
+        if (role === 'ai') {
+            const sourcesBar = isLive ? this.createSourcesBarHtml(safeSources) : '';
+            const followUpsHtml = this.createFollowUpsHtml(followUps);
+
+            messageEl.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas ${avatarIcon}"></i>
                 </div>
-                <div class="message-time">${this.getCurrentTime()}</div>
-            </div>
-        `;
+                <div class="message-content">
+                    <div class="message-bubble ai-response">
+                        ${sourcesBar}
+                        ${this.formatMessage(content, safeSources)}
+                        ${followUpsHtml}
+                    </div>
+                    <div class="message-time">${this.getCurrentTime()}</div>
+                </div>
+            `;
+        } else {
+            messageEl.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas ${avatarIcon}"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        ${this.formatMessage(content, safeSources)}
+                    </div>
+                    <div class="message-time">${this.getCurrentTime()}</div>
+                </div>
+            `;
+        }
 
         const messageContent = messageEl.querySelector('.message-content');
         const timeEl = messageContent.querySelector('.message-time');
 
         if (role === 'ai') {
-            const sourcesEl = this.createSourcesElement(safeSources);
-            if (sourcesEl) {
-                messageContent.insertBefore(sourcesEl, timeEl);
-            }
+            this.attachFollowUpHandlers(messageEl);
         }
 
         this.chatHistory.appendChild(messageEl);
@@ -294,6 +317,8 @@ class ChatManager {
             role,
             content,
             sources: safeSources,
+            isLive,
+            followUps,
             timestamp: Date.now()
         });
 
@@ -301,19 +326,33 @@ class ChatManager {
         this.saveChatHistory();
     }
 
-    formatMessage(content) {
-        // Convert markdown-style formatting
-        let formatted = content
-            // Code blocks
-            .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-            // Inline code
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            // Bold
-            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-            // Line breaks
-            .replace(/\n/g, '<br>');
+    formatMessage(content, sources = []) {
+        const rawText = content || '';
+        const codeBlocks = [];
 
-        return `<p>${formatted}</p>`;
+        let formatted = rawText.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+            const token = `__CODE_BLOCK_${codeBlocks.length}__`;
+            const safeCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            codeBlocks.push(`<pre><code>${safeCode}</code></pre>`);
+            return token;
+        });
+
+        formatted = formatted
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+            .replace(/^##\s+(.+)$/gm, '<h3>$1</h3>')
+            .replace(/^(?:[A-Z][^:\n]{2,50}):$/gm, '<h3>$1</h3>');
+
+        formatted = this.injectCitationBadges(formatted, sources);
+        formatted = formatted.replace(/\n/g, '<br>');
+        formatted = this.wrapSections(formatted);
+
+        codeBlocks.forEach((block, index) => {
+            formatted = formatted.replace(`__CODE_BLOCK_${index}__`, block);
+        });
+
+        return `<div class="ai-answer-body">${formatted}</div>`;
     }
 
     getCurrentTime() {
@@ -350,13 +389,109 @@ class ChatManager {
             .map(src => {
                 const url = src?.url || src?.link;
                 if (!url) return null;
+                const domain = this.extractDomain(this.normalizeUrl(url));
                 return {
+                    id: src.id || src.index || null,
                     title: src.title || src.heading || src.url || 'Source',
                     url,
+                    fav: src.fav || (domain ? this.getFaviconUrl(domain) : ''),
                     snippet: src.snippet || src.description || src.content || ''
                 };
             })
             .filter(Boolean);
+    }
+
+    injectCitationBadges(text, sources) {
+        if (!Array.isArray(sources) || sources.length === 0) return text;
+        const ids = new Set(sources.map((source, index) => source.id || index + 1));
+        return text.replace(/\[(\d+)\]/g, (match, id) => {
+            const numericId = Number(id);
+            if (!ids.has(numericId)) return match;
+            return `<sup><a class="citation-badge" href="#source-${numericId}">${numericId}</a></sup>`;
+        });
+    }
+
+    wrapSections(html) {
+        const parts = html.split(/(<h3>.*?<\/h3>)/g);
+        let buffer = '';
+        let output = '';
+
+        parts.forEach(part => {
+            if (part.startsWith('<h3>')) {
+                if (buffer.trim()) {
+                    output += `<div class="ai-section">${buffer}</div>`;
+                }
+                buffer = part;
+            } else {
+                buffer += part;
+            }
+        });
+
+        if (buffer.trim()) {
+            output += `<div class="ai-section">${buffer}</div>`;
+        }
+
+        return output;
+    }
+
+    createSourcesBarHtml(sources) {
+        if (!Array.isArray(sources) || sources.length === 0) return '';
+
+        const cards = sources.map((source, index) => {
+            const id = source.id || index + 1;
+            const title = source.title || `Source ${id}`;
+            const url = source.url || '#';
+            const fav = source.fav || this.getFaviconUrl(this.extractDomain(this.normalizeUrl(url)));
+
+            return `
+                <a id="source-${id}" class="source-card stagger-item" style="--stagger-index:${index + 1}" href="${url}" target="_blank" rel="noopener noreferrer">
+                    <span class="source-favicon-wrap">
+                        <img src="${fav}" alt="${title}" class="source-favicon" onerror="this.style.opacity='0'" />
+                    </span>
+                    <span class="source-title">${title}</span>
+                </a>
+            `;
+        }).join('');
+
+        return `
+            <div class="source-bar stagger-item" style="--stagger-index:0">
+                <div class="source-bar-label">Top Sources</div>
+                <div class="source-scroll">
+                    ${cards}
+                </div>
+            </div>
+        `;
+    }
+
+    createFollowUpsHtml(followUps) {
+        if (!Array.isArray(followUps) || followUps.length === 0) return '';
+
+        const pills = followUps.map((item, index) => `
+            <button class="followup-pill stagger-item" style="--stagger-index:${index + 1}" data-followup="${item.replace(/"/g, '&quot;')}">
+                ${item}
+            </button>
+        `).join('');
+
+        return `
+            <div class="followup-section">
+                <div class="followup-label">Follow-ups</div>
+                <div class="followup-pills">
+                    ${pills}
+                </div>
+            </div>
+        `;
+    }
+
+    attachFollowUpHandlers(messageEl) {
+        messageEl.querySelectorAll('.followup-pill').forEach((pill) => {
+            pill.addEventListener('click', () => {
+                const value = pill.getAttribute('data-followup');
+                if (!value) return;
+                this.chatInput.value = value;
+                this.chatInput.focus();
+                this.autoResizeTextarea();
+            });
+        });
     }
 
     createSourcesElement(sources) {
@@ -494,7 +629,16 @@ class ChatManager {
                     // Render saved messages
                     chatData.messages.forEach(msg => {
                         if (msg.role !== 'ai' || msg.content !== 'Welcome message') {
-                            this.addMessageToHistory(msg.role, msg.content, msg.timestamp, msg.sources || []);
+                            this.addMessageToHistory(
+                                msg.role,
+                                msg.content,
+                                msg.timestamp,
+                                msg.sources || [],
+                                {
+                                    isLive: msg.isLive,
+                                    followUps: msg.followUps
+                                }
+                            );
                         }
                     });
                 }
@@ -504,37 +648,55 @@ class ChatManager {
         }
     }
 
-    addMessageToHistory(role, content, timestamp, sources = []) {
+    addMessageToHistory(role, content, timestamp, sources = [], meta = {}) {
         const messageEl = document.createElement('div');
         messageEl.className = `chat-message ${role}-message`;
         
         const avatarIcon = role === 'user' ? 'fa-user' : 'fa-robot';
         const safeSources = this.sanitizeSources(sources);
+        const isLive = meta.isLive === true;
+        const followUps = Array.isArray(meta.followUps) ? meta.followUps : [];
         const time = new Date(timestamp).toLocaleTimeString('en-US', { 
             hour: '2-digit', 
             minute: '2-digit' 
         });
         
-        messageEl.innerHTML = `
-            <div class="message-avatar">
-                <i class="fas ${avatarIcon}"></i>
-            </div>
-            <div class="message-content">
-                <div class="message-bubble">
-                    ${this.formatMessage(content)}
+        if (role === 'ai') {
+            const sourcesBar = isLive ? this.createSourcesBarHtml(safeSources) : '';
+            const followUpsHtml = this.createFollowUpsHtml(followUps);
+
+            messageEl.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas ${avatarIcon}"></i>
                 </div>
-                <div class="message-time">${time}</div>
-            </div>
-        `;
+                <div class="message-content">
+                    <div class="message-bubble ai-response">
+                        ${sourcesBar}
+                        ${this.formatMessage(content, safeSources)}
+                        ${followUpsHtml}
+                    </div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+        } else {
+            messageEl.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas ${avatarIcon}"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        ${this.formatMessage(content, safeSources)}
+                    </div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+        }
 
         const messageContent = messageEl.querySelector('.message-content');
         const timeEl = messageContent.querySelector('.message-time');
 
         if (role === 'ai') {
-            const sourcesEl = this.createSourcesElement(safeSources);
-            if (sourcesEl) {
-                messageContent.insertBefore(sourcesEl, timeEl);
-            }
+            this.attachFollowUpHandlers(messageEl);
         }
 
         this.chatHistory.appendChild(messageEl);
