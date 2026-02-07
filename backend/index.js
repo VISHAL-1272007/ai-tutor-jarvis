@@ -1,9 +1,10 @@
 /**
- * JARVIS Backend - OPTIMIZED FOR PERFORMANCE
+ * JARVIS Backend - OPTIMIZED FOR PERFORMANCE v2.1
  * - Compression middleware loaded first (70% size reduction)
  * - Server starts in <2 seconds
  * - Heavy modules load asynchronously in parallel
  * - Lazy loading for rarely-used endpoints
+ * - FORCED REBUILD: Fix for news search [cite: 07-02-2026 15:45 UTC]
  * 
  * Performance: 10+ seconds → 1-2 seconds ⚡
  */
