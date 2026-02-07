@@ -467,51 +467,60 @@ console.log('🔍 SEARCH SYSTEM: Tavily → Sonar Fallback');
 console.log(`  ✅ Tavily: ${SEARCH_APIS.tavily.enabled ? `${TAVILY_KEYS.length} keys` : 'disabled'}`);
 console.log(`  ✅ Sonar: ${SEARCH_APIS.sonar.enabled ? 'enabled' : 'disabled'}`);
 
-// Web search function
+// Web search function with FULL Tavily rotation before Sonar fallback
 async function searchWeb(query, mode = 'all') {
     console.log(`🔍 Search: "${query}"`);
     
-    // Try Tavily first
+    // Try ALL Tavily keys with rotation before giving up
     if (SEARCH_APIS.tavily.enabled) {
-        try {
-            const apiKey = SEARCH_APIS.tavily.getKey();
-            const response = await axios.post(
-                SEARCH_APIS.tavily.endpoint,
-                {
-                    query: query,
-                    search_depth: 'advanced',
-                    max_results: 10,
-                    include_answer: true
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
+        const maxAttempts = TAVILY_KEYS.length; // Try all 3 keys
+        
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                const apiKey = SEARCH_APIS.tavily.getKey();
+                console.log(`🔑 Trying Tavily Key #${attempt + 1}/${maxAttempts}...`);
+                
+                const response = await axios.post(
+                    SEARCH_APIS.tavily.endpoint,
+                    {
+                        query: query,
+                        search_depth: 'advanced',
+                        max_results: 10,
+                        include_answer: true
                     },
-                    timeout: 15000
-                }
-            );
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        timeout: 15000
+                    }
+                );
 
-            if (response.data?.results?.length > 0) {
-                console.log(`✅ Tavily returned ${response.data.results.length} results`);
-                const topResults = response.data.results.slice(0, 5);
-                return {
-                    answer: response.data.answer || topResults.map(r => r.content || r.snippet || r.title).join('\n\n'),
-                    sources: topResults.map(r => ({
-                        title: r.title,
-                        url: r.url,
-                        snippet: r.content || r.snippet
-                    })),
-                    citations: topResults.map(r => r.url),
-                    searchEngine: 'Tavily AI'
-                };
+                if (response.data?.results?.length > 0) {
+                    console.log(`✅ Tavily Key #${attempt + 1} SUCCESS - ${response.data.results.length} results`);
+                    const topResults = response.data.results.slice(0, 5);
+                    return {
+                        answer: response.data.answer || topResults.map(r => r.content || r.snippet || r.title).join('\n\n'),
+                        sources: topResults.map(r => ({
+                            title: r.title,
+                            url: r.url,
+                            snippet: r.content || r.snippet
+                        })),
+                        citations: topResults.map(r => r.url),
+                        searchEngine: `Tavily AI (Key #${attempt + 1})`
+                    };
+                }
+            } catch (error) {
+                console.warn(`⚠️ Tavily Key #${attempt + 1} failed: ${error.message}`);
+                // Continue to next key instead of giving up
             }
-        } catch (error) {
-            console.warn(`⚠️ Tavily failed: ${error.message}`);
         }
+        
+        console.log('⚠️ All Tavily keys exhausted. Falling back to Sonar...');
     }
 
-    // Fallback to Sonar
+    // Fallback to Sonar (after all Tavily keys tried)
     if (SEARCH_APIS.sonar.enabled) {
         try {
             console.log('🔹 Trying Sonar fallback...');
@@ -522,7 +531,7 @@ async function searchWeb(query, mode = 'all') {
                     messages: [
                         {
                             role: 'system',
-                            content: 'You are a helpful search assistant. Answer the user query with current information.'
+                            content: 'You are a helpful search assistant. Provide current, accurate information with sources.'
                         },
                         {
                             role: 'user',
@@ -545,11 +554,15 @@ async function searchWeb(query, mode = 'all') {
             const answer = response.data.choices?.[0]?.message?.content || 'No answer found';
             const citations = response.data.citations || [];
 
-            console.log('✅ Sonar returned results');
+            console.log('✅ Sonar SUCCESS - returning results');
             return {
                 answer,
+                sources: citations.slice(0, 5).map((url, idx) => ({
+                    title: `Source ${idx + 1}`,
+                    url: url,
+                    snippet: ''
+                })),
                 citations,
-                sources: citations.slice(0, 5),
                 searchEngine: 'Sonar (Perplexity)'
             };
         } catch (error) {
@@ -557,10 +570,44 @@ async function searchWeb(query, mode = 'all') {
         }
     }
 
+    // Final fallback: Use Groq to answer (better than nothing)
+    console.log('🤖 Using Groq direct answer (no external search available)');
+    try {
+        const groqResponse = await global.groqClient.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                {
+                    role: 'system',
+                    content: 'Provide the most accurate information you have. If information might be outdated, mention it.'
+                },
+                {
+                    role: 'user',
+                    content: query
+                }
+            ],
+            temperature: 0.6,
+            max_tokens: 800
+        });
+
+        const answer = groqResponse.choices[0].message.content;
+        console.log('✅ Groq direct answer returned');
+        
+        return {
+            answer: answer + '\n\n⚠️ Note: This answer is based on my training data and may not include the latest information.',
+            sources: [],
+            citations: [],
+            searchEngine: 'Groq (Direct - No Web Search)'
+        };
+    } catch (error) {
+        console.error(`❌ Groq direct answer failed: ${error.message}`);
+    }
+
+    // Absolute last resort
     return {
-        answer: 'Search unavailable',
+        answer: '❌ Unable to retrieve search results. All search APIs are currently unavailable.',
         sources: [],
-        searchEngine: 'None'
+        citations: [],
+        searchEngine: 'None (All Failed)'
     };
 }
 
