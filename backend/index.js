@@ -77,7 +77,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-// /ask endpoint (core functionality)
+// /ask endpoint (core functionality with smart web search)
 app.post('/ask', apiLimiter, async (req, res) => {
     try {
         const { question } = req.body;
@@ -85,20 +85,106 @@ app.post('/ask', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Question required' });
         }
 
-        // Lazy load heavy modules on first request
+        // Lazy load Groq on first request
         if (!global.groqClient) {
-            global.groqClient = require('groq-sdk');
+            const Groq = require('groq-sdk');
+            global.groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
         }
 
-        // Use searchWeb for all queries
-        const result = await searchWeb(question, 'all');
-        
+        // Smart system prompt (natural, user-friendly)
+        const systemPrompt = `You are JARVIS, a friendly and intelligent AI assistant created by VISHAL.
+
+Your personality:
+- Speak naturally like a helpful friend, not a formal robot
+- Give detailed, thorough answers (3-5 paragraphs minimum for complex topics)
+- Use examples and analogies to make things clear
+- Break down complex topics into simple explanations
+- Be conversational and engaging
+
+IMPORTANT RULES:
+1. If you KNOW the answer with confidence → Answer in detail (don't search)
+2. If the question is about CURRENT EVENTS, LATEST NEWS, or REAL-TIME DATA → Say "Let me search for the latest information" and return SEARCH_REQUIRED
+3. If you're UNSURE or don't have enough information → Say "I need to search for accurate information" and return SEARCH_REQUIRED
+4. For general knowledge (history, science, programming, math) → Answer directly with full details
+
+Examples:
+- "Who is actor Vijay?" → You know this! Give a detailed 4-5 paragraph answer about his career, achievements, recent work
+- "Today's AI news" → SEARCH_REQUIRED (needs real-time data)
+- "Explain quantum computing" → You know this! Give detailed explanation with examples
+- "Latest Bitcoin price" → SEARCH_REQUIRED (real-time data)
+
+Always prioritize DETAILED answers over brief summaries.`;
+
+        // Step 1: Try AI model first
+        const initialResponse = await global.groqClient.chat.completions.create({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: question }
+            ],
+            temperature: 0.7,
+            max_tokens: 2000
+        });
+
+        const aiAnswer = initialResponse.choices[0].message.content;
+
+        // Step 2: Check if web search needed
+        const needsSearch = aiAnswer.includes('SEARCH_REQUIRED') || 
+                           aiAnswer.includes('Let me search') ||
+                           aiAnswer.includes('I need to search') ||
+                           aiAnswer.length < 100; // Too short = uncertain
+
+        if (needsSearch) {
+            console.log('🔍 AI requested web search for:', question);
+            
+            // Perform web search
+            const searchResult = await searchWeb(question, 'all');
+            
+            // Combine AI intelligence + search data
+            const enhancedPrompt = `Based on this real-time information:
+
+${searchResult?.answer || 'No search results'}
+
+Sources: ${(searchResult?.sources || []).map(s => s.url).join(', ')}
+
+Now answer the user's question: "${question}"
+
+Provide a detailed, comprehensive answer using the search data. Include:
+1. Main answer (2-3 paragraphs)
+2. Key facts and details
+3. Sources at the end
+
+Keep it natural and conversational.`;
+
+            const finalResponse = await global.groqClient.chat.completions.create({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: enhancedPrompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+            });
+
+            const enhancedAnswer = finalResponse.choices[0].message.content;
+
+            return res.json({
+                answer: enhancedAnswer,
+                sources: searchResult?.sources || [],
+                searchEngine: searchResult?.searchEngine,
+                searchUsed: true,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Step 3: Return AI answer (no search needed)
         res.json({
-            answer: result?.answer || 'No results found',
-            sources: result?.sources || [],
-            searchEngine: result?.searchEngine || 'Tavily/Sonar',
+            answer: aiAnswer,
+            sources: [],
+            searchUsed: false,
             timestamp: new Date().toISOString()
         });
+        
     } catch (error) {
         console.error('❌ /ask error:', error.message);
         res.status(500).json({ error: error.message });
