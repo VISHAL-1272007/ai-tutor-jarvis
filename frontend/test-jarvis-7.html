@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS 7.0 - Frontend Test</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        h1 {
+            font-size: 36px;
+            color: #1a202c;
+            margin-bottom: 12px;
+        }
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        .test-section h3 {
+            color: #2d3748;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .test-item {
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            margin: 12px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+        }
+        .test-item i {
+            color: #48bb78;
+            font-size: 20px;
+            margin-top: 2px;
+        }
+        .test-item.pending i {
+            color: #ed8936;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin: 8px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+        .btn.secondary {
+            background: #48bb78;
+        }
+        .actions {
+            text-align: center;
+            margin-top: 40px;
+        }
+        .code {
+            background: #2d3748;
+            color: #68d391;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="header">
+            <div class="badge">
+                <i class="fas fa-rocket"></i>
+                JARVIS 7.0 - Perplexity Enhanced
+            </div>
+            <h1>🎨 Frontend Test Suite</h1>
+            <p class="subtitle">Verify all JARVIS 7.0 features are working</p>
+        </div>
+
+        <div class="test-section">
+            <h3><i class="fas fa-check-circle"></i> ✅ Completed Updates</h3>
+            <div class="test-item">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <strong>Enhanced Source Citations</strong>
+                    <div class="subtitle">Beautiful cards with clickable links</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <strong>Model Info Badge</strong>
+                    <div class="subtitle">Shows which LLM was used</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <strong>Welcome Screen</strong>
+                    <div class="subtitle">Updated to JARVIS 7.0 branding</div>
+                </div>
+            </div>
+            <div class="test-item">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <strong>Enhanced Styles</strong>
+                    <div class="subtitle">Animations, dark theme, mobile responsive</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3><i class="fas fa-tasks"></i> 🧪 Test Checklist</h3>
+            <div class="test-item pending">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <strong>1. Open Main App</strong>
+                    <div class="subtitle">Check welcome screen shows "JARVIS 7.0"</div>
+                </div>
+            </div>
+            <div class="test-item pending">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <strong>2. Ask Current Events</strong>
+                    <div class="subtitle">Try: "What's new in AI today?"</div>
+                </div>
+            </div>
+            <div class="test-item pending">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <strong>3. Verify Model Badge</strong>
+                    <div class="subtitle">Should see "Powered by..." badge</div>
+                </div>
+            </div>
+            <div class="test-item pending">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <strong>4. Check Sources</strong>
+                    <div class="subtitle">Should see beautiful source cards with links</div>
+                </div>
+            </div>
+            <div class="test-item pending">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <strong>5. Test Dark Mode</strong>
+                    <div class="subtitle">Sources should look good in all themes</div>
+                </div>
+            </div>
+            <div class="test-item pending">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <strong>6. Mobile Check</strong>
+                    <div class="subtitle">Open on phone or use DevTools mobile view</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3><i class="fas fa-code"></i> 📦 Files Modified</h3>
+            <div class="code">
+✅ frontend/index.html - Welcome screen updated<br>
+✅ frontend/script.js - Source rendering enhanced<br>
+✅ frontend/style-pro.css - New JARVIS 7.0 styles
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3><i class="fas fa-terminal"></i> 🚀 Deploy Commands</h3>
+            <div class="code">
+# Firebase Deploy<br>
+firebase deploy<br><br>
+# Or with Git (auto-deploy)<br>
+git add .<br>
+git commit -m "✨ JARVIS 7.0 Frontend"<br>
+git push
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="index.html" class="btn">
+                <i class="fas fa-play"></i>
+                Open Main App
+            </a>
+            <a href="DEPLOYMENT_COMPLETE.md" class="btn secondary">
+                <i class="fas fa-book"></i>
+                View Docs
+            </a>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #718096; font-size: 14px;">
+            <p><strong>🎉 JARVIS 7.0 Frontend Ready for Deployment!</strong></p>
+            <p style="margin-top: 8px;">Better than Perplexity • More reliable • FREE</p>
+        </div>
+    </div>
+</body>
+</html>

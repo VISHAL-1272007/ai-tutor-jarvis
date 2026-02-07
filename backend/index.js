@@ -9,8 +9,7 @@ const FormData = require('form-data');
 const omniscientRoutes = require('./omniscient-oracle-routes');
 const trainingRoutes = require('./training-routes');
 const visionRoutes = require('./vision-routes');
-// REMOVED: const Anthropic = require('@anthropic-ai/sdk'); - Not used, using DDGS RAG instead
-const JARVISLiveSearch = require('./jarvis-live-search-wrapper');
+// REMOVED: JARVIS Live Search - Now using simplified Tavily → Sonar fallback chain
 const SemanticVerifier = require('./semantic-verifier-wrapper');
 
 // ===== NEW: Advanced Features Systems =====
@@ -19,6 +18,21 @@ const KnowledgeBaseSystem = require('./knowledge-base-system');
 const ExpertModeSystem = require('./expert-mode-system');
 const setupAdvancedFeaturesAPI = require('./advanced-features-api');
 const { jarvisAutonomousVerifiedSearch } = require('./jarvis-autonomous-rag-verified');
+
+// ===== JARVIS 7 ADVANCED FEATURES [cite: 07-02-2026] =====
+const {
+    generateChainOfThought,
+    getProactiveSuggestions,
+    recallRelevantMemory,
+    extractAndStoreFacts,
+    synthesizeVoice,
+    handleMultilingualQuery,
+    translateWithGemini,
+    detectAndExecuteCode,
+    AgentOrchestrator,
+    enhanceJarvisResponse
+} = require('./jarvis-advanced-features');
+console.log('✅ JARVIS Advanced Features loaded (7 features)');
 
 // Initialize Upstash Redis for production (replaces node-localstorage)
 let redisClient = null;
@@ -40,8 +54,10 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     console.warn('⚠️ UPSTASH_REDIS_REST_URL not set');
 }
 
-// Try direct Redis connection [cite: 04-02-2026]
-if (process.env.REDIS_URL) {
+// ===== Direct Redis Connection DISABLED =====
+// Redis connection disabled - invalid hostname in REDIS_URL
+// The app works perfectly with file-based session storage
+if (process.env.REDIS_URL && false) {  // Force disabled
     try {
         const redis = require('redis');
         directRedisClient = redis.createClient({
@@ -58,6 +74,7 @@ if (process.env.REDIS_URL) {
         console.warn('⚠️ Direct Redis not available:', err.message);
     }
 }
+console.log('ℹ️  [JARVIS-MEMORY] Using file-based session storage (Redis disabled)');
 
 // Get memory from Redis [cite: 04-02-2026]
 async function getUserMemory(userId) {
@@ -94,6 +111,10 @@ async function setUserMemory(userId, content) {
 const userProfileSystem = new UserProfileSystem({ redis: redisClient });
 const knowledgeBaseSystem = new KnowledgeBaseSystem({ redis: redisClient });
 const expertModeSystem = new ExpertModeSystem({ redis: redisClient });
+
+// Initialize Multi-Agent System [cite: 07-02-2026]
+const agentOrchestrator = new AgentOrchestrator();
+console.log('✅ Multi-Agent System: 5 specialized agents ready');
 
 require('dotenv').config({ override: true });
 
@@ -140,7 +161,8 @@ function safeRequire(modulePath, moduleName, isOptional = false) {
 
 const dailyNews = safeRequire('./daily-news-trainer', 'daily-news-trainer');
 const wolframSimple = safeRequire('./wolfram-simple', 'wolfram-simple');
-const AutonomousRAGPipeline = safeRequire('./autonomous-rag-pipeline', 'autonomous-rag-pipeline');
+// REMOVED: AutonomousRAGPipeline - replaced by Knowledge Fusion
+// const AutonomousRAGPipeline = safeRequire('./autonomous-rag-pipeline', 'autonomous-rag-pipeline');
 const FunctionCallingEngine = safeRequire('./function-calling-engine', 'function-calling-engine');
 // Safe require with Gemini dependency fallback
 const JARVISOmniscientLite = safeRequire('../jarvis-omniscient-lite', 'jarvis-omniscient-lite', true);
@@ -149,19 +171,14 @@ const JARVISFullPower = safeRequire('../jarvis-full-power', 'jarvis-full-power',
 const aggressivePrompt = safeRequire('./jarvis-aggressive-prompt', 'jarvis-aggressive-prompt');
 const proPlus = safeRequire('./jarvis-pro-plus-system', 'jarvis-pro-plus-system');
 const pineconeIntegration = safeRequire('./pinecone-integration', 'pinecone-integration');
-// Only enable autonomous RAG when explicitly requested
-const AUTONOMOUS_RAG_ENABLED = process.env.AUTONOMOUS_RAG_ENABLED === 'true';
-let autonomousRAG = null;
-if (AUTONOMOUS_RAG_ENABLED) {
-    autonomousRAG = safeRequire('./jarvis-autonomous-rag', 'jarvis-autonomous-rag', false);
-    if (!autonomousRAG) {
-        console.warn('⚠️ Autonomous RAG module failed to load. Worker will remain disabled.');
-    }
-}
-// Telegram Bot removed
 
-// Initialize JARVIS Live Search
-const jarvisLiveSearch = new JARVISLiveSearch();
+// ===== AUTONOMOUS RAG BACKGROUND WORKER PERMANENTLY DISABLED =====
+// Replaced by Knowledge Fusion system (on-demand search only)
+const AUTONOMOUS_RAG_ENABLED = false; // Force disabled - Knowledge Fusion handles all search needs
+console.log('⏸️ Autonomous RAG background worker permanently disabled (Knowledge Fusion is primary)');
+
+// Telegram Bot removed
+// JARVIS Live Search removed - Using Tavily → Sonar fallback chain
 
 // Initialize Semantic Verifier
 const semanticVerifier = new SemanticVerifier();
@@ -172,18 +189,10 @@ const { queryWolframAlpha, getDirectAnswer } = wolframSimple || {};
 const { JARVIS_AGGRESSIVE_PROMPT } = aggressivePrompt || {};
 const { JARVIS_PRO_PLUS_SYSTEM, JARVIS_PRO_PLUS_CODING, JARVIS_PRO_PLUS_MATH, JARVIS_PRO_PLUS_DSA } = proPlus || {};
 
-// Initialize Autonomous RAG Daily Worker (disabled by default)
-console.log('🔧 AUTONOMOUS_RAG_ENABLED raw:', process.env.AUTONOMOUS_RAG_ENABLED, 'flag:', AUTONOMOUS_RAG_ENABLED);
-if (AUTONOMOUS_RAG_ENABLED && autonomousRAG && autonomousRAG.runDailySelfTraining) {
-    console.log('🤖 Starting JARVIS Autonomous RAG Background Worker...');
-    // Run once on boot, then every 24 hours
-    autonomousRAG.runDailySelfTraining().catch(e => console.error('RAG Worker Error:', e));
-    setInterval(() => {
-        autonomousRAG.runDailySelfTraining().catch(e => console.error('RAG Worker Error:', e));
-    }, 24 * 60 * 60 * 1000);
-} else {
-    console.log('⏸️ Autonomous RAG worker disabled (set AUTONOMOUS_RAG_ENABLED=true to enable).');
-}
+// ===== AUTONOMOUS RAG WORKER REMOVED =====
+// Background RAG worker has been permanently disabled
+// Knowledge Fusion provides on-demand search with 262M sources
+// No background pre-fetching needed
 
 // Ensure we load .env from backend directory
 require('dotenv').config({ path: path.join(__dirname, '.env'), override: true });
@@ -259,6 +268,11 @@ try {
 
 // Expert personas used for routing
 const EXPERT_PERSONAS = {
+    current_event: {
+        name: 'JARVIS Real-Time Intelligence',
+        expertise: 'Breaking news, current events, real-time data, market updates',
+        style: 'Up-to-date, factual, with latest sources and timestamps. Always cites recent sources.'
+    },
     coding: {
         name: 'JARVIS Software Architect',
         expertise: 'Full-stack development, system design, algorithms, debugging',
@@ -295,6 +309,10 @@ const EXPERT_PERSONAS = {
 function detectQueryType(question) {
     const q = question.toLowerCase();
 
+    // Current events / News patterns (ADDED FOR KNOWLEDGE FUSION)
+    if (/\b(today|current|latest|news|now|price|weather|stock|2026|this week|this month|recent|breaking|live|happening|update|just)\b/.test(q)) {
+        return 'current_event';
+    }
     // Coding patterns
     if (/\b(code|program|function|api|debug|error|javascript|python|java|html|css|react|node|sql|algorithm|data structure|git|deploy)\b/.test(q)) {
         return 'coding';
@@ -542,94 +560,57 @@ function getNextGeminiKey() {
 }
 
 // ===== WEB SEARCH APIs =====
+// ===== SEARCH APIs - SIMPLIFIED: Tavily → Sonar Only =====
+const TAVILY_KEYS = [
+    process.env.TAVILY_API_KEY,
+    process.env.TAVILY_API_KEY2,
+    process.env.TAVILY_API_KEY3
+].filter(Boolean);
+
+let tavilyKeyIndex = 0;
+function getNextTavilyKey() {
+    if (TAVILY_KEYS.length === 0) return null;
+    const key = TAVILY_KEYS[tavilyKeyIndex];
+    tavilyKeyIndex = (tavilyKeyIndex + 1) % TAVILY_KEYS.length;
+    return key;
+}
+
 const SEARCH_APIS = {
-    duckduckgo: {
-        enabled: true,
-        endpoint: 'https://api.duckduckgo.com'
+    tavily: {
+        enabled: TAVILY_KEYS.length > 0,
+        keys: TAVILY_KEYS,
+        endpoint: 'https://api.tavily.com/search',
+        getKey: getNextTavilyKey
     },
-    jina: {
-        enabled: !!process.env.JINA_API_KEY,
-        key: process.env.JINA_API_KEY,
-        endpoint: 'https://api.jina.ai/v1/search'
-    },
-    perplexity: {
-        enabled: !!process.env.PERPLEXITY_API_KEY,
-        key: process.env.PERPLEXITY_API_KEY,
+    sonar: {
+        enabled: !!process.env.SONAR_API_KEY,
+        key: process.env.SONAR_API_KEY,
         endpoint: 'https://api.perplexity.ai/chat/completions',
-        model: 'sonar-small-online'
-    },
-    brave: {
-        enabled: !!process.env.BRAVE_SEARCH_API_KEY,
-        key: process.env.BRAVE_SEARCH_API_KEY,
-        endpoint: 'https://api.search.brave.com/res/v1/web/search'
-    },
-    serpapi: {
-        enabled: !!process.env.SERPAPI_KEY,
-        key: process.env.SERPAPI_KEY,
-        endpoint: 'https://serpapi.com/search'
+        model: 'sonar'
     }
 };
 
-// ===== RAG PIPELINE - Context-Aware Query Handler =====
-/**
- * Step 1: Extract keywords from user prompt
- * Identifies main topics to search for
- */
+// Log enabled search APIs at startup
+console.log('🔍 SEARCH SYSTEM: Simplified Fallback Chain');
+console.log(`  ✅ Tavily (Primary): ${SEARCH_APIS.tavily.enabled ? `${TAVILY_KEYS.length} keys` : '❌ Disabled'}`);
+console.log(`  ✅ Sonar (Fallback): ${SEARCH_APIS.sonar.enabled ? '✓ Enabled' : '❌ Disabled'}`);
+console.log('  🚫 DuckDuckGo: REMOVED');
+console.log('  🚫 Jina AI: REMOVED');
+console.log('  🚫 Brave Search: REMOVED');
+
+// ===== KEYWORD EXTRACTION UTILITY =====
 function extractKeywords(query) {
-    // Remove common stop words and extract meaningful terms
     const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'is', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can']);
     
     const words = query.toLowerCase()
         .split(/\s+/)
         .filter(word => !stopWords.has(word) && word.length > 2)
-        .slice(0, 5); // Top 5 keywords
+        .slice(0, 5);
     
     return words.join(' ') || query.substring(0, 30);
 }
 
 /**
- * Step 2: Fetch latest context from DuckDuckGo (free)
- * Uses DDG Instant Answer API (no keys required)
- */
-const FRESH_DAYS = 90; // Only keep sources from the last 90 days
-
-function isFresh(dateStr) {
-    if (!dateStr) return true; // Keep when unknown
-    const dt = new Date(dateStr);
-    if (isNaN(dt.getTime())) return true;
-    const ageDays = (Date.now() - dt.getTime()) / (1000 * 60 * 60 * 24);
-    return ageDays <= FRESH_DAYS;
-}
-
-async function fetchDuckContext(query) {
-    try {
-        const url = `${SEARCH_APIS.duckduckgo.endpoint}?q=${encodeURIComponent(query)}&format=json&no_redirect=1&no_html=1`; 
-        const response = await axios.get(url, { timeout: 8000 });
-
-        const topics = response.data?.RelatedTopics || [];
-        return topics
-            .map(t => {
-                const text = t.Text || '';
-                const firstUrl = t.FirstURL || '';
-                return {
-                    title: text.split(' - ')[0] || text || 'DuckDuckGo Result',
-                    snippet: text,
-                    link: firstUrl,
-                    source: 'duckduckgo.com',
-                    date: null,
-                    confidence: 0.5
-                };
-            })
-            .filter(r => r.link)
-            .slice(0, 5);
-    } catch (error) {
-        console.warn(`⚠️ DuckDuckGo context fetch failed: ${error.message}`);
-        return [];
-    }
-}
-
-/**
- * /**
  * Step 3 & 4: Build RAG-Enhanced Prompt (NEW & IMPROVED)
  */
 function detectTaskType(text) {
@@ -781,18 +762,9 @@ async function executeRagPipeline(question, existingContext, llmModel = 'groq') 
     }
 }
 
-// ===== Initialize Autonomous RAG Pipeline =====
-let ragPipeline = null;
-if (process.env.GROQ_API_KEY) {
-    ragPipeline = new AutonomousRAGPipeline(
-        process.env.GROQ_API_KEY,
-        process.env.GEMINI_API_KEY,
-        SEARCH_APIS
-    );
-    console.log('🧠 Autonomous RAG Pipeline initialized');
-} else {
-    console.warn('⚠️ GROQ_API_KEY not found - RAG Pipeline disabled');
-}
+// ===== RAG Pipeline REMOVED - Knowledge Fusion is Primary =====
+// RAG pipeline has been completely removed in favor of Knowledge Fusion system
+// Knowledge Fusion provides 262M sources (books + papers + internet) with smart routing
 
 // ===== Initialize Function Calling Engine =====
 let functionCallingEngine = null;
@@ -860,62 +832,553 @@ function detectWebSearchNeeded(question) {
     return needsRealTime || needsResearch;
 }
 
-// Web Search Function with Multiple API Support
-async function searchWeb(query, mode = 'all') {
-    console.log(`🔍 Searching web for: "${query}" [Mode: ${mode}]`);
+// =============================
+// SMART QUERY CLASSIFICATION [cite: 07-02-2026]
+// =============================
 
-    // Try Jina AI first (HIGHEST free tier - 10K/month) 🔥
-    if (SEARCH_APIS.jina.enabled) {
-        try {
-            console.log('🔥 Using Jina AI Search (10K/month free)...');
-            const response = await axios.post(
-                'https://api.jina.ai/v1/search',
-                {
-                    query,
-                    top_k: 5,
-                    size: 5
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${SEARCH_APIS.jina.key}`,
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 12000
-                }
-            );
+function isCurrentEvent(query) {
+    const timeSensitiveKeywords = [
+        'current', 'today', 'now', 'latest', 'price', 'weather',
+        'news', 'stock', '2026', 'this week', 'this month',
+        'recent', 'just', 'happening', 'breaking', 'live'
+    ];
+    const queryLower = query.toLowerCase();
+    return timeSensitiveKeywords.some(keyword => queryLower.includes(keyword));
+}
 
-            const results = response.data.data || response.data.results || response.data || [];
-            const topResults = Array.isArray(results) ? results.slice(0, 5) : [];
+function isAcademicQuery(query) {
+    const academicKeywords = [
+        'explain', 'theory', 'history of', 'who invented',
+        'how does', 'why does', 'philosophy', 'analysis',
+        'concept', 'definition', 'meaning', 'origin',
+        'according to', 'book', 'paper', 'research', 'study'
+    ];
+    const queryLower = query.toLowerCase();
+    return academicKeywords.some(keyword => queryLower.includes(keyword));
+}
 
-            if (topResults.length > 0) {
-                // Format results
-                const summary = await generateSearchSummary(query, topResults, mode);
+function isCodingQuery(query) {
+    const codingKeywords = [
+        'code', 'program', 'function', 'javascript', 'python',
+        'error', 'debug', 'syntax', 'api', 'library',
+        'framework', 'algorithm', 'implementation'
+    ];
+    const queryLower = query.toLowerCase();
+    return codingKeywords.some(keyword => queryLower.includes(keyword));
+}
 
-                console.log('✅ Jina AI search successful!');
-                return {
-                    answer: summary,
-                    citations: topResults.map(r => r.url || r.link),
-                    sources: topResults.map(r => ({
-                        title: r.title || r.heading,
-                        url: r.url || r.link,
-                        snippet: r.content || r.description || r.snippet
-                    })),
-                    searchEngine: 'Jina AI'
-                };
+function classifyQuery(query) {
+    if (isCurrentEvent(query)) return 'current_event';
+    if (isAcademicQuery(query)) return 'academic';
+    if (isCodingQuery(query)) return 'coding';
+    return 'general';
+}
+
+// =============================
+// KNOWLEDGE SOURCE SEARCH FUNCTIONS [cite: 07-02-2026]
+// =============================
+
+async function searchGoogleBooks(query, maxResults = 3) {
+    try {
+        if (!process.env.GOOGLE_BOOKS_API_KEY) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const response = await axios.get('https://www.googleapis.com/books/v1/volumes', {
+            params: {
+                q: query,
+                maxResults: maxResults,
+                key: process.env.GOOGLE_BOOKS_API_KEY
+            },
+            timeout: 10000
+        });
+
+        const books = response.data.items || [];
+        if (books.length === 0) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const sources = [];
+        const contextParts = ['📚 Books (Google Books):\n'];
+
+        books.slice(0, maxResults).forEach((book, index) => {
+            const volumeInfo = book.volumeInfo || {};
+            const title = volumeInfo.title || 'Untitled';
+            const authors = (volumeInfo.authors || []).join(', ') || 'Unknown';
+            const description = (volumeInfo.description || '').substring(0, 300);
+            const url = volumeInfo.previewLink || volumeInfo.infoLink || '';
+
+            sources.push({
+                number: index + 1,
+                title: `${title} by ${authors}`,
+                url: url,
+                content_length: description.length,
+                source_type: 'books'
+            });
+
+            contextParts.push(`\n📖 Book [${index + 1}]: ${title}`);
+            contextParts.push(`Author: ${authors}`);
+            if (description) {
+                contextParts.push(`Description: ${description}`);
             }
-        } catch (error) {
-            console.error('⚠️ Jina AI error:', error.message);
+        });
+
+        console.log(`✅ Google Books: ${sources.length} results`);
+        return {
+            context: contextParts.join('\n'),
+            sources: sources,
+            has_data: true
+        };
+    } catch (error) {
+        console.warn(`⚠️ Google Books error: ${error.message}`);
+        return { context: '', sources: [], has_data: false };
+    }
+}
+
+async function searchOpenLibrary(query, maxResults = 3) {
+    try {
+        const response = await axios.get('https://openlibrary.org/search.json', {
+            params: { q: query, limit: maxResults },
+            timeout: 10000
+        });
+
+        const books = response.data.docs || [];
+        if (books.length === 0) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const sources = [];
+        const contextParts = ['📚 Books (Open Library):\n'];
+
+        books.slice(0, maxResults).forEach((book, index) => {
+            const title = book.title || 'Untitled';
+            const authors = (book.author_name || []).join(', ') || 'Unknown';
+            const year = book.first_publish_year || 'N/A';
+            const url = `https://openlibrary.org${book.key}`;
+
+            sources.push({
+                number: index + 1,
+                title: `${title} by ${authors} (${year})`,
+                url: url,
+                content_length: 0,
+                source_type: 'books'
+            });
+
+            contextParts.push(`\n📖 Book [${index + 1}]: ${title}`);
+            contextParts.push(`Author: ${authors} (${year})`);
+        });
+
+        console.log(`✅ Open Library: ${sources.length} results`);
+        return {
+            context: contextParts.join('\n'),
+            sources: sources,
+            has_data: true
+        };
+    } catch (error) {
+        console.warn(`⚠️ Open Library error: ${error.message}`);
+        return { context: '', sources: [], has_data: false };
+    }
+}
+
+async function searchGutenberg(query, maxResults = 3) {
+    try {
+        const response = await axios.get('https://gutendex.com/books/', {
+            params: { search: query },
+            timeout: 10000
+        });
+
+        const books = response.data.results || [];
+        if (books.length === 0) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const sources = [];
+        const contextParts = ['📚 Classic Books (Project Gutenberg):\n'];
+
+        books.slice(0, maxResults).forEach((book, index) => {
+            const title = book.title || 'Untitled';
+            const authors = book.authors.map(a => a.name).join(', ') || 'Unknown';
+            const url = book.formats['text/html'] || `https://www.gutenberg.org/ebooks/${book.id}`;
+
+            sources.push({
+                number: index + 1,
+                title: `${title} by ${authors}`,
+                url: url,
+                content_length: 0,
+                source_type: 'books'
+            });
+
+            contextParts.push(`\n📖 Book [${index + 1}]: ${title}`);
+            contextParts.push(`Author: ${authors}`);
+        });
+
+        console.log(`✅ Gutenberg: ${sources.length} results`);
+        return {
+            context: contextParts.join('\n'),
+            sources: sources,
+            has_data: true
+        };
+    } catch (error) {
+        console.warn(`⚠️ Gutenberg error: ${error.message}`);
+        return { context: '', sources: [], has_data: false };
+    }
+}
+
+async function searchArxiv(query, maxResults = 3) {
+    try {
+        const response = await axios.get('http://export.arxiv.org/api/query', {
+            params: {
+                search_query: `all:${query}`,
+                start: 0,
+                max_results: maxResults,
+                sortBy: 'relevance',
+                sortOrder: 'descending'
+            },
+            timeout: 10000
+        });
+
+        const xml2js = require('xml2js');
+        const parser = new xml2js.Parser();
+        const result = await parser.parseStringPromise(response.data);
+        
+        const entries = result.feed.entry || [];
+        if (entries.length === 0) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const sources = [];
+        const contextParts = ['📄 Research Papers (arXiv):\n'];
+
+        entries.slice(0, maxResults).forEach((entry, index) => {
+            const title = (entry.title[0] || '').trim();
+            const summary = (entry.summary[0] || '').trim().substring(0, 500);
+            const link = entry.id[0];
+
+            sources.push({
+                number: index + 1,
+                title: title,
+                url: link,
+                content_length: summary.length,
+                source_type: 'papers'
+            });
+
+            contextParts.push(`\n📑 Paper [${index + 1}]: ${title}`);
+            contextParts.push(`Summary: ${summary}`);
+        });
+
+        console.log(`✅ arXiv: ${sources.length} results`);
+        return {
+            context: contextParts.join('\n'),
+            sources: sources,
+            has_data: true
+        };
+    } catch (error) {
+        console.warn(`⚠️ arXiv error: ${error.message}`);
+        return { context: '', sources: [], has_data: false };
+    }
+}
+
+async function searchSemanticScholar(query, maxResults = 3) {
+    try {
+        const response = await axios.get('https://api.semanticscholar.org/graph/v1/paper/search', {
+            params: {
+                query: query,
+                limit: maxResults,
+                fields: 'title,abstract,url,year,authors'
+            },
+            timeout: 10000
+        });
+
+        const papers = response.data.data || [];
+        if (papers.length === 0) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const sources = [];
+        const contextParts = ['🎓 Academic Papers (Semantic Scholar):\n'];
+
+        papers.slice(0, maxResults).forEach((paper, index) => {
+            const title = paper.title || 'Untitled';
+            const abstract = (paper.abstract || '').substring(0, 500);
+            const url = paper.url || '';
+            const year = paper.year || 'N/A';
+
+            sources.push({
+                number: index + 1,
+                title: `${title} (${year})`,
+                url: url,
+                content_length: abstract.length,
+                source_type: 'papers'
+            });
+
+            contextParts.push(`\n📝 Paper [${index + 1}]: ${title} (${year})`);
+            if (abstract) {
+                contextParts.push(`Abstract: ${abstract}`);
+            }
+        });
+
+        console.log(`✅ Semantic Scholar: ${sources.length} results`);
+        return {
+            context: contextParts.join('\n'),
+            sources: sources,
+            has_data: true
+        };
+    } catch (error) {
+        console.warn(`⚠️ Semantic Scholar error: ${error.message}`);
+        return { context: '', sources: [], has_data: false };
+    }
+}
+
+async function searchSonarAPI(query, maxResults = 3) {
+    try {
+        if (!process.env.SONAR_API_KEY) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const response = await axios.post(
+            'https://api.perplexity.ai/chat/completions',
+            {
+                model: 'sonar',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'You are a helpful web search assistant. Provide factual, current information with sources.'
+                    },
+                    {
+                        role: 'user',
+                        content: query
+                    }
+                ],
+                max_tokens: 1024,
+                temperature: 0.2,
+                top_p: 0.9,
+                return_citations: true,
+                search_recency_filter: 'month'
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.SONAR_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 20000
+            }
+        );
+
+        const answer = response.data.choices[0]?.message?.content || '';
+        const citations = response.data.citations || [];
+
+        if (!answer) {
+            return { context: '', sources: [], has_data: false };
+        }
+
+        const sources = citations.slice(0, maxResults).map((citation, index) => ({
+            number: index + 1,
+            title: `Perplexity Source ${index + 1}`,
+            url: citation,
+            content_length: 0
+        }));
+
+        const context = `🌐 Perplexity Sonar Research:\n\n${answer}\n\n📚 Sources:\n` +
+            sources.map(s => `[${s.number}] ${s.url}`).join('\n');
+
+        console.log(`✅ Sonar API: ${answer.length} chars, ${sources.length} sources`);
+        return {
+            context: context.substring(0, 2500),
+            sources: sources,
+            has_data: true
+        };
+    } catch (error) {
+        console.warn(`⚠️ Sonar API error: ${error.message}`);
+        return { context: '', sources: [], has_data: false };
+    }
+}
+
+// =============================
+// JARVIS KNOWLEDGE FUSION [cite: 07-02-2026]
+// =============================
+
+async function jarvisKnowledgeFusion(query, maxResults = 3) {
+    const queryType = classifyQuery(query);
+    console.log(`🧠 Query type: ${queryType}`);
+
+    const allSources = [];
+    const allContextParts = [];
+
+    if (queryType === 'current_event') {
+        console.log('🌐 Using Internet only (time-sensitive)');
+        const webResult = await searchWeb(query, 'all');
+        if (webResult && webResult.answer) {
+            allContextParts.push(webResult.answer);
+            if (webResult.sources) {
+                allSources.push(...webResult.sources.map((s, i) => ({
+                    number: i + 1,
+                    title: s.title,
+                    url: s.url,
+                    source_type: 'web'
+                })));
+            }
+        }
+    } else if (queryType === 'academic') {
+        console.log('📚 Using books + papers + internet');
+        
+        // arXiv papers
+        const arxivResult = await searchArxiv(query, 2);
+        if (arxivResult.has_data) {
+            allSources.push(...arxivResult.sources);
+            allContextParts.push(arxivResult.context);
+        }
+
+        // Semantic Scholar
+        const scholarResult = await searchSemanticScholar(query, 2);
+        if (scholarResult.has_data) {
+            allSources.push(...scholarResult.sources);
+            allContextParts.push(scholarResult.context);
+        }
+
+        // Google Books
+        const booksResult = await searchGoogleBooks(query, 2);
+        if (booksResult.has_data) {
+            allSources.push(...booksResult.sources);
+            allContextParts.push(booksResult.context);
+        }
+
+        // Web for current context
+        const webResult = await searchWeb(query, 'all');
+        if (webResult && webResult.answer) {
+            allContextParts.push(`\n🌐 Current Web Context:\n${webResult.answer}`);
+        }
+    } else if (queryType === 'coding') {
+        console.log('💻 Using internet + recent books');
+        
+        // Web first for latest syntax
+        const webResult = await searchWeb(query, 'all');
+        if (webResult && webResult.answer) {
+            allContextParts.push(webResult.answer);
+            if (webResult.sources) {
+                allSources.push(...webResult.sources.map((s, i) => ({
+                    number: i + 1,
+                    title: s.title,
+                    url: s.url,
+                    source_type: 'web'
+                })));
+            }
+        }
+
+        // Books for deep concepts
+        const booksResult = await searchGoogleBooks(query, 2);
+        if (booksResult.has_data) {
+            allSources.push(...booksResult.sources);
+            allContextParts.push(booksResult.context);
+        }
+    } else {
+        console.log('🔍 Using internet + books (general)');
+        
+        // Web search
+        const webResult = await searchWeb(query, 'all');
+        if (webResult && webResult.answer) {
+            allContextParts.push(webResult.answer);
+            if (webResult.sources) {
+                allSources.push(...webResult.sources.map((s, i) => ({
+                    number: i + 1,
+                    title: s.title,
+                    url: s.url,
+                    source_type: 'web'
+                })));
+            }
+        }
+
+        // Books
+        const booksResult = await searchGoogleBooks(query, 2);
+        if (booksResult.has_data) {
+            allSources.push(...booksResult.sources);
+            allContextParts.push(booksResult.context);
         }
     }
 
-    // Try Perplexity API second (best quality with citations)
-    if (SEARCH_APIS.perplexity.enabled) {
+    const fullContext = allContextParts.join('\n\n');
+    
+    // Add source summary
+    let contextWithSources = fullContext;
+    if (allSources.length > 0) {
+        contextWithSources += '\n\n📚 Sources Used:\n';
+        allSources.forEach(src => {
+            contextWithSources += `[${src.number}] ${src.title} - ${src.url}\n`;
+        });
+    }
+
+    console.log(`✅ Knowledge Fusion: ${allSources.length} sources, ${fullContext.length} chars`);
+
+    return {
+        context: contextWithSources.substring(0, 5000),
+        sources: allSources,
+        query_type: queryType,
+        has_data: allContextParts.length > 0
+    };
+}
+
+// Web Search Function with Multiple API Support
+async function searchWeb(query, mode = 'all') {
+    console.log(`🔍 Web Search: "${query}" [Mode: ${mode}]`);
+    
+    // ===== PRIMARY: Tavily AI Search (3-key rotation) =====
+    if (SEARCH_APIS.tavily.enabled) {
         try {
-            console.log('🌐 Using Perplexity API...');
+            console.log('🔹 Trying Tavily (Primary)...');
+            const apiKey = SEARCH_APIS.tavily.getKey();
+            
             const response = await axios.post(
-                SEARCH_APIS.perplexity.endpoint,
+                SEARCH_APIS.tavily.endpoint,
                 {
-                    model: SEARCH_APIS.perplexity.model,
+                    query: query,
+                    search_depth: 'advanced',
+                    max_results: 10,
+                    include_answer: true,
+                    include_raw_content: false
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    timeout: 15000
+                }
+            );
+
+            if (response.data?.results?.length > 0) {
+                console.log(`✅ Tavily returned ${response.data.results.length} results`);
+                
+                const topResults = response.data.results.slice(0, 5);
+                const summary = await generateSearchSummary(query, topResults.map(r => ({
+                    title: r.title || 'No title',
+                    description: r.content || r.snippet || '',
+                    url: r.url
+                })), mode);
+
+                return {
+                    answer: summary,
+                    citations: topResults.map(r => r.url),
+                    sources: topResults.map(r => ({
+                        title: r.title,
+                        url: r.url,
+                        snippet: r.content || r.snippet
+                    })),
+                    searchEngine: 'Tavily AI'
+                };
+            }
+        } catch (error) {
+            console.warn(`⚠️ Tavily failed: ${error.message}`);
+        }
+    }
+
+    // ===== FALLBACK: Sonar API (Perplexity) =====
+    if (SEARCH_APIS.sonar.enabled) {
+        try {
+            console.log('🔹 Trying Sonar (Fallback)...');
+            
+            const response = await axios.post(
+                SEARCH_APIS.sonar.endpoint,
+                {
+                    model: SEARCH_APIS.sonar.model,
                     messages: [
                         {
                             role: 'system',
@@ -933,7 +1396,7 @@ async function searchWeb(query, mode = 'all') {
                 },
                 {
                     headers: {
-                        'Authorization': `Bearer ${SEARCH_APIS.perplexity.key}`,
+                        'Authorization': `Bearer ${SEARCH_APIS.sonar.key}`,
                         'Content-Type': 'application/json'
                     },
                     timeout: 15000
@@ -943,99 +1406,20 @@ async function searchWeb(query, mode = 'all') {
             const answer = response.data.choices[0].message.content;
             const citations = response.data.citations || [];
 
-            console.log('✅ Perplexity search successful!');
+            console.log('✅ Sonar returned results');
             return {
                 answer,
                 citations,
                 sources: citations.slice(0, 5),
-                searchEngine: 'Perplexity AI'
+                searchEngine: 'Sonar (Perplexity)'
             };
         } catch (error) {
-            console.error('❌ Perplexity API error:', error.message);
+            console.error(`❌ Sonar failed: ${error.message}`);
         }
     }
 
-    // Fallback to Brave Search API
-    if (SEARCH_APIS.brave.enabled) {
-        try {
-            console.log('🦁 Using Brave Search API...');
-            const response = await axios.get(SEARCH_APIS.brave.endpoint, {
-                params: {
-                    q: query,
-                    count: 10
-                },
-                headers: {
-                    'X-Subscription-Token': SEARCH_APIS.brave.key,
-                    'Accept': 'application/json'
-                },
-                timeout: 10000
-            });
-
-            const results = response.data.web?.results || [];
-            const topResults = results.slice(0, 5);
-
-            // Format results with AI
-            const summary = await generateSearchSummary(query, topResults, mode);
-
-            console.log('✅ Brave search successful!');
-            return {
-                answer: summary,
-                citations: topResults.map(r => r.url),
-                sources: topResults.map(r => ({
-                    title: r.title,
-                    url: r.url,
-                    snippet: r.description
-                })),
-                searchEngine: 'Brave Search'
-            };
-        } catch (error) {
-            console.error('❌ Brave Search API error:', error.message);
-        }
-    }
-
-    // Fallback to DuckDuckGo (no API key needed)
-    try {
-        console.log('🦆 Using DuckDuckGo search...');
-        const response = await axios.get('https://api.duckduckgo.com/', {
-            params: {
-                q: query,
-                format: 'json',
-                no_html: 1,
-                skip_disambig: 1
-            },
-            timeout: 8000
-        });
-
-        const data = response.data;
-        const relatedTopics = data.RelatedTopics || [];
-
-        let summary = '';
-        if (data.AbstractText) {
-            summary = data.AbstractText;
-        } else if (relatedTopics.length > 0) {
-            summary = relatedTopics
-                .filter(t => t.Text)
-                .slice(0, 3)
-                .map(t => t.Text)
-                .join('\n\n');
-        }
-
-        console.log('✅ DuckDuckGo search successful!');
-        return {
-            answer: summary || null, // Return null instead of error message
-            citations: relatedTopics.filter(t => t.FirstURL).map(t => t.FirstURL).slice(0, 5),
-            sources: relatedTopics.filter(t => t.FirstURL).slice(0, 5).map(t => ({
-                title: t.Text?.substring(0, 100),
-                url: t.FirstURL
-            })),
-            searchEngine: 'DuckDuckGo'
-        };
-    } catch (error) {
-        console.error('❌ DuckDuckGo search error:', error.message);
-    }
-
-    // All search methods failed
-    console.log('⚠️ All search APIs failed, returning AI-only response');
+    // ===== BOTH FAILED =====
+    console.error('❌ All search APIs failed (Tavily and Sonar)');
     return null;
 }
 
@@ -1529,7 +1913,8 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
         let functionCallingUsed = false;
         let toolResults = '';
 
-        if (functionCallingEngine) {
+        // DISABLED: Knowledge Fusion handles all search needs
+        if (false && functionCallingEngine) {
             console.log('🔧 Checking if Function Calling is needed...');
             try {
                 const toolAnalysis = await functionCallingEngine.determineToolsNeeded(question);
@@ -1554,46 +1939,9 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             }
         }
 
-        // ===== AUTONOMOUS RAG PIPELINE (Advanced Web Search with LLM Analysis) =====
+        // ===== KNOWLEDGE FUSION SEARCH (Primary Search System) =====
         let webSearchResults = null;
         let webContext = '';
-        let ragPipelineUsed = false;
-
-        // Check if RAG Pipeline should be used
-        const useRagPipeline = enableWebSearch !== false && ragPipeline && detectWebSearchNeeded(question);
-
-        if (useRagPipeline) {
-            console.log('🚀 Activating Autonomous RAG Pipeline...');
-            try {
-                const ragResult = await ragPipeline.executePipeline(question, mode || 'general');
-                
-                if (ragResult.type === 'SUCCESS') {
-                    // High-confidence response with sources
-                    webContext = `\n\n📊 **ADVANCED RETRIEVED CONTEXT:**\n\n${ragResult.response}\n\n`;
-                    webSearchResults = {
-                        sources: ragResult.sources,
-                        answer: ragResult.response,
-                        searchEngine: 'Autonomous RAG Pipeline'
-                    };
-                    ragPipelineUsed = true;
-                    console.log(`✅ RAG Pipeline: High confidence response generated`);
-                } else if (ragResult.type === 'CLARIFICATION') {
-                    // Low confidence - asking for clarification
-                    console.log(`⚠️ RAG Pipeline: Requesting user clarification`);
-                    return res.json({
-                        answer: ragResult.response,
-                        type: 'CLARIFICATION_NEEDED',
-                        options: ragResult.options,
-                        webSearchUsed: true,
-                        searchEngine: 'Autonomous RAG Pipeline',
-                        quality: 'LOW_CONFIDENCE'
-                    });
-                }
-            } catch (ragError) {
-                console.warn(`⚠️ RAG Pipeline error: ${ragError.message}, falling back to standard search`);
-                ragPipelineUsed = false;
-            }
-        }
         // ===== TAMIL NADU NEWS INJECTION =====
         // Check if user is asking about Tamil Nadu news/events
         const tamilNewsKeywords = ['tamil', 'tn', 'tamil nadu', 'recent news', 'latest news', 'news in tamil', 'தமிழ்'];
@@ -1616,39 +1964,64 @@ VISHAL designed me to be more than just a chatbot - I'm your intelligent compani
             }
         }
 
-        // ===== FALLBACK: Standard Web Search (if RAG Pipeline not available or didn't trigger) =====
-        if (!ragPipelineUsed) {
-            // Compute local intent flags here to avoid pre-declaration usage
-            const currentEventsKeywordsLocal = ['latest', 'today', 'current', 'recent', 'breaking', 'this week', 'this month', 'update', 'happening'];
-            const regionalKeywordsLocal = ['tamil nadu', 'tamilnadu', 'chennai'];
-            const isCurrentEventsIntent = /2025|2026/.test(lowerQuestion) || currentEventsKeywordsLocal.some(k => lowerQuestion.includes(k));
-            const isRegionalTamilIntent = regionalKeywordsLocal.some(k => lowerQuestion.includes(k));
+        // ===== KNOWLEDGE FUSION WEB SEARCH =====
+        // Always check if web search is needed (no RAG pipeline blocking anymore)
+        console.log('🔍 Checking if web search needed...');
+        // Compute local intent flags here to avoid pre-declaration usage
+        const currentEventsKeywordsLocal = ['latest', 'today', 'current', 'recent', 'breaking', 'this week', 'this month', 'update', 'happening'];
+        const regionalKeywordsLocal = ['tamil nadu', 'tamilnadu', 'chennai'];
+        const isCurrentEventsIntent = /2025|2026/.test(lowerQuestion) || currentEventsKeywordsLocal.some(k => lowerQuestion.includes(k));
+        const isRegionalTamilIntent = regionalKeywordsLocal.some(k => lowerQuestion.includes(k));
+
+            console.log(`🔍 Query: "${question}"`);
+            console.log(`🔍 isCurrentEventsIntent: ${isCurrentEventsIntent}`);
+            console.log(`🔍 isRegionalTamilIntent: ${isRegionalTamilIntent}`);
 
             const forceWebSearch = isCurrentEventsIntent || isRegionalTamilIntent;
             const shouldSearchWeb = forceWebSearch || detectWebSearchNeeded(question);
             
+            console.log(`🔍 forceWebSearch: ${forceWebSearch}, shouldSearchWeb: ${shouldSearchWeb}`);
+            
             if (shouldSearchWeb) {
-                console.log('🌐 Standard web search auto-detected...');
+                console.log('🧠 Using JARVIS Knowledge Fusion (Internet + Books + Papers)...');
                 try {
-                    webSearchResults = await searchWeb(question, mode || 'all');
+                    // Use Knowledge Fusion instead of simple web search
+                    const fusionResult = await jarvisKnowledgeFusion(question, 5);
                     
-                    if (webSearchResults && webSearchResults.sources && webSearchResults.sources.length > 0) {
-                        webContext = `\n\n📚 **REAL-TIME CONTEXT FROM WEB SEARCH:**\n\n`;
-                        webContext += `${webSearchResults.answer || ''}\n\n`;
-                        webContext += `**Sources Used:**\n`;
-                        webSearchResults.sources.forEach((source, i) => {
-                            if (source.title && source.url) {
-                                webContext += `${i + 1}. [${source.title}](${source.url})\n`;
-                            }
-                        });
-                        webContext += `\n(Reference these sources in your response when relevant)`;
-                        console.log(`✅ Web context prepared with ${webSearchResults.sources.length} sources`);
+                    if (fusionResult && fusionResult.has_data) {
+                        webContext = `\n\n📚 **JARVIS KNOWLEDGE FUSION (${fusionResult.query_type.toUpperCase()}):**\n\n`;
+                        webContext += `${fusionResult.context}\n\n`;
+                        
+                        webSearchResults = {
+                            sources: fusionResult.sources,
+                            answer: fusionResult.context,
+                            searchEngine: `Knowledge Fusion (${fusionResult.query_type})`,
+                            queryType: fusionResult.query_type
+                        };
+                        
+                        console.log(`✅ Knowledge Fusion: ${fusionResult.sources.length} sources (${fusionResult.query_type})`);
+                    } else {
+                        // Fallback to simple web search if fusion fails
+                        console.log('⚠️ Knowledge Fusion returned no data, trying simple web search...');
+                        webSearchResults = await searchWeb(question, mode || 'all');
+                        
+                        if (webSearchResults && webSearchResults.sources && webSearchResults.sources.length > 0) {
+                            webContext = `\n\n📚 **REAL-TIME CONTEXT FROM WEB SEARCH:**\n\n`;
+                            webContext += `${webSearchResults.answer || ''}\n\n`;
+                            webContext += `**Sources Used:**\n`;
+                            webSearchResults.sources.forEach((source, i) => {
+                                if (source.title && source.url) {
+                                    webContext += `${i + 1}. [${source.title}](${source.url})\n`;
+                                }
+                            });
+                            webContext += `\n(Reference these sources in your response when relevant)`;
+                            console.log(`✅ Web context prepared with ${webSearchResults.sources.length} sources`);
+                        }
                     }
                 } catch (error) {
-                    console.log('⚠️ Web search failed, continuing with AI knowledge:', error.message);
+                    console.log('⚠️ Knowledge Fusion failed, continuing with AI knowledge:', error.message);
                 }
             }
-        }
         
         // ===== JARVIS 5.2 ADVANCED AI PROCESSING =====
         const apiKey = getNextGroqKey();
@@ -1822,17 +2195,24 @@ I'm having trouble connecting to the AI service right now.
             return matches.length / sourceWords.length;
         };
 
-        if (isCurrentEventsQuestion && jarvisLiveSearch) {
-            console.log('📰 Current events detected, fetching 2026 live news...');
+        if (isCurrentEventsQuestion) {
+            console.log('📰 Current events detected, fetching live news...');
             try {
             // For regional Tamil Nadu/Chennai queries, use the raw query and Indian sources
             // Otherwise, bias toward 2026 to override stale training data
             const liveQuery = isRegionalTamilQuery ? question : `${question} 2026`;
-            searchResults = await jarvisLiveSearch.searchNews(liveQuery, 5);
+            const searchResult = await searchWeb(`${liveQuery} news latest`, 'all');
 
-                if (searchResults?.status === 'success' && (searchResults.total_results || 0) > 0) {
-                    const newsText = searchResults.formatted_text || '';
+                if (searchResult && searchResult.answer) {
+                    const newsText = searchResult.answer;
                     latestNewsText = newsText;
+                    
+                    // Set searchResults for compatibility
+                    searchResults = {
+                        status: 'success',
+                        total_results: searchResult.sources?.length || 1,
+                        formatted_text: newsText
+                    };
                     
                     // ===== SEMANTIC VERIFICATION LAYER =====
                     console.log('🧠 Running semantic verification...');
@@ -2032,8 +2412,6 @@ I'm having trouble connecting to the AI service right now.
             webSearchUsed: !!webSearchResults,
             sources: webSearchResults?.sources || null,
             searchEngine: webSearchResults?.searchEngine || null,
-            // RAG Pipeline Metadata
-            ragPipelineUsed: ragPipelineUsed,
             quality: webSearchResults ? 'HIGH_CONFIDENCE' : 'KNOWLEDGE_BASE',
             // Function Calling Metadata
             functionCallingUsed: functionCallingUsed,
@@ -2934,7 +3312,7 @@ app.post('/api/news/serper', apiLimiter, async (req, res) => {
 });
 */
 
-// 9.6 DuckDuckGo Live News Search
+// 9.6 News Search - Uses Tavily/Sonar
 app.post('/api/search/news', apiLimiter, async (req, res) => {
     try {
         const { query, maxResults = 5 } = req.body;
@@ -2943,26 +3321,27 @@ app.post('/api/search/news', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Query parameter required' });
         }
 
-        const result = await jarvisLiveSearch.searchNews(query, maxResults);
+        const result = await searchWeb(`${query} news latest`, 'all');
 
-        if (result.status === 'error') {
+        if (!result) {
             return res.status(500).json({
                 success: false,
                 error: 'Search failed',
-                message: result.message
+                message: 'No results from Tavily or Sonar'
             });
         }
 
         res.json({
             success: true,
             query,
-            results: result.results || [],
-            total: result.total_results || 0,
-            source: 'DuckDuckGo News',
-            timestamp: result.timestamp || new Date().toISOString()
+            answer: result.answer,
+            citations: result.citations || [],
+            sources: result.sources || [],
+            searchEngine: result.searchEngine,
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('❌ DuckDuckGo News Search error:', error.message);
+        console.error('❌ News Search error:', error.message);
         res.status(500).json({
             success: false,
             error: 'Failed to perform news search',
@@ -2971,7 +3350,7 @@ app.post('/api/search/news', apiLimiter, async (req, res) => {
     }
 });
 
-// 9.7 DuckDuckGo Web Search
+// 9.7 Web Search - Uses Tavily/Sonar
 app.post('/api/search/web', apiLimiter, async (req, res) => {
     try {
         const { query, maxResults = 10 } = req.body;
@@ -2980,26 +3359,27 @@ app.post('/api/search/web', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Query parameter required' });
         }
 
-        const result = await jarvisLiveSearch.searchWeb(query, maxResults);
+        const result = await searchWeb(query, 'all');
 
-        if (result.status === 'error') {
+        if (!result) {
             return res.status(500).json({
                 success: false,
                 error: 'Search failed',
-                message: result.message
+                message: 'No results from Tavily or Sonar'
             });
         }
 
         res.json({
             success: true,
             query,
-            results: result.results || [],
-            total: result.total_results || 0,
-            source: 'DuckDuckGo Web',
-            timestamp: result.timestamp || new Date().toISOString()
+            answer: result.answer,
+            citations: result.citations || [],
+            sources: result.sources || [],
+            searchEngine: result.searchEngine,
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('❌ DuckDuckGo Web Search error:', error.message);
+        console.error('❌ Web Search error:', error.message);
         res.status(500).json({
             success: false,
             error: 'Failed to perform web search',
@@ -3008,7 +3388,7 @@ app.post('/api/search/web', apiLimiter, async (req, res) => {
     }
 });
 
-// 9.8 DuckDuckGo Comprehensive Search (News + Web)
+// 9.8 Comprehensive Search (Uses Tavily/Sonar)
 app.post('/api/search/comprehensive', apiLimiter, async (req, res) => {
     try {
         const { query, newsResults = 3, webResults = 5 } = req.body;
@@ -3017,32 +3397,27 @@ app.post('/api/search/comprehensive', apiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'Query parameter required' });
         }
 
-        const result = await jarvisLiveSearch.comprehensiveSearch(query);
-
-        if (result.status === 'error') {
-            return res.status(500).json({
-                success: false,
-                error: 'Comprehensive search failed',
-                message: result.message
-            });
-        }
+        // Perform both news and web search
+        const newsResult = await searchWeb(`${query} news latest`, 'all');
+        const webResult = await searchWeb(query, 'all');
 
         res.json({
             success: true,
             query,
             news: {
-                results: result.news?.results || [],
-                total: result.news?.total_results || 0
+                answer: newsResult?.answer || '',
+                sources: newsResult?.sources || [],
+                searchEngine: newsResult?.searchEngine || 'None'
             },
             web: {
-                results: result.web?.results || [],
-                total: result.web?.total_results || 0
+                answer: webResult?.answer || '',
+                sources: webResult?.sources || [],
+                searchEngine: webResult?.searchEngine || 'None'
             },
-            source: 'DuckDuckGo (News + Web)',
-            timestamp: result.timestamp || new Date().toISOString()
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('❌ DuckDuckGo Comprehensive Search error:', error.message);
+        console.error('❌ Comprehensive Search error:', error.message);
         res.status(500).json({
             success: false,
             error: 'Failed to perform comprehensive search',
@@ -4535,33 +4910,38 @@ app.post('/api/research', async (req, res) => {
         }
 
         console.log(`🔍 [DEEP-RESEARCH] Query: "${query}"`);
-        console.log(`   📡 Requesting ${maxSources} sources from Tavily AI...`);
+        console.log(`   📡 Requesting ${maxSources} sources from web search...`);
 
-        // Use the autonomous RAG pipeline with Tavily
-        const JARVISAutonomousRAG = require('./jarvis-autonomous-rag');
-        const ragPipeline = new JARVISAutonomousRAG();
+        // Use Knowledge Fusion instead of RAG pipeline
+        const fusionResult = await jarvisKnowledgeFusion(query, maxSources);
 
-        // Fetch research results using Tavily (primary) or backup endpoint
+        // Fetch research results
         let results = [];
         let answer = '';
         
-        try {
-            // Try primary Tavily endpoint first
-            results = await ragPipeline.searchWithTavily(query, maxSources);
-            console.log(`✅ [DEEP-RESEARCH] Retrieved ${results.length} sources from Tavily`);
-        } catch (primaryError) {
-            console.warn(`⚠️ [DEEP-RESEARCH] Primary Tavily failed, trying backup...`);
-            
-            try {
-                // Fallback to backup endpoint
-                results = await ragPipeline.searchWithDDGS(query, maxSources);
-                console.log(`✅ [DEEP-RESEARCH] Retrieved ${results.length} sources from backup`);
-            } catch (backupError) {
-                console.error(`❌ [DEEP-RESEARCH] All endpoints failed:`, backupError.message);
+        if (fusionResult && fusionResult.has_data) {
+            // Format Knowledge Fusion results for research endpoint
+            results = fusionResult.sources.map(source => ({
+                title: source.title || 'Source',
+                url: source.url || '',
+                snippet: source.snippet || '',
+                source_type: source.source_type || 'web'
+            }));
+            answer = fusionResult.context;
+            console.log(`✅ [DEEP-RESEARCH] Retrieved ${results.length} sources from Knowledge Fusion (${fusionResult.query_type})`);
+        } else {
+            // Fallback to simple web search
+            const webResult = await searchWeb(query, 'all');
+            if (webResult && webResult.sources) {
+                results = webResult.sources;
+                answer = webResult.answer || '';
+                console.log(`✅ [DEEP-RESEARCH] Retrieved ${results.length} sources from web search`);
+            } else {
+                console.warn(`⚠️ [DEEP-RESEARCH] No results found`);
                 return res.status(503).json({
                     success: false,
-                    error: 'Research pipeline temporarily unavailable',
-                    details: backupError.message
+                    error: 'No research results found',
+                    query
                 });
             }
         }

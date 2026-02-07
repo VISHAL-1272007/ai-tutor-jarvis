@@ -48,11 +48,7 @@ try:
 except Exception:
     GEMINI_AVAILABLE = False
 
-try:
-    from pinecone import Pinecone
-    PINECONE_AVAILABLE = True
-except Exception:
-    PINECONE_AVAILABLE = False
+# Pinecone removed - using Tavily only [cite: 07-02-2026]
 
 try:
     import psutil
@@ -66,11 +62,7 @@ try:
 except Exception:
     EDGE_TTS_AVAILABLE = False
 
-try:
-    from sentence_transformers import CrossEncoder
-    CROSS_ENCODER_AVAILABLE = True
-except Exception:
-    CROSS_ENCODER_AVAILABLE = False
+# CrossEncoder removed with RAG system [cite: 07-02-2026]
 
 try:
     from duckduckgo_search import DDGS
@@ -105,8 +97,9 @@ except Exception:
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 TAVILY_API_KEY = os.environ.get("TAVILY_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-PINECONE_API_KEY = os.environ.get("PINECONE_API_KEY", "")
 HUGGINGFACE_API_KEY = os.environ.get("HUGGINGFACE_API_KEY", "")
+SONAR_API_KEY = os.environ.get("SONAR_API_KEY", "")  # Perplexity backup [cite: 07-02-2026]
+GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 
 # process.env.PORT Render-aala assign sĕiyappadum.
 # Illai-naal (local-la) 3000 use pannum.
@@ -121,8 +114,7 @@ RATE_LIMIT_WINDOW_SECONDS = 10
 RATE_LIMIT_MAX_REQUESTS = 3
 _request_log: Dict[str, List[float]] = {}
 
-RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
-RERANKER_TOP_K = int(os.environ.get("RERANKER_TOP_K", 3))
+# Reranker removed with RAG system [cite: 07-02-2026]
 
 # ===== REDIS MEMORY [cite: 04-02-2026] =====
 REDIS_URL = os.environ.get("REDIS_URL", "redis://red-d5rlmrogjchc739qtulg:6379")
@@ -187,13 +179,7 @@ GEMINI_TOOLS = [
     {"function_declarations": GEMINI_TOOL_DECLARATIONS}
 ]
 
-# Pinecone (Vector DB) [cite: 03-02-2026]
-pc = None
-index = None
-if PINECONE_AVAILABLE and PINECONE_API_KEY:
-    # Render Environment-la PINECONE_API_KEY sĕt panna marakkādheenga
-    pc = Pinecone(api_key=PINECONE_API_KEY)
-    index = pc.Index(host="https://jarvis-knowledge-bu4y96z.svc.aped-4627-b74a.pinecone.io")
+# Pinecone removed - using Tavily web search only [cite: 07-02-2026]
 
 # Model Mapping [cite: 31-01-2026]
 GROQ_MODELS = {
@@ -234,6 +220,12 @@ if not TAVILY_API_KEYS:
     print("⚠️ WARNING: No Tavily API keys found in environment")
 else:
     print(f"✅ Tavily AI initialized with {len(TAVILY_API_KEYS)} API key(s) for load balancing")
+
+# ===== SONAR API BACKUP [cite: 07-02-2026] =====
+if SONAR_API_KEY:
+    print("✅ Perplexity Sonar API backup initialized")
+else:
+    print("⚠️ Sonar backup not available (no API key)")
 
 def get_tavily_client():
     """Get a random Tavily client for load balancing [cite: 04-02-2026]"""
@@ -323,28 +315,7 @@ def save_correction(message_id: int, query: str, correction: str) -> None:
         print(f"⚠️ Correction save error: {e}")
 
 
-def get_corrections_context(query: str, limit: int = 3) -> str:
-    """Retrieve corrections to avoid repeating past mistakes."""
-    if not query:
-        return ""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT correction, query FROM corrections WHERE query LIKE ? ORDER BY id DESC LIMIT ?",
-            (f"%{query[:120]}%", limit)
-        )
-        rows = cursor.fetchall()
-        conn.close()
-        if not rows:
-            return ""
-        lines = ["Prior corrections to avoid:"]
-        for correction_text, original_query in rows:
-            lines.append(f"- {correction_text} (from: {original_query})")
-        return "\n".join(lines)
-    except Exception as e:
-        print(f"⚠️ Corrections lookup error: {e}")
-        return ""
+# get_corrections_context removed with RAG system [cite: 07-02-2026]
 
 
 # Initialize database on startup
@@ -571,14 +542,487 @@ def scrape_url_content(url: str, timeout: int = 10) -> Dict[str, str]:
         return {"error": f"Error scraping {url}: {str(e)}", "url": url}
 
 
-def get_enhanced_web_research(query: str, max_urls: int = 3) -> Dict:
+def search_sonar_api(query: str, max_results: int = 3) -> Dict:
     """
-    Enhanced Tavily search + deep web scraping [cite: 06-02-2026]
+    Perplexity Sonar API backup search [cite: 07-02-2026]
     Returns: {"context": str, "sources": List[Dict], "has_data": bool}
     """
-    if not TAVILY_AVAILABLE or not TAVILY_API_KEYS:
-        print("⚠️ Tavily not available")
+    if not SONAR_API_KEY:
+        print("⚠️ Sonar API key not available")
         return {"context": "", "sources": [], "has_data": False}
+    
+    try:
+        import httpx
+        
+        headers = {
+            "Authorization": f"Bearer {SONAR_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": "sonar",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a helpful web search assistant. Provide factual, current information with sources."
+                },
+                {
+                    "role": "user",
+                    "content": query
+                }
+            ],
+            "max_tokens": 1024,
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "return_citations": True,
+            "search_recency_filter": "month"
+        }
+        
+        with httpx.Client() as client:
+            response = client.post(
+                "https://api.perplexity.ai/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=20.0
+            )
+        
+        if response.status_code != 200:
+            print(f"⚠️ Sonar API status: {response.status_code}")
+            return {"context": "", "sources": [], "has_data": False}
+        
+        data = response.json()
+        answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        citations = data.get("citations", [])
+        
+        if not answer:
+            return {"context": "", "sources": [], "has_data": False}
+        
+        # Format sources
+        sources = []
+        for idx, citation in enumerate(citations[:max_results], start=1):
+            sources.append({
+                "number": idx,
+                "title": f"Perplexity Source {idx}",
+                "url": citation,
+                "content_length": 0
+            })
+        
+        # Build context
+        context = f"🌐 Perplexity Sonar Research:\n\n{answer}\n\n📚 Sources:\n"
+        for src in sources:
+            context += f"[{src['number']}] {src['url']}\n"
+        
+        print(f"✅ Sonar API: {len(answer)} chars, {len(sources)} sources")
+        
+        return {
+            "context": context[:2500],
+            "sources": sources,
+            "has_data": True
+        }
+    
+    except Exception as e:
+        print(f"⚠️ Sonar API error: {e}")
+        return {"context": "", "sources": [], "has_data": False}
+
+
+# =============================
+# SMART QUERY CLASSIFICATION [cite: 07-02-2026]
+# =============================
+
+def is_current_event(query: str) -> bool:
+    """Detect if query needs real-time information."""
+    time_sensitive_keywords = [
+        "current", "today", "now", "latest", "price", "weather",
+        "news", "stock", "2026", "this week", "this month",
+        "recent", "just", "happening", "breaking", "live"
+    ]
+    query_lower = query.lower()
+    return any(keyword in query_lower for keyword in time_sensitive_keywords)
+
+
+def is_academic_query(query: str) -> bool:
+    """Detect if query needs academic or book sources."""
+    academic_keywords = [
+        "explain", "theory", "history of", "who invented",
+        "how does", "why does", "philosophy", "analysis",
+        "concept", "definition", "meaning", "origin",
+        "according to", "book", "paper", "research", "study"
+    ]
+    query_lower = query.lower()
+    return any(keyword in query_lower for keyword in academic_keywords)
+
+
+def is_coding_query(query: str) -> bool:
+    """Detect programming-related queries."""
+    coding_keywords = [
+        "python", "javascript", "code", "function", "class",
+        "algorithm", "programming", "syntax", "error", "debug",
+        "java", "c++", "react", "api", "sql", "html", "css"
+    ]
+    query_lower = query.lower()
+    return any(keyword in query_lower for keyword in coding_keywords)
+
+
+def classify_query(query: str) -> str:
+    """Classify query type for intelligent source selection."""
+    if is_current_event(query):
+        return "current_event"
+    if is_coding_query(query):
+        return "coding"
+    if is_academic_query(query):
+        return "academic"
+    return "general"
+
+
+# =============================
+# BOOK & PAPER SEARCH APIs [cite: 07-02-2026]
+# =============================
+
+def search_google_books(query: str, max_results: int = 3) -> Dict:
+    """Search Google Books API (40M+ books)."""
+    if not GOOGLE_BOOKS_API_KEY:
+        return {"context": "", "sources": [], "has_data": False}
+
+    try:
+        url = "https://www.googleapis.com/books/v1/volumes"
+        params = {
+            "q": query,
+            "key": GOOGLE_BOOKS_API_KEY,
+            "maxResults": max_results,
+            "printType": "books"
+        }
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code != 200:
+            return {"context": "", "sources": [], "has_data": False}
+
+        data = response.json()
+        items = data.get("items", [])
+        if not items:
+            return {"context": "", "sources": [], "has_data": False}
+
+        sources = []
+        context_parts = ["📚 Knowledge from Books:\n"]
+        for idx, item in enumerate(items, start=1):
+            vol_info = item.get("volumeInfo", {})
+            title = vol_info.get("title", "Untitled")
+            authors = ", ".join(vol_info.get("authors", ["Unknown"]))
+            description = vol_info.get("description", "")[:500]
+            preview_link = vol_info.get("previewLink", "")
+
+            sources.append({
+                "number": idx,
+                "title": f"{title} by {authors}",
+                "url": preview_link,
+                "content_length": len(description),
+                "source_type": "books"
+            })
+            context_parts.append(f"\n📖 Book [{idx}]: {title}")
+            context_parts.append(f"Author: {authors}")
+            if description:
+                context_parts.append(f"Content: {description}")
+
+        return {
+            "context": "\n".join(context_parts),
+            "sources": sources,
+            "has_data": True
+        }
+
+    except Exception as e:
+        print(f"⚠️ Google Books error: {e}")
+        return {"context": "", "sources": [], "has_data": False}
+
+
+def search_open_library(query: str, max_results: int = 3) -> Dict:
+    """Search Open Library (20M+ books)."""
+    try:
+        url = "https://openlibrary.org/search.json"
+        params = {"q": query, "limit": max_results}
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code != 200:
+            return {"context": "", "sources": [], "has_data": False}
+
+        data = response.json()
+        docs = data.get("docs", [])
+        if not docs:
+            return {"context": "", "sources": [], "has_data": False}
+
+        sources = []
+        context_parts = ["📚 Open Library Results:\n"]
+        for idx, doc in enumerate(docs[:max_results], start=1):
+            title = doc.get("title", "Untitled")
+            authors = ", ".join(doc.get("author_name", ["Unknown"]))
+            key = doc.get("key", "")
+            url = f"https://openlibrary.org{key}" if key else ""
+
+            sources.append({
+                "number": idx,
+                "title": f"{title} by {authors}",
+                "url": url,
+                "content_length": 0,
+                "source_type": "books"
+            })
+            context_parts.append(f"\n📖 Book [{idx}]: {title}")
+            context_parts.append(f"Author: {authors}")
+
+        return {
+            "context": "\n".join(context_parts),
+            "sources": sources,
+            "has_data": True
+        }
+
+    except Exception as e:
+        print(f"⚠️ Open Library error: {e}")
+        return {"context": "", "sources": [], "has_data": False}
+
+
+def search_gutenberg(query: str, max_results: int = 3) -> Dict:
+    """Search Project Gutenberg via Gutendex (public domain books)."""
+    try:
+        url = "https://gutendex.com/books"
+        params = {"search": query}
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code != 200:
+            return {"context": "", "sources": [], "has_data": False}
+
+        data = response.json()
+        results = data.get("results", [])
+        if not results:
+            return {"context": "", "sources": [], "has_data": False}
+
+        sources = []
+        context_parts = ["📖 Classic Literature (Gutenberg):\n"]
+        for idx, item in enumerate(results[:max_results], start=1):
+            title = item.get("title", "Untitled")
+            authors = ", ".join([a.get("name", "Unknown") for a in item.get("authors", [])])
+            formats = item.get("formats", {})
+            url = formats.get("text/html") or formats.get("text/plain") or ""
+
+            sources.append({
+                "number": idx,
+                "title": f"{title} by {authors}",
+                "url": url,
+                "content_length": 0,
+                "source_type": "books"
+            })
+            context_parts.append(f"\n📖 Book [{idx}]: {title}")
+            context_parts.append(f"Author: {authors}")
+
+        return {
+            "context": "\n".join(context_parts),
+            "sources": sources,
+            "has_data": True
+        }
+
+    except Exception as e:
+        print(f"⚠️ Gutenberg error: {e}")
+        return {"context": "", "sources": [], "has_data": False}
+
+
+def search_arxiv(query: str, max_results: int = 3) -> Dict:
+    """Search arXiv research papers (2M+ papers)."""
+    try:
+        import xml.etree.ElementTree as ET
+
+        url = "http://export.arxiv.org/api/query"
+        params = {
+            "search_query": f"all:{query}",
+            "start": 0,
+            "max_results": max_results,
+            "sortBy": "relevance",
+            "sortOrder": "descending"
+        }
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code != 200:
+            return {"context": "", "sources": [], "has_data": False}
+
+        root = ET.fromstring(response.content)
+        ns = "{http://www.w3.org/2005/Atom}"
+        entries = root.findall(f"{ns}entry")
+        if not entries:
+            return {"context": "", "sources": [], "has_data": False}
+
+        sources = []
+        context_parts = ["📄 Research Papers (arXiv):\n"]
+        for idx, entry in enumerate(entries[:max_results], start=1):
+            title = entry.find(f"{ns}title").text.strip()
+            summary = entry.find(f"{ns}summary").text.strip()[:500]
+            link = entry.find(f"{ns}id").text
+
+            sources.append({
+                "number": idx,
+                "title": title,
+                "url": link,
+                "content_length": len(summary),
+                "source_type": "papers"
+            })
+            context_parts.append(f"\n📑 Paper [{idx}]: {title}")
+            context_parts.append(f"Summary: {summary}")
+
+        return {
+            "context": "\n".join(context_parts),
+            "sources": sources,
+            "has_data": True
+        }
+
+    except Exception as e:
+        print(f"⚠️ arXiv error: {e}")
+        return {"context": "", "sources": [], "has_data": False}
+
+
+def search_semantic_scholar(query: str, max_results: int = 3) -> Dict:
+    """Search Semantic Scholar (200M+ papers)."""
+    try:
+        url = "https://api.semanticscholar.org/graph/v1/paper/search"
+        params = {
+            "query": query,
+            "limit": max_results,
+            "fields": "title,abstract,url,year,authors"
+        }
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code != 200:
+            return {"context": "", "sources": [], "has_data": False}
+
+        data = response.json()
+        papers = data.get("data", [])
+        if not papers:
+            return {"context": "", "sources": [], "has_data": False}
+
+        sources = []
+        context_parts = ["🎓 Academic Papers (Semantic Scholar):\n"]
+        for idx, paper in enumerate(papers[:max_results], start=1):
+            title = paper.get("title", "Untitled")
+            abstract = (paper.get("abstract") or "")[:500]
+            paper_url = paper.get("url", "")
+            year = paper.get("year", "N/A")
+
+            sources.append({
+                "number": idx,
+                "title": f"{title} ({year})",
+                "url": paper_url,
+                "content_length": len(abstract),
+                "source_type": "papers"
+            })
+            context_parts.append(f"\n📝 Paper [{idx}]: {title} ({year})")
+            if abstract:
+                context_parts.append(f"Abstract: {abstract}")
+
+        return {
+            "context": "\n".join(context_parts),
+            "sources": sources,
+            "has_data": True
+        }
+
+    except Exception as e:
+        print(f"⚠️ Semantic Scholar error: {e}")
+        return {"context": "", "sources": [], "has_data": False}
+
+
+# =============================
+# JARVIS KNOWLEDGE FUSION [cite: 07-02-2026]
+# =============================
+
+def jarvis_knowledge_fusion(query: str, max_results: int = 3) -> Dict:
+    """Combine Internet + Books + Papers with smart routing."""
+    query_type = classify_query(query)
+    print(f"🧠 Query type: {query_type}")
+
+    all_sources = []
+    all_context_parts = []
+
+    if query_type == "current_event":
+        print("🌐 Using Internet only (time-sensitive)")
+        web_result = get_enhanced_web_research(query, max_results)
+        if web_result["has_data"]:
+            all_sources.extend(web_result["sources"])
+            all_context_parts.append(web_result["context"])
+
+    elif query_type == "academic":
+        print("📚 Using books + papers + internet")
+        arxiv_result = search_arxiv(query, 2)
+        if arxiv_result["has_data"]:
+            all_sources.extend(arxiv_result["sources"])
+            all_context_parts.append(arxiv_result["context"])
+
+        scholar_result = search_semantic_scholar(query, 2)
+        if scholar_result["has_data"]:
+            all_sources.extend(scholar_result["sources"])
+            all_context_parts.append(scholar_result["context"])
+
+        books_result = search_google_books(query, 2)
+        if books_result["has_data"]:
+            all_sources.extend(books_result["sources"])
+            all_context_parts.append(books_result["context"])
+
+        openlib_result = search_open_library(query, 2)
+        if openlib_result["has_data"]:
+            all_sources.extend(openlib_result["sources"])
+            all_context_parts.append(openlib_result["context"])
+
+        gutenberg_result = search_gutenberg(query, 1)
+        if gutenberg_result["has_data"]:
+            all_sources.extend(gutenberg_result["sources"])
+            all_context_parts.append(gutenberg_result["context"])
+
+        web_result = get_enhanced_web_research(query, 2)
+        if web_result["has_data"]:
+            all_sources.extend(web_result["sources"])
+            all_context_parts.append(web_result["context"])
+
+    elif query_type == "coding":
+        print("💻 Using internet + recent books")
+        web_result = get_enhanced_web_research(query, 3)
+        if web_result["has_data"]:
+            all_sources.extend(web_result["sources"])
+            all_context_parts.append(web_result["context"])
+
+        books_result = search_google_books(f"{query} 2024 2025", 2)
+        if books_result["has_data"]:
+            all_sources.extend(books_result["sources"])
+            all_context_parts.append(books_result["context"])
+
+    else:
+        print("🌐 Using internet + books")
+        web_result = get_enhanced_web_research(query, 2)
+        if web_result["has_data"]:
+            all_sources.extend(web_result["sources"])
+            all_context_parts.append(web_result["context"])
+
+        books_result = search_google_books(query, 2)
+        if books_result["has_data"]:
+            all_sources.extend(books_result["sources"])
+            all_context_parts.append(books_result["context"])
+
+        openlib_result = search_open_library(query, 1)
+        if openlib_result["has_data"]:
+            all_sources.extend(openlib_result["sources"])
+            all_context_parts.append(openlib_result["context"])
+
+    if not all_context_parts:
+        return {"context": "", "sources": [], "has_data": False, "query_type": query_type}
+
+    for idx, source in enumerate(all_sources, start=1):
+        source["number"] = idx
+
+    combined_context = "\n\n".join(all_context_parts)
+    combined_context += f"\n\n🎯 Total Sources: {len(all_sources)} across multiple knowledge bases"
+
+    return {
+        "context": truncate_to_tokens(combined_context, max_tokens=3000),
+        "sources": all_sources,
+        "has_data": True,
+        "query_type": query_type
+    }
+
+
+def get_enhanced_web_research(query: str, max_urls: int = 3) -> Dict:
+    """
+    Enhanced web search with Tavily → Sonar fallback [cite: 07-02-2026]
+    Returns: {"context": str, "sources": List[Dict], "has_data": bool}
+    """
+    # Try Tavily first
+    if not TAVILY_AVAILABLE or not TAVILY_API_KEYS:
+        print("⚠️ Tavily not available, trying Sonar backup...")
+        return search_sonar_api(query, max_urls)
     
     try:
         # Step 1: Tavily search with key rotation
@@ -651,8 +1095,9 @@ def get_enhanced_web_research(query: str, max_urls: int = 3) -> Dict:
         }
     
     except Exception as e:
-        print(f"⚠️ Enhanced research error: {e}")
-        return {"context": "", "sources": [], "has_data": False}
+        print(f"⚠️ Tavily failed: {e}, trying Sonar backup...")
+        # Fallback to Sonar API
+        return search_sonar_api(query, max_urls)
 
 
 # =============================
@@ -805,78 +1250,10 @@ def _extract_embedding_vector(embed_response) -> Optional[List[float]]:
     return None
 
 
-def _rerank_matches(query: str, matches: List[Dict], top_k: int) -> List[Dict]:
-    """Rerank Pinecone matches with cross-encoder or fallback [cite: 31-01-2026]"""
-    if not matches:
-        return []
-
-    if CROSS_ENCODER_AVAILABLE:
-        try:
-            model = CrossEncoder(RERANKER_MODEL)
-            pairs = []
-            for match in matches:
-                meta = match.get("metadata", {})
-                text = meta.get("text") or meta.get("chunk") or meta.get("content", "")
-                pairs.append([query, text[:1000]])
-            scores = model.predict(pairs)
-            for match, score in zip(matches, scores):
-                match["rerank_score"] = float(score)
-            return sorted(matches, key=lambda m: m.get("rerank_score", 0.0), reverse=True)[:top_k]
-        except Exception as e:
-            print(f"⚠️ Reranker error: {e}")
-
-    return sorted(matches, key=lambda m: m.get("score", 0.0), reverse=True)[:top_k]
+# _rerank_matches removed with RAG system [cite: 07-02-2026]
 
 
-def get_pinecone_context(query: str, top_k: int = 3) -> str:
-    """Query Pinecone for long-term memory context [cite: 03-02-2026]"""
-    if not PINECONE_AVAILABLE or not PINECONE_API_KEY or index is None:
-        return ""
-    if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
-        return ""
-
-    try:
-        embed_response = genai.embed_content(
-            model="text-embedding-004",
-            content=query
-        )
-        vector = _extract_embedding_vector(embed_response)
-        if not vector:
-            return ""
-
-        results = index.query(
-            vector=vector,
-            top_k=10,
-            include_metadata=True
-        )
-
-        matches = results.get("matches", []) if isinstance(results, dict) else []
-        if not matches:
-            return ""
-
-        reranked = _rerank_matches(query, matches, RERANKER_TOP_K)
-        lines = ["Historical Memory Context:"]
-        for match in reranked:
-            meta = match.get("metadata", {})
-            title = meta.get("title", "Unknown")
-            source = meta.get("source", "Unknown")
-            date = meta.get("date", "")
-            text = meta.get("text") or meta.get("chunk") or meta.get("content", "")
-            score = match.get("score", 0.0)
-            rerank_score = match.get("rerank_score")
-
-            header = f"- {title} | {source} | score {score:.2f}"
-            if rerank_score is not None:
-                header += f" | rerank {rerank_score:.2f}"
-            if date:
-                header += f" | {date}"
-            snippet = text[:500].strip()
-            lines.append(f"{header}\n  {snippet}")
-
-        return truncate_to_tokens("\n".join(lines), max_tokens=1500)
-    except Exception as e:
-        print(f"⚠️ Pinecone error: {e}")
-        return ""
+# get_pinecone_context removed with RAG system - using Tavily only [cite: 07-02-2026]
 
 
 def _is_path_allowed(directory: str) -> Tuple[bool, str]:
@@ -1182,18 +1559,17 @@ def build_system_prompt(web_research: str = "", chat_context: str = "") -> str:
 
 def build_hybrid_prompt(
     chat_context: str,
-    pinecone_context: str,
     web_context: str,
     sentiment: str
 ) -> str:
-    """Prompt for hybrid RAG (Pinecone + Tavily) [cite: 03-02-2026]"""
+    """Prompt for Tavily-based web research (RAG removed) [cite: 07-02-2026]"""
     base_prompt = (
         "You are J.A.R.V.I.S, Tony Stark's hyper-intelligent AI assistant (2026 Edition).\n"
         "Address the user as 'Sir' and use sophisticated, slightly witty British English.\n"
         "Be proactive (e.g., 'I've already updated the logs for you, Sir.').\n"
         "Think step-by-step internally but do NOT reveal chain-of-thought or <thought> tags.\n"
-        "You must synthesize long-term memory with real-time research.\n"
-        "ALWAYS start the response with: 'Based on my historical records and today's research...'\n"
+        "You have access to today's real-time research from Tavily.\n"
+        "ALWAYS start the response with: 'Based on today's research...'\n"
         "Be accurate, concise, and cite sources when present.\n"
     )
     base_prompt = apply_emotional_tone(base_prompt, sentiment)
@@ -1201,13 +1577,10 @@ def build_hybrid_prompt(
     if chat_context:
         base_prompt += f"\n{chat_context}\n"
 
-    if pinecone_context:
-        base_prompt += f"\n{pinecone_context}\n"
-
     if web_context:
         base_prompt += f"\n{web_context}\n"
 
-    base_prompt += "\nAnswer the user's question using both contexts.\n"
+    base_prompt += "\nAnswer the user's question using today's research.\n"
     return base_prompt
 
 
@@ -1296,23 +1669,16 @@ def handle_query_with_moe(
     # Step 1: Get chat context
     chat_context = chat_memory.get_context(user_id)
     
-    # Step 2: Enhanced web research with scraping
+    # Step 2: Knowledge fusion (Internet + Books + Papers)
     web_sources = []
-    needs_search = is_time_sensitive_query(user_query)
-    
-    if needs_search:
-        print(f"🔍 Time-sensitive query detected: {user_query}")
-        research_result = get_enhanced_web_research(user_query, max_urls=4)
-        
-        if research_result["has_data"]:
-            web_research = research_result["context"]
-            web_sources = research_result["sources"]
-            print(f"✅ Enhanced research: {len(web_research)} chars from {len(web_sources)} sources")
-        else:
-            web_research = ""
-            print("⚠️ Using internal knowledge (research failed)")
+    research_result = jarvis_knowledge_fusion(user_query, max_results=4)
+    if research_result["has_data"]:
+        web_research = research_result["context"]
+        web_sources = research_result["sources"]
+        print(f"✅ Knowledge fusion: {len(web_research)} chars from {len(web_sources)} sources")
     else:
         web_research = ""
+        print("⚠️ Using internal knowledge (research failed)")
     
     # Step 3: Route to model (MoE)
     selected_model = override_model or analyze_intent(user_query)
@@ -1353,28 +1719,21 @@ def handle_chat_hybrid(
     sentiment: str = "NEUTRAL"
 ) -> Dict:
     """
-    Enhanced Hybrid RAG: Pinecone + Enhanced Web Research [cite: 06-02-2026]
+    Knowledge fusion: Internet + Books + Papers [cite: 07-02-2026]
     Now with: Deep scraping + LLM fallback + Source citations
     """
     chat_context = chat_memory.get_context(user_id)
-
-    # Get Pinecone long-term memory
-    pinecone_context = get_pinecone_context(user_query)
     
-    # Get enhanced web research with scraping
-    research_result = get_enhanced_web_research(user_query, max_urls=3)
+    # Get knowledge fusion research
+    research_result = jarvis_knowledge_fusion(user_query, max_results=3)
     web_context = research_result["context"] if research_result["has_data"] else ""
     web_sources = research_result["sources"] if research_result["has_data"] else []
+    query_type = research_result.get("query_type", "general")
 
     if web_context:
         web_context = truncate_to_tokens(web_context, max_tokens=1500)
-    if pinecone_context:
-        pinecone_context = truncate_to_tokens(pinecone_context, max_tokens=1500)
 
-    system_prompt = build_hybrid_prompt(chat_context, pinecone_context, web_context, sentiment)
-    corrections_context = get_corrections_context(user_query)
-    if corrections_context:
-        system_prompt += f"\n{corrections_context}\nAvoid repeating these mistakes.\n"
+    system_prompt = build_hybrid_prompt(chat_context, web_context, sentiment)
 
     # Use enhanced LLM fallback chain
     llm_result = call_llm_with_fallback(
@@ -1388,8 +1747,8 @@ def handle_chat_hybrid(
     model_used = llm_result["model_used"]
     
     answer = sanitize_response(answer)
-    prefix = "Based on my historical records and today's research..."
-    if answer and not answer.startswith(prefix) and (pinecone_context or web_context):
+    prefix = f"Based on {query_type} research across trusted sources..."
+    if answer and not answer.startswith(prefix) and web_context:
         answer = f"{prefix} {answer.lstrip()}"
 
     chat_memory.add_exchange(user_id, user_query, answer)
@@ -1400,7 +1759,6 @@ def handle_chat_hybrid(
         "model": "general",
         "model_used": model_used,
         "groq_model": GROQ_MODELS["general"],
-        "has_pinecone": bool(pinecone_context),
         "has_web_research": bool(web_context),
         "sources": web_sources,
         "timestamp": datetime.utcnow().isoformat() + "Z",

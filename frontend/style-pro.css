@@ -3971,3 +3971,173 @@ textarea::placeholder {
     animation: voiceWave 0.6s ease-in-out infinite;
 }
 
+/* ===== JARVIS 7.0 - PERPLEXITY ENHANCED STYLES [cite: 06-02-2026] ===== */
+
+/* Enhanced Sources Container */
+.enhanced-sources {
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Model Info Badge */
+.model-info-badge {
+    animation: slideIn 0.5s ease !important;
+}
+
+/* Source Item Hover Effects */
+.source-item {
+    cursor: pointer;
+}
+
+/* JARVIS 7.0 Welcome Badge */
+.jarvis-v7-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 25px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(102, 126, 234, 0.6);
+    }
+}
+
+/* Feature Pills */
+.feature-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #667eea;
+    transition: all 0.3s ease;
+}
+
+.feature-pill:hover {
+    background: rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Enhanced Citation Links */
+.source-item a {
+    transition: all 0.3s ease !important;
+}
+
+.source-item a:hover {
+    text-decoration: underline !important;
+}
+
+/* Research Indicator Enhancement */
+.research-step {
+    animation: slideInLeft 0.3s ease;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Source Number Badge Animation */
+.source-item [style*="background: linear-gradient"] {
+    transition: transform 0.3s ease;
+}
+
+.source-item:hover [style*="background: linear-gradient"] {
+    transform: scale(1.1);
+}
+
+/* Mobile Optimizations for JARVIS 7.0 */
+@media (max-width: 768px) {
+    .enhanced-sources {
+        padding: 15px !important;
+    }
+    
+    .source-item {
+        padding: 10px 12px !important;
+    }
+    
+    .model-info-badge {
+        font-size: 10px !important;
+        padding: 4px 10px !important;
+    }
+    
+    .jarvis-v7-badge {
+        font-size: 10px !important;
+        padding: 6px 12px !important;
+    }
+}
+
+/* Dark Theme Support for Enhanced Features */
+[data-theme="dark"] .enhanced-sources,
+[data-theme="chatgpt-pro"] .enhanced-sources {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15)) !important;
+}
+
+[data-theme="dark"] .source-item,
+[data-theme="chatgpt-pro"] .source-item {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(102, 126, 234, 0.3) !important;
+}
+
+[data-theme="dark"] .source-item:hover,
+[data-theme="chatgpt-pro"] .source-item:hover {
+    background: rgba(102, 126, 234, 0.2) !important;
+}
+
+/* Smooth Scrolling for Source Appearance */
+.sources-container {
+    scroll-margin-top: 100px;
+}
+
+/* Loading Shimmer for Sources */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.source-loading {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+}

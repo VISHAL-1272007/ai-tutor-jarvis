@@ -1448,7 +1448,12 @@ async function sendMessage() {
             // Display the answer
             await addMessageWithTypingEffect(answer, 'ai');
 
-            // Display sources if available
+            // Display model used badge (JARVIS 7.0 feature)
+            if (data.model_used) {
+                displayModelInfo(data.model_used);
+            }
+
+            // Display sources if available (JARVIS 7.0 enhanced)
             if (Array.isArray(data.sources) && data.sources.length > 0) {
                 appendSourcesToChat(data.sources);
             }
@@ -1458,7 +1463,8 @@ async function sendMessage() {
                 speak(answer);
             }
 
-            console.log(`✅ JARVIS response received from ${data.engine || 'unknown'}`);
+            console.log(`✅ JARVIS 7.0 response received from ${data.model_used || data.engine || 'unknown'}`);
+            console.log(`📚 Sources found: ${data.sources ? data.sources.length : 0}`);
         } else {
             // Error response or no synthesis available
             const errorMsg = data.error || data.response || data.message || 'Sorry, I could not generate a response. Please try again.';
@@ -1536,26 +1542,66 @@ function addMessageToUI(content, sender, imageData = null) {
     scrollToBottom();
 }
 
-// ===== Sources Renderer =====
+// ===== Sources Renderer - Enhanced for JARVIS 7.0 [cite: 06-02-2026] =====
 function appendSourcesToChat(sources) {
+    if (!sources || sources.length === 0) return;
+    
     const container = document.createElement('div');
-    container.className = 'sources-container';
+    container.className = 'sources-container enhanced-sources';
+    container.style.cssText = `
+        margin: 20px 0;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        border-left: 4px solid #667eea;
+        border-radius: 12px;
+        animation: fadeInUp 0.5s ease;
+    `;
 
     const header = document.createElement('div');
     header.className = 'sources-header';
-    header.textContent = 'Sources:';
+    header.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 16px;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 16px;
+    `;
+    header.innerHTML = `
+        <i class="fas fa-book" style="font-size: 18px;"></i>
+        <span>Sources & References</span>
+        <span style="font-size: 12px; font-weight: 400; color: #888;">(${sources.length} found)</span>
+    `;
     container.appendChild(header);
 
-    const list = document.createElement('ul');
+    const list = document.createElement('div');
     list.className = 'sources-list';
+    list.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
 
-    sources.forEach((source) => {
-        const item = document.createElement('li');
+    sources.forEach((source, index) => {
+        const item = document.createElement('div');
         item.className = 'source-item';
+        item.style.cssText = `
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        `;
+        item.onmouseover = () => {
+            item.style.background = 'rgba(102, 126, 234, 0.15)';
+            item.style.transform = 'translateX(4px)';
+        };
+        item.onmouseout = () => {
+            item.style.background = 'rgba(255, 255, 255, 0.05)';
+            item.style.transform = 'translateX(0)';
+        };
 
         let url = '';
         let title = '';
-        let snippet = '';
+        let number = source.number || (index + 1);
+        let contentLength = source.content_length || 0;
 
         if (typeof source === 'string') {
             url = source;
@@ -1563,32 +1609,134 @@ function appendSourcesToChat(sources) {
         } else if (source && typeof source === 'object') {
             url = source.url || '';
             title = source.title || source.url || 'Source';
-            snippet = source.snippet || '';
         }
 
         if (url) {
-            const link = document.createElement('a');
-            link.href = url;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.textContent = title;
-            item.appendChild(link);
+            item.innerHTML = `
+                <div style="display: flex; align-items: start; gap: 12px;">
+                    <div style="
+                        min-width: 32px;
+                        height: 32px;
+                        background: linear-gradient(135deg, #667eea, #764ba2);
+                        color: white;
+                        border-radius: 8px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: 700;
+                        font-size: 14px;
+                    ">[${number}]</div>
+                    <div style="flex: 1;">
+                        <a href="${url}" 
+                           target="_blank" 
+                           rel="noopener noreferrer"
+                           style="
+                               color: #667eea;
+                               text-decoration: none;
+                               font-weight: 600;
+                               font-size: 14px;
+                               display: block;
+                               margin-bottom: 6px;
+                               transition: color 0.3s;
+                           "
+                           onmouseover="this.style.color='#764ba2';"
+                           onmouseout="this.style.color='#667eea';">
+                            ${title}
+                            <i class="fas fa-external-link-alt" style="font-size: 10px; margin-left: 4px; opacity: 0.6;"></i>
+                        </a>
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            font-size: 11px;
+                            color: #888;
+                            margin-top: 4px;
+                        ">
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-link"></i>
+                                ${new URL(url).hostname}
+                            </span>
+                            ${contentLength > 0 ? `
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-file-alt"></i>
+                                ${contentLength} chars extracted
+                            </span>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
         } else {
-            item.textContent = title || 'Source';
-        }
-
-        if (snippet) {
-            const snippetEl = document.createElement('div');
-            snippetEl.className = 'source-snippet';
-            snippetEl.textContent = snippet;
-            item.appendChild(snippetEl);
+            item.innerHTML = `<div style="padding: 8px; color: #888;">${title}</div>`;
         }
 
         list.appendChild(item);
     });
 
     container.appendChild(list);
+    
+    // Add animation keyframe if not exists
+    if (!document.getElementById('jarvis-source-animation')) {
+        const style = document.createElement('style');
+        style.id = 'jarvis-source-animation';
+        style.textContent = `
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
     elements.messagesArea.appendChild(container);
+    scrollToBottom();
+}
+
+// ===== Display Model Info Badge [cite: 06-02-2026] =====
+function displayModelInfo(modelUsed) {
+    if (!modelUsed) return;
+    
+    const badge = document.createElement('div');
+    badge.className = 'model-info-badge';
+    badge.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        margin: 8px 0;
+        animation: slideIn 0.5s ease;
+    `;
+    
+    let icon = '🤖';
+    let modelName = modelUsed;
+    if (modelUsed.includes('groq')) {
+        icon = '⚡';
+        modelName = modelUsed.replace('groq-', '').toUpperCase();
+    } else if (modelUsed.includes('gemini')) {
+        icon = '✨';
+        modelName = 'Gemini 1.5 Flash';
+    } else if (modelUsed.includes('huggingface')) {
+        icon = '🤗';
+        modelName = 'HuggingFace Mixtral';
+    }
+    
+    badge.innerHTML = `
+        <span>${icon}</span>
+        <span>Powered by ${modelName}</span>
+    `;
+    
+    elements.messagesArea.appendChild(badge);
     scrollToBottom();
 }
 
