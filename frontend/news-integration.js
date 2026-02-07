@@ -59,40 +59,21 @@ class NewsIntegration {
 
     async fetchFromNewsAPI() {
         try {
-            const apiKey = window.NEWS_API_KEY || this.getAPIKey('newsapi');
-            if (!apiKey) return [];
-
-            const categories = this.categories.map(async (category) => {
-                try {
-                    const corsProxyUrl = 'https://api.allorigins.win/raw?url=';
-                    const apiUrl = `${this.sources.newsAPI}/top-headlines?category=${category}&language=en&apiKey=${apiKey}`;
-                    
-                    try {
-                        // Try direct request first
-                        const response = await fetch(apiUrl, { signal: AbortSignal.timeout(5000) });
-                        if (response.ok) {
-                            const data = await response.json();
-                            return data.articles || [];
-                        }
-                    } catch (e) {
-                        // If direct fails, try with CORS proxy
-                        const response = await fetch(
-                            corsProxyUrl + encodeURIComponent(apiUrl),
-                            { signal: AbortSignal.timeout(5000) }
-                        );
-                        if (response.ok) {
-                            const data = await response.json();
-                            return data.articles || [];
-                        }
-                    }
-                    return [];
-                } catch (e) {
-                    return [];
-                }
+            // Use backend API instead of external calls (fixes CORS)
+            const backendUrl = window.BACKEND_URL || 'https://ai-tutor-jarvis.onrender.com';
+            
+            const response = await fetch(`${backendUrl}/api/search/news`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: 'latest technology news', maxResults: 50 }),
+                signal: AbortSignal.timeout(15000)
             });
-
-            const results = await Promise.all(categories);
-            return results.flat().slice(0, 50);
+            
+            if (response.ok) {
+                const data = await response.json();
+                return data.sources || [];
+            }
+            return [];
         } catch (error) {
             return [];
         }
@@ -100,26 +81,22 @@ class NewsIntegration {
 
     async fetchFromGNews() {
         try {
-            const apiKey = window.GNEWS_API_KEY || this.getAPIKey('gnews');
-            if (!apiKey) return [];
-
-            try {
-                // Use CORS proxy to bypass GNews CORS restrictions
-                const corsProxyUrl = 'https://api.allorigins.win/raw?url=';
-                const apiUrl = `${this.sources.gnews}/top-headlines?lang=en&max=50&apikey=${apiKey}`;
-                
-                const response = await fetch(
-                    corsProxyUrl + encodeURIComponent(apiUrl),
-                    { signal: AbortSignal.timeout(5000) }
-                );
-                if (!response.ok) return [];
+            // Use backend API instead of external calls (fixes CORS)
+            const backendUrl = window.BACKEND_URL || 'https://ai-tutor-jarvis.onrender.com';
+            
+            const response = await fetch(`${backendUrl}/api/search/news`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: 'breaking news latest updates', maxResults: 50 }),
+                signal: AbortSignal.timeout(15000)
+            });
+            
+            if (response.ok) {
                 const data = await response.json();
-                return data.articles || [];
-            } catch (e) {
-                return []; // Silent failure
+                return data.sources || [];
             }
+            return [];
         } catch (error) {
-            // Silent failure
             return [];
         }
     }
