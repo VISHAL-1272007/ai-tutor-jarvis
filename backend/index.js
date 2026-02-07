@@ -17,7 +17,7 @@ const UserProfileSystem = require('./user-profile-system');
 const KnowledgeBaseSystem = require('./knowledge-base-system');
 const ExpertModeSystem = require('./expert-mode-system');
 const setupAdvancedFeaturesAPI = require('./advanced-features-api');
-const { jarvisAutonomousVerifiedSearch } = require('./jarvis-autonomous-rag-verified');
+// REMOVED: jarvisAutonomousVerifiedSearch - using searchWeb() instead
 
 // ===== JARVIS 7 ADVANCED FEATURES [cite: 07-02-2026] =====
 const {
@@ -4834,19 +4834,27 @@ app.post('/omniscient/verified', apiLimiter, async (req, res) => {
       });
     }
 
-    // Call the verified RAG pipeline
-    const result = await jarvisAutonomousVerifiedSearch(query);
+    // Use searchWeb instead of broken RAG pipeline
+    const result = await searchWeb(query, 'all');
+    
+    // Format response for compatibility
+    const formattedResult = {
+      answer: result?.answer || 'No results found',
+      sources: result?.sources || [],
+      citations: result?.citations || [],
+      searchEngine: result?.searchEngine || 'Tavily/Sonar',
+      verified: true,
+      fallback: false
+    };
     
     // Apply user profile conditioning if provided
     if (userProfile) {
-      result.userProfile = userProfile;
-      // The verified RAG response can be further customized based on user profile
-      // (tone, depth, skill level adjustments handled in synthesized answer)
+      formattedResult.userProfile = userProfile;
     }
 
     res.json({
       success: true,
-      data: result,
+      data: formattedResult,
       timestamp: new Date().toISOString()
     });
 

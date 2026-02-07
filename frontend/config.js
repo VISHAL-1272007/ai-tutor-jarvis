@@ -29,7 +29,7 @@ export function getBackendURL() {
         return 'http://localhost:3000';
     } else {
         // Production - use Render deployment
-        return 'https://ai-tutor-jarvis.onrender.com';
+        return 'https://ai-tutor-jarvis-1.onrender.com';
     }
 }
 
