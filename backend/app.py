@@ -37,6 +37,29 @@ from urllib.parse import urlparse
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 
+
+def _load_env_file() -> None:
+    """Lightweight .env loader (no extra dependency required)."""
+    try:
+        env_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), ".env")
+        if not os.path.exists(env_path):
+            return
+        with open(env_path, "r", encoding="utf-8") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception:
+        pass
+
+
+_load_env_file()
+
 # ═══════════════════════════════════════════
 # § 1. DEPENDENCY PROBING
 # ═══════════════════════════════════════════
@@ -1842,6 +1865,17 @@ def ops_cache_metrics():
 def ops_reindex_manifest():
     if request.method == "OPTIONS":
         return "", 204
+    global SYNC_DATA_ROOT
+
+    payload = request.get_json(silent=True) or {}
+    requested_root = payload.get("sync_root") or request.args.get("sync_root")
+    if requested_root:
+        candidate = os.path.abspath(requested_root)
+        if os.path.isdir(candidate):
+            SYNC_DATA_ROOT = candidate
+        else:
+            return jsonify({"error": "Invalid sync_root", "sync_root": requested_root}), 400
+
     started = time.time()
     manifest_cache.build()
     return jsonify({
