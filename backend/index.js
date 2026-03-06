@@ -82,6 +82,7 @@ function getNextTavilyKey() {
 }
 
 const SONAR_API_KEY = process.env.SONAR_API_KEY || '';
+const SERPER_API_KEY = process.env.SERPER_API_KEY || '';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL_CHAIN = [
@@ -178,6 +179,37 @@ async function searchWeb(query) {
                 }
             } catch (_) {}
         }
+    }
+
+    if (SERPER_API_KEY) {
+        try {
+            const response = await axios.post('https://google.serper.dev/search', {
+                q: query,
+                num: 5,
+                gl: 'in',
+                hl: 'en',
+            }, {
+                headers: {
+                    'X-API-KEY': SERPER_API_KEY,
+                    'Content-Type': 'application/json',
+                },
+                timeout: 15000,
+            });
+
+            const organic = Array.isArray(response?.data?.organic) ? response.data.organic.slice(0, 5) : [];
+            if (organic.length > 0) {
+                return {
+                    answer: organic.map((item) => item.snippet || item.title).filter(Boolean).join('\n\n'),
+                    sources: organic.map((item) => ({
+                        title: item.title || 'Source',
+                        url: item.link || '',
+                        snippet: item.snippet || '',
+                    })),
+                    citations: organic.map((item) => item.link).filter(Boolean),
+                    searchEngine: 'Serper (Google)',
+                };
+            }
+        } catch (_) {}
     }
 
     if (SONAR_API_KEY) {
@@ -342,6 +374,7 @@ app.get('/health', (req, res) => {
         groq: !!global.groqClient,
         gemini: !!global.geminiModel,
         tavily_keys: TAVILY_KEYS.length,
+        serper: !!SERPER_API_KEY,
         sonar: !!SONAR_API_KEY,
         firebase_rtdb: !!FIREBASE_RTDB_URL,
         timestamp: new Date().toISOString(),
@@ -453,29 +486,55 @@ Sources:\n${sources.map(s => `[${s.id}] ${s.title} - ${s.url}`).join('\n')}`;
     }
 });
 
+async function proxyAskForQuery(query, options = {}) {
+    const askResp = await axios.post(
+        `http://127.0.0.1:${PORT}/ask`,
+        { question: query, aiModel: options.ai_model || 'openrouter' },
+        { timeout: 120000, headers: { 'x-skip-rate-limit': 'true' } },
+    );
+
+    const data = askResp.data || {};
+    return {
+        answer: data.answer || '',
+        sources: data.sources || [],
+        follow_ups: data.follow_ups || [],
+        model_used: data.model_used || null,
+        is_live: data.is_live === true,
+    };
+}
+
+app.post('/query', apiLimiter, async (req, res) => {
+    try {
+        const { query, options = {} } = req.body;
+        if (!query) return res.status(400).json({ error: 'Query required' });
+
+        const result = await proxyAskForQuery(query, options);
+        return res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message, answer: '', sources: [], follow_ups: [] });
+    }
+});
+
 app.post('/api/query', apiLimiter, async (req, res) => {
     try {
         const { query, options = {} } = req.body;
         if (!query) return res.status(400).json({ error: 'Query required' });
 
-        const askResp = await axios.post(
-            `http://127.0.0.1:${PORT}/ask`,
-            { question: query, aiModel: options.ai_model || 'openrouter' },
-            { timeout: 120000, headers: { 'x-skip-rate-limit': 'true' } },
-        );
-
-        const data = askResp.data || {};
+        const data = await proxyAskForQuery(query, options);
         return res.json({
             query,
             ai_model: options.ai_model || 'openrouter',
             response: data.answer || '',
+            answer: data.answer || '',
             model_used: data.model_used || null,
             sources: data.sources || [],
+            follow_ups: data.follow_ups || [],
             suggestions: data.follow_ups || [],
+            is_live: data.is_live === true,
             timestamp: new Date().toISOString(),
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message, answer: '', sources: [], follow_ups: [] });
     }
 });
 

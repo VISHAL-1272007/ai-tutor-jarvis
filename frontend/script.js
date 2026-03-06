@@ -16,11 +16,17 @@ if (!DEBUG_MODE) {
 // Backend API URL - Dynamic from config.js
 const BACKEND_URL = getBackendURL();
 const API_URL = `${BACKEND_URL}/ask`; // Use Render backend
+const QUERY_ENDPOINTS = ['/query', '/api/query', '/ask'];
+const AGENT_EXECUTE_URL = `${BACKEND_URL}/agent-execute`;
+const NEWS_FALLBACK_URL = `${BACKEND_URL}/api/search/news`;
+const HEALTH_URL = `${BACKEND_URL}/health`;
 console.log('✅ [CONFIG] API_URL set to:', API_URL);
 const MAX_CHARS = 2000;
+const AGENTIC_MODE_KEY = 'jarvis_agentic_mode_enabled';
 let isBackendReady = false;
 let backendWakeupAttempts = 0;
 let selectedModel = 'jarvis60'; // Track selected model [cite: 03-02-2026]
+let isAgenticModeEnabled = localStorage.getItem(AGENTIC_MODE_KEY) === 'true';
 
 // ===== Timeout Management =====
 let spinnerTimeout; // FIX: Declare spinnerTimeout to prevent ReferenceError
@@ -90,6 +96,246 @@ function initializeElements() {
     console.log('✅ All DOM elements re-initialized');
 }
 
+function getFaviconForUrl(url) {
+    if (!url) return '';
+    try {
+        const parsed = new URL(url);
+        return `https://www.google.com/s2/favicons?domain=${parsed.hostname}&sz=64`;
+    } catch (_) {
+        return '';
+    }
+}
+
+function normalizeSourcesFromResponse(data) {
+    const direct = Array.isArray(data?.sources) ? data.sources : [];
+    const resultSources = Array.isArray(data?.result?.sources) ? data.result.sources : [];
+    const raw = direct.length > 0 ? direct : resultSources;
+
+    return raw
+        .map((source, index) => {
+            const id = index + 1;
+
+            if (typeof source === 'string') {
+                return {
+                    id,
+                    number: id,
+                    title: source,
+                    url: source,
+                    content_length: 0
+                };
+            }
+
+            if (source && typeof source === 'object') {
+                return {
+                    id,
+                    number: source.number || id,
+                    title: source.title || source.name || source.url || `Source ${id}`,
+                    url: source.url || '',
+                    content_length: source.content_length || 0
+                };
+            }
+
+            return null;
+        })
+        .filter(Boolean)
+        .filter(s => !!s.url);
+}
+
+function normalizeFollowUpsFromResponse(data) {
+    const candidates = [
+        data?.follow_ups,
+        data?.followUps,
+        data?.suggestions,
+        data?.related_questions,
+        data?.relatedQuestions,
+        data?.result?.follow_ups,
+        data?.result?.suggestions
+    ];
+
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate) && candidate.length > 0) {
+            return candidate.map(item => String(item).trim()).filter(Boolean).slice(0, 4);
+        }
+    }
+
+    return [];
+}
+
+function normalizeKnowledgeResponse(data) {
+    const answer = data?.answer || data?.response || data?.result?.response || data?.result?.answer || '';
+    return {
+        answer,
+        sources: normalizeSourcesFromResponse(data),
+        followUps: normalizeFollowUpsFromResponse(data),
+        modelUsed: data?.model_used || data?.engine || data?.intent || data?.result?.model_used || 'unknown',
+        isLive: Boolean(data?.is_live ?? data?.isLive ?? data?.result?.is_live)
+    };
+}
+
+function injectCitationBadgesIntoRenderedMessage(contentEl, sources) {
+    if (!contentEl || !Array.isArray(sources) || sources.length === 0) return;
+    if (contentEl.querySelector('.citation-badge')) return;
+
+    const targetNodes = [];
+    const walker = document.createTreeWalker(contentEl, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            const text = node.nodeValue || '';
+            if (!text.trim()) return NodeFilter.FILTER_REJECT;
+
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+
+            if (parent.closest('pre, code, h1, h2, h3, h4, h5, h6, li')) {
+                return NodeFilter.FILTER_REJECT;
+            }
+
+            if (!/[.!?]/.test(text)) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+        }
+    });
+
+    while (walker.nextNode()) {
+        targetNodes.push(walker.currentNode);
+    }
+
+    let sourceIndex = 0;
+
+    for (const node of targetNodes) {
+        const text = node.nodeValue || '';
+        const parts = text.split(/([.!?]+\s*)/);
+        if (parts.length < 3) continue;
+
+        const fragment = document.createDocumentFragment();
+
+        for (let i = 0; i < parts.length; i += 2) {
+            const sentence = parts[i] || '';
+            const punct = parts[i + 1] || '';
+            const sentenceWithPunct = sentence + punct;
+
+            if (sentenceWithPunct) {
+                fragment.appendChild(document.createTextNode(sentenceWithPunct));
+            }
+
+            const shouldCite = sentence.trim().length >= 35;
+            if (shouldCite) {
+                const sourceId = sources[sourceIndex % sources.length]?.id || ((sourceIndex % sources.length) + 1);
+                sourceIndex += 1;
+
+                const badge = document.createElement('sup');
+                badge.className = 'citation-badge';
+                badge.setAttribute('data-source-id', String(sourceId));
+                badge.setAttribute('title', `View source [${sourceId}]`);
+                badge.textContent = `[${sourceId}]`;
+                fragment.appendChild(badge);
+            }
+        }
+
+        node.parentNode.replaceChild(fragment, node);
+    }
+}
+
+function appendTopSourcesBar(sources) {
+    if (!Array.isArray(sources) || sources.length === 0 || !elements.messagesArea) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'top-sources-wrap';
+    wrapper.innerHTML = `
+        <div class="top-sources-title"><i class="fas fa-link"></i> TOP SOURCES</div>
+        <div class="top-sources-row">
+            ${sources.slice(0, 8).map((source, idx) => `
+                <a
+                    class="top-source-card"
+                    data-source-id="${source.id || idx + 1}"
+                    href="${source.url}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="${source.title || source.url}"
+                >
+                    <img class="top-source-favicon" src="${getFaviconForUrl(source.url)}" alt="favicon" />
+                    <span class="top-source-text">${source.title || source.url}</span>
+                </a>
+            `).join('')}
+        </div>
+    `;
+
+    elements.messagesArea.appendChild(wrapper);
+    scrollToBottom();
+}
+
+function appendKnowledgeMetrics(meta = {}) {
+    if (!elements.messagesArea) return;
+
+    const card = document.createElement('div');
+    card.className = 'knowledge-metrics';
+    card.innerHTML = `
+        <div class="metric-pill"><span>Sources</span><strong>${meta.sourcesCount || 0}</strong></div>
+        <div class="metric-pill"><span>Model</span><strong>${meta.modelUsed || 'unknown'}</strong></div>
+        <div class="metric-pill"><span>Live Web</span><strong>${meta.isLive ? 'YES' : 'NO'}</strong></div>
+    `;
+    elements.messagesArea.appendChild(card);
+    scrollToBottom();
+}
+
+async function requestKnowledgeEngine(payload) {
+    const normalizedPayload = {
+        query: payload.question || payload.query || '',
+        question: payload.question || payload.query || '',
+        model: payload.model,
+        user_id: payload.user_id,
+        language: payload.language,
+        memory_profile: payload.memory_profile
+    };
+
+    let lastError = null;
+
+    for (const endpoint of QUERY_ENDPOINTS) {
+        try {
+            const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(normalizedPayload)
+            });
+
+            if (!response.ok) {
+                lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
+                continue;
+            }
+
+            return response;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError || new Error('Knowledge Engine request failed');
+}
+
+function setupCitationInteractions() {
+    if (!elements.messagesArea || elements.messagesArea.dataset.citationBound === 'true') return;
+
+    elements.messagesArea.addEventListener('click', (event) => {
+        const citation = event.target.closest('.citation-badge');
+        if (!citation) return;
+
+        event.preventDefault();
+        const sourceId = citation.getAttribute('data-source-id');
+        if (!sourceId) return;
+
+        const sourceCard = elements.messagesArea.querySelector(`.source-item[data-source-id="${sourceId}"]`) ||
+            elements.messagesArea.querySelector(`.top-source-card[data-source-id="${sourceId}"]`);
+
+        if (sourceCard) {
+            sourceCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            sourceCard.classList.add('source-card-highlight');
+            setTimeout(() => sourceCard.classList.remove('source-card-highlight'), 1400);
+        }
+    });
+
+    elements.messagesArea.dataset.citationBound = 'true';
+}
+
 // ===== State =====
 let currentChatId = null;
 let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
@@ -134,6 +380,217 @@ let currentPlan = 'free';
 let dailyQueryCount = parseInt(localStorage.getItem('dailyQueryCount')) || 0;
 let lastQueryDate = localStorage.getItem('lastQueryDate') || new Date().toDateString();
 
+function getBackendUserId() {
+    if (currentUser && currentUser.uid) return currentUser.uid;
+    let anonId = localStorage.getItem('jarvisAnonUserId');
+    if (!anonId) {
+        anonId = `guest_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
+        localStorage.setItem('jarvisAnonUserId', anonId);
+    }
+    return anonId;
+}
+
+function updateAgenticModeUI() {
+    const modeBtn = document.getElementById('agenticModeBtn');
+    const modeState = document.getElementById('agenticModeState');
+    const headerBadge = document.getElementById('agenticHeaderBadge');
+    if (!modeBtn && !headerBadge) return;
+
+    const icon = modeBtn ? modeBtn.querySelector('i') : null;
+    const text = modeBtn ? modeBtn.querySelector('span') : null;
+
+    if (isAgenticModeEnabled) {
+        if (modeBtn) {
+            modeBtn.classList.add('active');
+            modeBtn.style.borderColor = 'rgba(34, 197, 94, 0.45)';
+            modeBtn.style.background = 'rgba(34, 197, 94, 0.14)';
+        }
+        if (icon) icon.className = 'fas fa-robot';
+        if (text) text.textContent = 'Agentic ON';
+        if (modeState) modeState.textContent = 'Enabled';
+        if (headerBadge) {
+            headerBadge.textContent = 'AGENTIC ON';
+            headerBadge.style.background = 'rgba(34, 197, 94, 0.16)';
+            headerBadge.style.borderColor = 'rgba(34, 197, 94, 0.38)';
+            headerBadge.style.color = '#86efac';
+        }
+    } else {
+        if (modeBtn) {
+            modeBtn.classList.remove('active');
+            modeBtn.style.borderColor = '';
+            modeBtn.style.background = '';
+        }
+        if (icon) icon.className = 'fas fa-toggle-off';
+        if (text) text.textContent = 'Agentic OFF';
+        if (modeState) modeState.textContent = 'Disabled';
+        if (headerBadge) {
+            headerBadge.textContent = 'AGENTIC OFF';
+            headerBadge.style.background = 'rgba(107,114,128,.22)';
+            headerBadge.style.borderColor = 'rgba(107,114,128,.35)';
+            headerBadge.style.color = '#cbd5e1';
+        }
+    }
+}
+
+function setAgenticMode(enabled) {
+    isAgenticModeEnabled = !!enabled;
+    localStorage.setItem(AGENTIC_MODE_KEY, isAgenticModeEnabled ? 'true' : 'false');
+    updateAgenticModeUI();
+}
+
+function collectMemoryProfile() {
+    const levelSelect = document.getElementById('learningLevelSelect');
+    const goalsInput = document.getElementById('learningGoalsInput');
+
+    const levelFromUI = levelSelect ? levelSelect.value : '';
+    const goalsFromUI = goalsInput ? goalsInput.value : '';
+
+    let goals = [];
+    if (goalsFromUI && goalsFromUI.trim()) {
+        goals = goalsFromUI.split(',').map(g => g.trim()).filter(Boolean).slice(0, 5);
+    }
+
+    try {
+        const rawGoals = goals.length ? JSON.stringify(goals) : localStorage.getItem('jarvisGoals');
+        if (rawGoals && !goals.length) {
+            const parsed = JSON.parse(rawGoals);
+            if (Array.isArray(parsed)) goals = parsed.filter(Boolean).slice(0, 5);
+            else if (typeof parsed === 'string') goals = parsed.split(',').map(g => g.trim()).filter(Boolean).slice(0, 5);
+        }
+    } catch (_) {
+        if (!goals.length) {
+            const rawGoals = localStorage.getItem('jarvisGoals') || '';
+            goals = rawGoals.split(',').map(g => g.trim()).filter(Boolean).slice(0, 5);
+        }
+    }
+
+    const level = levelFromUI || localStorage.getItem('jarvisLearningLevel') || 'intermediate';
+
+    localStorage.setItem('jarvisLearningLevel', level);
+    localStorage.setItem('jarvisGoals', JSON.stringify(goals));
+
+    return {
+        level,
+        preferred_language: currentLanguage || 'en-US',
+        goals,
+        preferred_mode: currentMode || 'chat',
+        plan: currentPlan || 'free'
+    };
+}
+
+function setLearningProfileStatus(message, kind = 'info') {
+    const statusEl = document.getElementById('learningProfileStatus');
+    if (!statusEl) return;
+
+    const colors = {
+        info: 'var(--text-secondary, #9ca3af)',
+        success: '#22c55e',
+        warning: '#f59e0b',
+        error: '#ef4444',
+    };
+
+    statusEl.textContent = message;
+    statusEl.style.color = colors[kind] || colors.info;
+}
+
+function applyMemoryProfileToUI(profile = {}) {
+    const levelSelect = document.getElementById('learningLevelSelect');
+    const goalsInput = document.getElementById('learningGoalsInput');
+
+    const level = profile.level || localStorage.getItem('jarvisLearningLevel') || 'intermediate';
+    const goals = Array.isArray(profile.goals)
+        ? profile.goals
+        : (localStorage.getItem('jarvisGoals') ? (() => {
+            try { return JSON.parse(localStorage.getItem('jarvisGoals')); } catch (_) { return []; }
+        })() : []);
+
+    if (levelSelect) levelSelect.value = String(level);
+    if (goalsInput) goalsInput.value = Array.isArray(goals) ? goals.join(', ') : '';
+
+    localStorage.setItem('jarvisLearningLevel', String(level));
+    localStorage.setItem('jarvisGoals', JSON.stringify(Array.isArray(goals) ? goals : []));
+}
+
+async function loadMemory2ProfileFromBackend() {
+    const userId = getBackendUserId();
+    if (!userId) return;
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/memory2/profile?user_id=${encodeURIComponent(userId)}`);
+        if (!response.ok) {
+            applyMemoryProfileToUI({});
+            return;
+        }
+
+        const data = await response.json();
+        const profile = data?.profile && typeof data.profile === 'object' ? data.profile : {};
+        applyMemoryProfileToUI(profile);
+        setLearningProfileStatus('Profile loaded', 'success');
+    } catch (error) {
+        applyMemoryProfileToUI({});
+        setLearningProfileStatus('Offline profile mode', 'warning');
+    }
+}
+
+function setupLearningProfileSettings() {
+    const levelSelect = document.getElementById('learningLevelSelect');
+    const goalsInput = document.getElementById('learningGoalsInput');
+    const saveBtn = document.getElementById('saveLearningProfileBtn');
+
+    applyMemoryProfileToUI({});
+
+    if (levelSelect) {
+        levelSelect.addEventListener('change', () => {
+            localStorage.setItem('jarvisLearningLevel', levelSelect.value || 'intermediate');
+            setLearningProfileStatus('Unsaved changes', 'info');
+        });
+    }
+
+    if (goalsInput) {
+        goalsInput.addEventListener('input', () => {
+            const goals = goalsInput.value.split(',').map(g => g.trim()).filter(Boolean).slice(0, 5);
+            localStorage.setItem('jarvisGoals', JSON.stringify(goals));
+            setLearningProfileStatus('Unsaved changes', 'info');
+        });
+    }
+
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+            const originalHtml = saveBtn.innerHTML;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Saving...</span>';
+            setLearningProfileStatus('Saving profile...', 'info');
+
+            try {
+                await syncMemory2Profile();
+                setLearningProfileStatus('Saved successfully', 'success');
+            } catch (error) {
+                setLearningProfileStatus('Save failed', 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalHtml;
+            }
+        });
+    }
+}
+
+async function syncMemory2Profile() {
+    try {
+        await fetch(`${BACKEND_URL}/api/memory2/profile`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: getBackendUserId(),
+                profile: collectMemoryProfile()
+            })
+        });
+    } catch (error) {
+        console.warn('⚠️ Memory 2.0 profile sync skipped:', error?.message || error);
+    }
+}
+
 // ===== Initialize =====
 function init() {
     console.log('🚀 JARVIS Initialization Starting...');
@@ -141,6 +598,7 @@ function init() {
     
     // CRITICAL: Initialize DOM elements first (they may be null if called before DOM ready)
     initializeElements();
+    updateAgenticModeUI();
     
     // Verify critical elements exist before proceeding
     if (!elements.sendBtn) {
@@ -154,6 +612,7 @@ function init() {
     
     // Setup event listeners first (including sign out button)
     setupEventListeners();
+    setupCitationInteractions();
     initSpeechRecognition();
     loadChatHistoryUI();
     loadTheme();
@@ -163,6 +622,7 @@ function init() {
     checkDailyReset();
     initModeSelector();
     updateModeUI();
+    setupLearningProfileSettings();
     initMobileBottomNav();
     
     console.log('✅ JARVIS Initialization Complete');
@@ -205,6 +665,8 @@ function init() {
                 signoutBtnModal.style.display = 'flex';
             }
             if (signinLink) signinLink.style.display = 'none';
+            await loadMemory2ProfileFromBackend();
+            syncMemory2Profile();
         } else {
             // Guest mode - use localStorage only
             // console.log('👤 Guest mode - You can use the app without signing in');
@@ -228,6 +690,8 @@ function init() {
             if (signinBtnModal) signinBtnModal.style.display = 'flex';
             if (signoutBtnModal) signoutBtnModal.style.display = 'none';
             if (signinLink) signinLink.style.display = 'block';
+            await loadMemory2ProfileFromBackend();
+            syncMemory2Profile();
         }
     });
 
@@ -826,7 +1290,7 @@ function setupEventListeners() {
             syncKnowledgeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Syncing...</span>';
             
             try {
-                const response = await fetch(`${BACKEND_BASE_URL}/api/knowledge/update`, {
+                const response = await fetch(`${BACKEND_URL}/api/knowledge/update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -854,6 +1318,7 @@ function setupEventListeners() {
             currentLanguage = e.target.value;
             if (recognition) recognition.lang = currentLanguage;
             localStorage.setItem('language', currentLanguage);
+            syncMemory2Profile();
 
             // Greet in new language
             synthesis.cancel();
@@ -880,6 +1345,22 @@ function setupEventListeners() {
             // Sync sidebar voice toggle
             updateVoiceToggle();
             localStorage.setItem('voiceEnabled', isVoiceEnabled);
+        });
+    }
+
+    // Agentic mode toggle
+    const agenticModeBtn = document.getElementById('agenticModeBtn');
+    if (agenticModeBtn) {
+        updateAgenticModeUI();
+        agenticModeBtn.addEventListener('click', () => {
+            setAgenticMode(!isAgenticModeEnabled);
+            showBackendStatus(
+                isAgenticModeEnabled
+                    ? '🤖 Agentic Mode enabled (/agent-execute)'
+                    : '💬 Standard Mode enabled (/ask)',
+                'success'
+            );
+            setTimeout(() => hideBackendStatus(), 1800);
         });
     }
 
@@ -1185,21 +1666,10 @@ async function sendMessage() {
     elements.sendBtn.disabled = true;
 
     try {
-        // 📸 IMAGE ANALYSIS: If image is uploaded, use Gemini Vision API
+        // 📸 IMAGE ANALYSIS: If image is uploaded, use backend Visual Tutor API
         if (uploadedImage && uploadedImage.base64) {
-            console.log('[JARVIS Vision] Image detected, analyzing with Gemini...');
+            console.log('[JARVIS Vision] Image detected, sending to /process-vision...');
             console.log('[JARVIS Vision] Image size:', uploadedImage.base64.length, 'chars');
-            
-            // Check if Gemini Vision is available
-            if (!window.geminiVision) {
-                console.error('[JARVIS Vision] Gemini Vision not loaded!');
-                removeTypingIndicator();
-                await addMessageWithTypingEffect("❌ Image analysis is not available right now. Please try again later.", 'ai');
-                if (window.imageUploadSystem) window.imageUploadSystem.removeImage();
-                isTyping = false;
-                elements.sendBtn.disabled = false;
-                return;
-            }
             
             try {
                 // Show analyzing indicator
@@ -1213,8 +1683,23 @@ async function sendMessage() {
                     `;
                 }
                 
-                // Use Gemini Vision API
-                const visionResponse = await window.geminiVision.analyzeImage(uploadedImage.base64, userPrompt);
+                // Use backend /process-vision first, fallback to local Gemini wrapper if needed
+                let visionResponse = '';
+                try {
+                    const visionResult = await uploadVisionTutorImage(uploadedImage, userPrompt);
+                    visionResponse = (visionResult && visionResult.response) ? visionResult.response : '';
+                } catch (backendVisionError) {
+                    console.warn('[JARVIS Vision] /process-vision failed, trying local fallback:', backendVisionError?.message || backendVisionError);
+                    if (window.geminiVision) {
+                        visionResponse = await window.geminiVision.analyzeImage(uploadedImage.base64, userPrompt);
+                    } else {
+                        throw backendVisionError;
+                    }
+                }
+
+                if (!visionResponse) {
+                    throw new Error('Vision response is empty');
+                }
                 
                 console.log('[JARVIS Vision] Got response:', visionResponse.substring(0, 100) + '...');
                 
@@ -1354,24 +1839,26 @@ async function sendMessage() {
             requestData.question = `[Image: ${uploadedImage.name}]\n\n${question || 'Analyze this image'}`;
         }
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000); // 120 second timeout for research + LLM
-
         // ===== FETCH CALL WITH DETAILED ERROR LOGGING =====
-        console.log('🚀 [FETCH] Sending request to:', API_URL);
-        console.log('📦 [FETCH] Request body:', { query: question });
+        const useAgenticMode = isAgenticModeEnabled;
+        const targetUrl = useAgenticMode ? AGENT_EXECUTE_URL : `${BACKEND_URL}${QUERY_ENDPOINTS[0]}`;
+        console.log('🚀 [FETCH] Sending request to:', targetUrl);
+        console.log('📦 [FETCH] Request body:', { query: question, agentic: useAgenticMode });
 
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
+        const response = useAgenticMode
+            ? await callAgentExecuteWithRetry({
+                query: question,
+                user_id: getBackendUserId(),
+                language: currentLanguage,
+                memory_profile: collectMemoryProfile()
+            }, 3)
+            : await requestKnowledgeEngine({
                 question: question,
-                model: selectedModel // Send selected model to backend [cite: 03-02-2026]
-            }),
-            signal: controller.signal
-        });
+                model: selectedModel,
+                user_id: getBackendUserId(),
+                language: currentLanguage,
+                memory_profile: collectMemoryProfile()
+            });
 
         console.log('📡 [FETCH] Response status:', response.status, response.statusText);
 
@@ -1379,18 +1866,18 @@ async function sendMessage() {
             console.error('❌ [ERROR] Response not OK');
             console.error('❌ [ERROR] Status code:', response.status);
             console.error('❌ [ERROR] Status text:', response.statusText);
-            console.error('❌ [ERROR] Full URL attempted:', API_URL);
+            console.error('❌ [ERROR] Full URL attempted:', targetUrl);
             const errorText = await response.text();
             console.error('❌ [ERROR] Response body:', errorText);
             
             if (response.status === 404) {
-                console.error('❌ [404 NOT FOUND] The endpoint does not exist at:', API_URL);
+                console.error('❌ [404 NOT FOUND] The endpoint does not exist at:', targetUrl);
                 console.error('❌ [404] Check if Hugging Face backend is running');
-                console.error('❌ [404] Check if endpoint is /ask');
-                throw new Error(`404 NOT FOUND: ${API_URL} - Endpoint not found on backend`);
+                console.error('❌ [404] Check if endpoint is /ask or /agent-execute');
+                throw new Error(`404 NOT FOUND: ${targetUrl} - Endpoint not found on backend`);
             } else if (response.status === 0) {
                 console.error('❌ [NETWORK ERROR] Could not connect to backend');
-                console.error('❌ [NETWORK] URL:', API_URL);
+                console.error('❌ [NETWORK] URL:', targetUrl);
                 throw new Error('Network error: Could not connect to backend');
             }
             
@@ -1404,26 +1891,26 @@ async function sendMessage() {
             clearUploadedImage();
         }
 
-        clearTimeout(timeout);
         isBackendReady = true;
         hideBackendStatus();
 
         const data = await response.json();
+        const normalized = normalizeKnowledgeResponse(data);
         
         console.log('[JARVIS Response]', data);
-        console.log('[Engine Used]', data.engine || 'unknown');
+        console.log('[Engine Used]', data.engine || data.intent || 'unknown');
 
         // Update research progress to show completion
         const researchIndicator = document.getElementById('jarvisResearchIndicator');
-        if (researchIndicator && data.success) {
+        if (researchIndicator && (data.success || useAgenticMode)) {
             const stepsDiv = document.getElementById('researchSteps');
             if (stepsDiv) {
                 stepsDiv.innerHTML = `
                     <div class="step-item completed">
-                        <i class="fas fa-check-circle"></i> Received response from Hugging Face
+                        <i class="fas fa-check-circle"></i> Received response from ${useAgenticMode ? 'Agentic Router' : 'Hugging Face'}
                     </div>
                     <div class="step-item completed">
-                        <i class="fas fa-check-circle"></i> Engine: ${data.engine || 'Groq Llama-3.1'}
+                        <i class="fas fa-check-circle"></i> Engine: ${useAgenticMode ? (data.intent || 'Agentic') : (data.engine || 'Groq Llama-3.1')}
                     </div>
                     <div class="step-item completed">
                         <i class="fas fa-check-circle"></i> Response ready for display
@@ -1442,20 +1929,47 @@ async function sendMessage() {
         if (orb) orb.classList.remove('orb-supernova');
 
         // ✅ Display JARVIS response (new format from Hugging Face)
-        if (data.answer) {
-            const answer = data.answer;
-
+        const answer = normalized.answer;
+        if (answer) {
             // Display the answer
-            await addMessageWithTypingEffect(answer, 'ai');
+            await addMessageWithTypingEffect(answer, 'ai', { sources: normalized.sources });
 
-            // Display model used badge (JARVIS 7.0 feature)
-            if (data.model_used) {
-                displayModelInfo(data.model_used);
-            }
+            // Model badge intentionally removed from chat UI
 
             // Display sources if available (JARVIS 7.0 enhanced)
-            if (Array.isArray(data.sources) && data.sources.length > 0) {
-                appendSourcesToChat(data.sources);
+            if (Array.isArray(normalized.sources) && normalized.sources.length > 0) {
+                appendTopSourcesBar(normalized.sources);
+                appendKnowledgeMetrics({
+                    sourcesCount: normalized.sources.length,
+                    modelUsed: normalized.modelUsed,
+                    isLive: normalized.isLive
+                });
+                appendSourcesToChat(normalized.sources);
+            }
+
+            if (Array.isArray(normalized.followUps) && normalized.followUps.length > 0) {
+                addFollowUpButtons(normalized.followUps);
+            }
+
+            if (useAgenticMode && data.result && typeof data.result === 'object') {
+                renderAgenticArtifacts(data.intent || data.result.agent, data.result);
+            }
+
+            if (useAgenticMode && Array.isArray(data.result?.sources) && data.result.sources.length > 0) {
+                const parsedSources = data.result.sources
+                    .map((s, idx) => {
+                        const txt = String(s || '');
+                        const urlMatch = txt.match(/https?:\/\/\S+/i);
+                        return {
+                            number: idx + 1,
+                            title: txt.replace(/\*\*/g, '').replace(/-\s*/g, '').trim(),
+                            url: urlMatch ? urlMatch[0] : ''
+                        };
+                    })
+                    .filter(s => s.url);
+                if (parsedSources.length > 0) {
+                    appendSourcesToChat(parsedSources);
+                }
             }
 
             // Speak the response if voice enabled
@@ -1463,8 +1977,8 @@ async function sendMessage() {
                 speak(answer);
             }
 
-            console.log(`✅ JARVIS 7.0 response received from ${data.model_used || data.engine || 'unknown'}`);
-            console.log(`📚 Sources found: ${data.sources ? data.sources.length : 0}`);
+            console.log(`✅ JARVIS 7.0 response received from ${normalized.modelUsed}`);
+            console.log(`📚 Sources found: ${normalized.sources ? normalized.sources.length : 0}`);
         } else {
             // Error response or no synthesis available
             const errorMsg = data.error || data.response || data.message || 'Sorry, I could not generate a response. Please try again.';
@@ -1478,6 +1992,25 @@ async function sendMessage() {
     } catch (error) {
         removeTypingIndicator();
         hideBackendStatus();
+
+        const researchIndicator = document.getElementById('jarvisResearchIndicator');
+        if (researchIndicator) {
+            researchIndicator.remove();
+        }
+
+        const fallbackResult = await attemptNewsFallback(question);
+        if (fallbackResult && fallbackResult.answer) {
+            await addMessageWithTypingEffect(fallbackResult.answer, 'ai');
+            if (Array.isArray(fallbackResult.sources) && fallbackResult.sources.length > 0) {
+                appendSourcesToChat(fallbackResult.sources);
+            }
+            if (typeof speak === 'function') {
+                speak(fallbackResult.answer);
+            }
+            currentChatMessages.push({ role: 'ai', content: fallbackResult.answer });
+            saveCurrentChat();
+            return;
+        }
 
         let errorMsg = 'Sorry, I encountered an error. Please try again! 😔';
         if (error.name === 'AbortError') {
@@ -1601,7 +2134,10 @@ function appendSourcesToChat(sources) {
         let url = '';
         let title = '';
         let number = source.number || (index + 1);
+        const sourceId = source.id || number;
         let contentLength = source.content_length || 0;
+
+        item.setAttribute('data-source-id', String(sourceId));
 
         if (typeof source === 'string') {
             url = source;
@@ -1625,7 +2161,7 @@ function appendSourcesToChat(sources) {
                         justify-content: center;
                         font-weight: 700;
                         font-size: 14px;
-                    ">[${number}]</div>
+                    ">[${sourceId}]</div>
                     <div style="flex: 1;">
                         <a href="${url}" 
                            target="_blank" 
@@ -1698,50 +2234,136 @@ function appendSourcesToChat(sources) {
     scrollToBottom();
 }
 
-// ===== Display Model Info Badge [cite: 06-02-2026] =====
-function displayModelInfo(modelUsed) {
-    if (!modelUsed) return;
-    
-    const badge = document.createElement('div');
-    badge.className = 'model-info-badge';
-    badge.style.cssText = `
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 600;
-        margin: 8px 0;
-        animation: slideIn 0.5s ease;
+function renderAgenticArtifacts(intent, agentResult) {
+    if (!agentResult || typeof agentResult !== 'object' || !elements.messagesArea) return;
+
+    const container = document.createElement('div');
+    container.className = 'agentic-artifacts-container';
+    container.style.cssText = `
+        margin: 16px 0 22px 0;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        background: linear-gradient(135deg, rgba(16,185,129,0.10), rgba(59,130,246,0.10));
     `;
-    
-    let icon = '🤖';
-    let modelName = modelUsed;
-    if (modelUsed.includes('groq')) {
-        icon = '⚡';
-        modelName = modelUsed.replace('groq-', '').toUpperCase();
-    } else if (modelUsed.includes('gemini')) {
-        icon = '✨';
-        modelName = 'Gemini 1.5 Flash';
-    } else if (modelUsed.includes('huggingface')) {
-        icon = '🤗';
-        modelName = 'HuggingFace Mixtral';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight:700; color:#34d399; margin-bottom:10px; font-size:13px;';
+    title.textContent = `🤖 Agentic Execution • ${intent || agentResult.agent || 'ROUTED'}`;
+    container.appendChild(title);
+
+    const metaLines = [];
+    if (agentResult.agent) metaLines.push(`Agent: ${agentResult.agent}`);
+    if (agentResult.provider_round1) metaLines.push(`Pass 1: ${agentResult.provider_round1}`);
+    if (agentResult.provider_round2 && agentResult.provider_round2 !== 'none') metaLines.push(`Pass 2: ${agentResult.provider_round2}`);
+    if (typeof agentResult.pages_read === 'number') metaLines.push(`Pages Read: ${agentResult.pages_read}`);
+    if (agentResult.storage) metaLines.push(`Storage: ${agentResult.storage}`);
+    if (metaLines.length > 0) {
+        const meta = document.createElement('div');
+        meta.style.cssText = 'font-size:12px; color:#cbd5e1; margin-bottom:10px;';
+        meta.textContent = metaLines.join(' • ');
+        container.appendChild(meta);
     }
-    
-    badge.innerHTML = `
-        <span>${icon}</span>
-        <span>Powered by ${modelName}</span>
-    `;
-    
-    elements.messagesArea.appendChild(badge);
+
+    // Compact Activity Timeline
+    const timeline = document.createElement('div');
+    timeline.style.cssText = 'padding:10px; border-radius:10px; background:rgba(15,23,42,0.45); border:1px solid rgba(148,163,184,.22); margin-bottom:10px;';
+
+    const timelineTitle = document.createElement('div');
+    timelineTitle.style.cssText = 'font-size:12px; color:#e2e8f0; font-weight:700; margin-bottom:8px;';
+    timelineTitle.textContent = '🧭 Agentic Activity Timeline';
+    timeline.appendChild(timelineTitle);
+
+    const pass1 = agentResult.provider_round1 || 'router-core';
+    const pass2 = agentResult.provider_round2 || 'none';
+    const pagesRead = Number.isFinite(agentResult.pages_read) ? agentResult.pages_read : null;
+
+    const timelineSteps = [
+        { label: `Intent Classified: ${intent || agentResult.agent || 'ROUTED'}`, status: 'done' },
+        { label: `Pass 1 Search: ${pass1}`, status: 'done' },
+        { label: pagesRead !== null ? `Pages Read: ${pagesRead}` : 'Pages Read: Not reported', status: pagesRead !== null ? 'done' : 'soft' },
+        { label: 'Summary Synthesized', status: 'done' },
+        { label: pass2 !== 'none' ? `Pass 2 Specialized Search: ${pass2}` : 'Pass 2 Specialized Search: Skipped', status: pass2 !== 'none' ? 'done' : 'skip' },
+    ];
+
+    timelineSteps.forEach(step => {
+        const row = document.createElement('div');
+        const isDone = step.status === 'done';
+        const isSkip = step.status === 'skip';
+        row.style.cssText = `
+            display:flex;
+            align-items:center;
+            gap:8px;
+            font-size:12px;
+            margin:4px 0;
+            color:${isDone ? '#bbf7d0' : (isSkip ? '#fcd34d' : '#cbd5e1')};
+        `;
+        row.innerHTML = `
+            <span style="font-weight:700; min-width:16px;">${isDone ? '✓' : (isSkip ? '→' : '•')}</span>
+            <span>${step.label}</span>
+        `;
+        timeline.appendChild(row);
+    });
+
+    container.appendChild(timeline);
+
+    if (agentResult.progress && typeof agentResult.progress === 'object') {
+        const p = agentResult.progress;
+        const progressCard = document.createElement('div');
+        progressCard.style.cssText = 'padding:10px; border-radius:10px; background:rgba(255,255,255,0.06); margin-bottom:10px;';
+        progressCard.innerHTML = `
+            <div style="font-size:12px; color:#f0fdf4; font-weight:600; margin-bottom:6px;">📈 Learning Progress</div>
+            <div style="font-size:12px; color:#cbd5e1;">Completed: ${p.completed_days ?? '-'} / ${p.total_days ?? '-'}</div>
+            <div style="font-size:12px; color:#86efac; font-weight:700; margin-top:4px;">${p.percent ?? 0}% done</div>
+        `;
+        container.appendChild(progressCard);
+    }
+
+    if (agentResult.roadmap && Array.isArray(agentResult.roadmap.days)) {
+        const roadmapCard = document.createElement('div');
+        roadmapCard.style.cssText = 'padding:10px; border-radius:10px; background:rgba(255,255,255,0.06); margin-bottom:10px;';
+
+        const topic = agentResult.roadmap.topic || 'Learning Topic';
+        const preview = agentResult.roadmap.days.slice(0, 5)
+            .map(d => `Day ${d.day}: ${d.task}`)
+            .join('<br>');
+
+        roadmapCard.innerHTML = `
+            <div style="font-size:12px; color:#f0fdf4; font-weight:600; margin-bottom:6px;">🗺️ 30-Day Roadmap • ${topic}</div>
+            <div style="font-size:12px; color:#cbd5e1; line-height:1.55;">${preview}</div>
+        `;
+        container.appendChild(roadmapCard);
+    }
+
+    if (typeof agentResult.code === 'string' && agentResult.code.trim()) {
+        const codeWrap = document.createElement('pre');
+        codeWrap.style.cssText = 'max-height:220px; overflow:auto; margin:0 0 10px 0; padding:10px; border-radius:10px; background:rgba(2,6,23,.65); border:1px solid rgba(148,163,184,.25);';
+        codeWrap.innerHTML = `<code class="language-python">${agentResult.code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`;
+        container.appendChild(codeWrap);
+    }
+
+    const chartBase64 = agentResult.base64_png || agentResult.chart_base64;
+    if (typeof chartBase64 === 'string' && chartBase64.length > 100) {
+        const img = document.createElement('img');
+        img.src = `data:image/png;base64,${chartBase64}`;
+        img.alt = 'Agentic chart output';
+        img.style.cssText = 'max-width:100%; border-radius:10px; border:1px solid rgba(148,163,184,.35); background:#fff;';
+        container.appendChild(img);
+    }
+
+    elements.messagesArea.appendChild(container);
+    highlightCode();
     scrollToBottom();
 }
 
+// ===== Display Model Info Badge [cite: 06-02-2026] =====
+function displayModelInfo(modelUsed) {
+    // Intentionally disabled: model/provider badge hidden from chat UI.
+    void modelUsed;
+}
+
 // ===== Add Message with Typing Effect =====
-async function addMessageWithTypingEffect(content, sender) {
+async function addMessageWithTypingEffect(content, sender, options = {}) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}`;
 
@@ -1788,6 +2410,9 @@ async function addMessageWithTypingEffect(content, sender) {
             } else {
                 // Typing complete - apply final formatting and highlighting
                 contentDiv.innerHTML = formatMessage(content);
+                if (sender === 'ai' && Array.isArray(options.sources) && options.sources.length > 0) {
+                    injectCitationBadgesIntoRenderedMessage(contentDiv, options.sources);
+                }
                 highlightCode();
                 scrollToBottom();
                 resolve();
@@ -1875,6 +2500,11 @@ function showTypingIndicator() {
                 <div class="typing-dot" style="${currentModel === 'pro' ? 'background: #FFD700;' : ''}"></div>
                 <div class="typing-dot" style="${currentModel === 'pro' ? 'background: #FFD700;' : ''}"></div>
                 <div class="typing-dot" style="${currentModel === 'pro' ? 'background: #FFD700;' : ''}"></div>
+            </div>
+            <div class="thinking-chip-row">
+                <span class="thinking-chip">Analyzing prompt</span>
+                <span class="thinking-chip">Gathering evidence</span>
+                <span class="thinking-chip">Crafting answer</span>
             </div>
         </div>
     `;
@@ -2345,6 +2975,220 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function _blobFromImagePayload(imagePayload) {
+    if (!imagePayload) {
+        throw new Error('No image payload provided');
+    }
+
+    if (imagePayload instanceof File || imagePayload instanceof Blob) {
+        return {
+            blob: imagePayload,
+            fileName: imagePayload.name || `vision_${Date.now()}.jpg`,
+            contentType: imagePayload.type || 'image/jpeg'
+        };
+    }
+
+    if (typeof imagePayload === 'object') {
+        const fileName = imagePayload.name || `vision_${Date.now()}.jpg`;
+        const explicitType = imagePayload.type || 'image/jpeg';
+
+        const dataUrl = imagePayload.data || imagePayload.url;
+        if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+            const [meta, b64] = dataUrl.split(',', 2);
+            const detectedType = (meta.match(/data:([^;]+)/i) || [])[1] || explicitType;
+            const byteString = atob(b64 || '');
+            const bytes = new Uint8Array(byteString.length);
+            for (let i = 0; i < byteString.length; i++) {
+                bytes[i] = byteString.charCodeAt(i);
+            }
+            return {
+                blob: new Blob([bytes], { type: detectedType || 'image/jpeg' }),
+                fileName,
+                contentType: detectedType || 'image/jpeg'
+            };
+        }
+
+        if (typeof imagePayload.base64 === 'string' && imagePayload.base64.length > 0) {
+            const rawBase64 = imagePayload.base64.includes(',')
+                ? imagePayload.base64.split(',', 2)[1]
+                : imagePayload.base64;
+            const byteString = atob(rawBase64);
+            const bytes = new Uint8Array(byteString.length);
+            for (let i = 0; i < byteString.length; i++) {
+                bytes[i] = byteString.charCodeAt(i);
+            }
+            return {
+                blob: new Blob([bytes], { type: explicitType || 'image/jpeg' }),
+                fileName,
+                contentType: explicitType || 'image/jpeg'
+            };
+        }
+    }
+
+    throw new Error('Unsupported image payload format');
+}
+
+async function uploadVisionTutorImage(imagePayload, prompt = '') {
+    const { blob, fileName } = _blobFromImagePayload(imagePayload);
+
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    formData.append('prompt', (prompt || '').trim());
+    formData.append('user_id', getBackendUserId());
+
+    const response = await fetch(`${BACKEND_URL}/process-vision`, {
+        method: 'POST',
+        body: formData
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Vision upload failed (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
+}
+
+async function callBackendWithRetry(payload, maxAttempts = 3) {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const controller = new AbortController();
+        const timeoutMs = Math.min(45000 + (attempt * 15000), 90000);
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            lastError = error;
+
+            const errMsg = (error?.message || '').toLowerCase();
+            const isAbort = error?.name === 'AbortError';
+            const isNetwork = errMsg.includes('fetch') || errMsg.includes('network');
+            const isServer = /http\s*5\d\d/.test(errMsg);
+
+            if (attempt < maxAttempts && (isAbort || isNetwork || isServer)) {
+                showBackendStatus(`Waking up server... retry ${attempt}/${maxAttempts}`, 'loading');
+
+                if (window.backendKeepAlive) {
+                    await window.backendKeepAlive.wakeUpBackend();
+                } else {
+                    await wakeUpBackend();
+                }
+
+                await sleep(1200 * attempt);
+                continue;
+            }
+
+            throw error;
+        }
+    }
+
+    throw lastError || new Error('Unknown backend request failure');
+}
+
+async function callAgentExecuteWithRetry(payload, maxAttempts = 3) {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const controller = new AbortController();
+        const timeoutMs = Math.min(45000 + (attempt * 15000), 90000);
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const response = await fetch(AGENT_EXECUTE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
+            return response;
+        } catch (error) {
+            clearTimeout(timeoutId);
+            lastError = error;
+
+            const errMsg = (error?.message || '').toLowerCase();
+            const isAbort = error?.name === 'AbortError';
+            const isNetwork = errMsg.includes('fetch') || errMsg.includes('network');
+            const isServer = /http\s*5\d\d/.test(errMsg);
+
+            if (attempt < maxAttempts && (isAbort || isNetwork || isServer)) {
+                showBackendStatus(`Waking up agentic server... retry ${attempt}/${maxAttempts}`, 'loading');
+
+                if (window.backendKeepAlive) {
+                    await window.backendKeepAlive.wakeUpBackend();
+                } else {
+                    await wakeUpBackend();
+                }
+
+                await sleep(1200 * attempt);
+                continue;
+            }
+
+            throw error;
+        }
+    }
+
+    throw lastError || new Error('Unknown agent execution failure');
+}
+
+async function attemptNewsFallback(question) {
+    try {
+        const response = await fetch(NEWS_FALLBACK_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query: question })
+        });
+
+        if (!response.ok) {
+            return null;
+        }
+
+        const data = await response.json();
+        if (!data || !data.answer) {
+            return null;
+        }
+
+        return {
+            answer: data.answer,
+            sources: Array.isArray(data.sources) ? data.sources : [],
+            model_used: 'news-fallback'
+        };
+    } catch (error) {
+        console.warn('⚠️ News fallback failed:', error?.message || error);
+        return null;
+    }
+}
+
 function autoResizeTextarea() {
     if (!elements.messageInput) return;
     elements.messageInput.style.height = 'auto';
@@ -2390,6 +3234,7 @@ function switchMode(mode) {
 
     // Save mode preference
     localStorage.setItem('jarvisMode', mode);
+    syncMemory2Profile();
 
     console.log(`🎯 Switched to ${mode} mode`);
 }
@@ -2495,13 +3340,13 @@ function updateModeUI() {
 // ===== Wake Up Backend =====
 async function wakeUpBackend() {
     // console.log('🔔 Waking up backend server...');
-    const statusMsg = showBackendStatus('Connecting to JARVIS...', 'loading');
+    showBackendStatus('Connecting to JARVIS server...', 'loading');
 
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 45000); // 45 second timeout for cold start
 
-        const response = await fetch(BACKEND_BASE_URL, {
+        const response = await fetch(HEALTH_URL, {
             signal: controller.signal,
             method: 'GET',
             headers: {
@@ -2515,6 +3360,7 @@ async function wakeUpBackend() {
             showBackendStatus('✅ JARVIS is ready!', 'success');
             // console.log('✅ Backend is awake and ready');
             setTimeout(() => hideBackendStatus(), 2000);
+            return true;
         } else {
             throw new Error('Backend responded with error');
         }
@@ -2524,13 +3370,14 @@ async function wakeUpBackend() {
         console.warn(`⚠️ Backend wake-up attempt ${backendWakeupAttempts} failed:`, errorMsg);
 
         if (backendWakeupAttempts < 3) {
-            showBackendStatus(`Waking up server... (${backendWakeupAttempts}/3)`, 'loading');
+            showBackendStatus(`Server is waking up on Render... (${backendWakeupAttempts}/3)`, 'loading');
             await sleep(8000); // Longer delay for cold start
             return wakeUpBackend(); // Retry
         } else {
-            showBackendStatus('✅ Server is waking up. First response may take 30-60 seconds.', 'warning');
+            showBackendStatus('⚠️ Cold start in progress. First response may take 20-60 seconds.', 'warning');
             isBackendReady = true; // Allow user to proceed
             setTimeout(() => hideBackendStatus(), 8000);
+            return false;
         }
     }
 }
@@ -2838,6 +3685,9 @@ if (document.readyState === 'loading') {
 window.copyMessage = copyMessage;
 window.speakMessage = speakMessage;
 window.deleteChat = deleteChat;
+window.uploadVisionTutorImage = uploadVisionTutorImage;
+window.setAgenticMode = setAgenticMode;
+window.isAgenticModeEnabled = () => isAgenticModeEnabled;
 // ===== KING MODE - SUPREME AUTHORITY =====
 function enableKingMode() {
     document.body.setAttribute('data-theme', 'king-mode');
